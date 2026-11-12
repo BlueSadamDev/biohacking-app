@@ -69,7 +69,7 @@ Quand une modification change ce que décrit DESIGN.md (couleur, bouton, écran)
 - Si `expo-doctor` signale des versions incompatibles : `npx expo install --fix`, puis relancer les vérifications.
 
 ## Git et GitHub
-- Le code est versionné avec Git et poussé sur GitHub (dépôt **privé**).
+- Le code est versionné avec Git et poussé sur GitHub (dépôt **public**, choix assumé de l'utilisateur) : rien de personnel n'y entre, ni donnée de santé ni secret.
 - Faire un commit de sécurité avant chaque grosse modification.
 - Faire des commits fréquents avec des messages clairs en français.
 - Ne jamais travailler directement sur la branche `main`.

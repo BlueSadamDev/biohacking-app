@@ -32,6 +32,8 @@ Health Connect sera la voie principale, mais la HRV de la Suunto n'y arrive prob
 | Suivi macro (app développée par un ami) | Calories et macros par jour (protéines, glucides, lipides) | Import du fichier d'export JSON | Récupérer un exemple d'export et fixer le format avec l'ami (champs, unités, dates) |
 | Ressenti (optionnel) | Fatigue, courbatures, humeur, note de séance (1 à 5) | Saisie dans l'app, 10 secondes le matin | Facultatif, mais très utile pour les corrélations |
 
+**Constat du lot 0** (voir [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md)) : Zepp écrit dans Health Connect tous les types lus au lot 0 (dont la HRV et le poids), sauf la VO2max. La Suunto n'écrit rien : sa connexion à Health Connect échoue du côté de l'app Suunto. Le Helio Strap est donc, pour l'instant, la source unique.
+
 **Principe d'ouverture** : chaque source passe par un « connecteur » interchangeable. On peut ainsi ajouter plus tard l'API Suunto, des imports FIT/GPX ou une autre app sans toucher au reste.
 
 **Prérequis technique** : lire l'historique et lire en arrière-plan demandent des permissions Health Connect spécifiques ([doc Android](https://developer.android.com/health-and-fitness/health-connect/data-types)). En usage personnel, sans publication sur le Play Store, aucune déclaration n'est à faire auprès de Google.
@@ -46,7 +48,7 @@ La règle : pas de moyenne, une source prioritaire par métrique et une source d
 | GPS, distance, dénivelé | Suunto | — | Seule la montre a un GPS |
 | Séances | Fusion | — | Deux séances qui se chevauchent à plus de 50 % = une seule séance. Le type et le GPS viennent de la Suunto, la FC du strap. |
 | Sommeil | Helio Strap (porté en permanence) | Suunto | Une seule source à vie, pour garder des tendances comparables |
-| HRV nocturne | Helio Strap, si Zepp transmet la HRV (à confirmer au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment |
+| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment |
 | FC au repos | Même source que la HRV | L'autre capteur | Mesurée pendant le sommeil |
 | Pas, calories dépensées | Suunto | Helio Strap | Pas de cumul des deux sources (double comptage) |
 
@@ -168,7 +170,11 @@ Le risque principal est l'absence de HRV dans Health Connect. Sans HRV, le score
 
 **Points ouverts**
 
-- [ ] Quels types de données arrivent réellement dans Health Connect depuis Suunto et Zepp ? (lot 0)
+- [x] Quels types de données arrivent réellement dans Health Connect depuis Suunto et Zepp ? (lot 0 : tout depuis Zepp sauf VO2max, rien depuis la Suunto, voir [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md))
+- [ ] Plan B pour la Suunto (GPS, type de séance) : attendre un correctif Suunto, import manuel des fichiers de séance (FIT/GPX), ou abandon pour l'instant
+- [ ] Poids : lecture depuis Zepp, saisie manuelle, ou les deux (et laquelle est prioritaire)
+- [ ] VO2max (aucune source) : retirer du cahier des charges ?
+- [ ] HRV et FC au repos arrivent en nombreuses mesures par jour : valider la règle « une valeur par nuit » proposée dans le rapport du lot 0
 - [ ] Exemple de fichier JSON exporté par Suivi macro
 - [ ] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine
 - [ ] Exercices de musculation clés à suivre

@@ -33,6 +33,10 @@
         "android.permission.health.READ_OXYGEN_SATURATION",
         "android.permission.health.READ_VO2_MAX",
         "android.permission.health.READ_WEIGHT"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {

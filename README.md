@@ -42,7 +42,18 @@ et ouvrir le projet depuis l'app installée sur le téléphone (même réseau Wi
 
 ## Construire les APK
 
-Par GitHub Actions (à venir dans le lot 0) :
+Par GitHub Actions, déclenchement manuel (onglet Actions > choisir le workflow > « Run workflow », ou en ligne de commande ci-dessous). Un build dure 20 à 30 minutes.
 
-- APK de développement : workflow `build-dev-apk.yml`, artifact `biohacking-dev-apk`.
-- APK de production (sans permission Internet) : workflow `build-apk.yml`, artifact `biohacking-apk`.
+| APK | Workflow | Artifact | Particularités |
+|---|---|---|---|
+| Développement | `build-dev-apk.yml` | `biohacking-dev-apk` | Nom « Biohacking (dev) », s'installe à côté de l'app de production. Signé avec la clé de développement d'Expo : aucun secret nécessaire. À reconstruire seulement quand une dépendance native ou une permission change. |
+| Production | `build-apk.yml` | `biohacking-apk` | Sans permission Internet (le build échoue si elle est présente), sans accès au stockage ni affichage par-dessus les autres apps. Signé avec les 4 secrets ci-dessous. |
+
+```powershell
+gh workflow run build-dev-apk.yml --ref <branche>
+gh workflow run build-apk.yml --ref <branche>
+```
+
+Secrets GitHub nécessaires pour la production (Settings > Secrets and variables > Actions) : `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`.
+
+**Installer l'APK** : ouvrir la page du build terminé, télécharger l'artifact (un fichier ZIP) en bas de page, extraire le `.apk`, le copier sur le téléphone et l'ouvrir (autoriser l'installation depuis cette source si Android le demande).

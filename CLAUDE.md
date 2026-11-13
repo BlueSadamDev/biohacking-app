@@ -2,13 +2,13 @@
 
 ## Contexte
 - L'utilisateur ne sait pas développer. Tout expliquer en français simple, sans jargon (ou expliquer chaque terme technique).
-- Projet : application Android personnelle de biohacking. Elle lit les données de la montre Suunto 9 Peak Pro et du bracelet Amazfit Helio Strap via Health Connect, puis produit un récap du matin, des alertes et des insights sport. Usage strictement personnel : pas de Play Store, pas de comptes utilisateurs.
+- Projet : application Android personnelle de biohacking. Elle lit les données du bracelet Amazfit Helio Strap via Health Connect (source principale, automatique) et importe une fois par mois les séances de la montre Suunto 9 Peak Pro à partir de fichiers FIT exportés depuis l'app Suunto (la Suunto n'écrit pas dans Health Connect). Elle produit un récap du matin, des alertes et des insights sport. Usage strictement personnel : pas de Play Store, pas de comptes utilisateurs.
 - Référence fonctionnelle : [docs/CAHIER_DES_CHARGES.md](docs/CAHIER_DES_CHARGES.md). Le lire avant chaque nouveau lot ou fonctionnalité. Ne rien développer qui n'y figure pas sans demander.
 - Livrable : un APK de test installable sur le téléphone (Android 14 ou plus récent).
 - Technologie imposée : Expo (React Native, TypeScript) et GitHub Actions pour les APK. Ne proposer aucun autre framework sans demander.
 - **Pas d'Expo Go** : la bibliothèque Health Connect contient du code natif, qu'Expo Go ne sait pas charger. Les tests se font avec un **build de développement** (une version de l'app qui contient `expo-dev-client` et se recharge depuis l'ordinateur pendant le développement), construit par GitHub Actions.
 - L'application utilise Expo Router : les écrans sont dans `src/app/`, le reste dans `src/` hors de `src/app/` :
-  - `src/sources/` : un connecteur par source de données (Health Connect, import Suivi macro, saisie manuelle) ;
+  - `src/sources/` : un connecteur par source de données (Health Connect, import FIT Suunto, import Suivi macro, saisie manuelle) ;
   - `src/domain/` : fusion des capteurs, normes personnelles, scores, règles d'alerte (calculs purs, sans interface) ;
   - `src/db/` : base de données locale ;
   - `src/components/` : composants d'interface réutilisables.
@@ -16,7 +16,7 @@
 ## Données de santé et confidentialité
 - Toutes les données restent sur le téléphone. Aucun appel réseau dans le code de l'application, aucun SDK d'analytics, de suivi des plantages ou de publicité.
 - L'APK de production ne doit pas avoir la permission Internet : la retirer via `android.blockedPermissions` dans `app.json` (à vérifier à chaque build de production). Le build de développement, lui, en a besoin pour se recharger depuis l'ordinateur.
-- Ne jamais mettre de vraies données de santé dans le dépôt (exports, captures, logs). Les tests utilisent uniquement des **données fictives** rangées dans `src/domain/__fixtures__/`.
+- Ne jamais mettre de vraies données de santé dans le dépôt (exports, captures, logs). Le dépôt est public : les rapports rangés dans `docs/` (comme `docs/RAPPORT_LOT_0.md`) ne contiennent que des types de données, des comptages et des dates, jamais de valeurs. Les tests utilisent uniquement des **données fictives** rangées dans `src/domain/__fixtures__/`.
 - Ne pas afficher de valeurs de santé dans les logs (`console.log`) en dehors de l'écran de diagnostic prévu à cet effet.
 - Sauvegarde uniquement par export manuel d'un fichier, déclenché par l'utilisateur.
 - Les textes de l'app ne présentent jamais un résultat comme un diagnostic médical.
@@ -26,19 +26,25 @@
 - `minSdkVersion` d'au moins 26, réglé via `expo-build-properties`.
 - Application en **lecture seule** : ne jamais écrire dans Health Connect.
 - Ne demander que les permissions de lecture nécessaires au lot en cours, et les lister dans le plan avant de les ajouter.
-- Toujours conserver l'**app d'origine** (`dataOrigin`) de chaque enregistrement : c'est elle qui distingue la Suunto du Helio Strap. Sans elle, la fusion est impossible.
+- Toujours conserver l'**app d'origine** (`dataOrigin`) de chaque enregistrement. Aujourd'hui seule l'app Zepp (Helio Strap) écrit dans Health Connect, mais d'autres sources pourront s'ajouter : sans l'origine, la fusion serait impossible.
 - Gérer proprement les cas « Health Connect absent », « permission refusée » et « aucune donnée », avec un message clair à l'écran.
 
+## Import FIT Suunto
+- Import manuel et groupé : l'utilisateur sélectionne plusieurs fichiers `.fit` d'un coup (`expo-document-picker`). La lecture se fait entièrement sur le téléphone, avec une bibliothèque JavaScript de lecture FIT à proposer et faire valider avant ajout.
+- Un fichier déjà importé n'est jamais importé deux fois (identifiant : date et heure de début de la séance).
+- Une séance Suunto qui chevauche une séance du Helio Strap à plus de 50 % la complète (GPS, distance, type précis) au lieu de créer un doublon.
+- Les fichiers `.fit` réels ne vont jamais dans le dépôt : tests uniquement sur des fichiers fictifs ou anonymisés.
+
 ## Règles de calcul
-- Ne jamais faire la moyenne de deux capteurs. Appliquer la table « source prioritaire / secours » du cahier des charges (section 3). Le Helio Strap, porté en permanence, est la référence pour le sommeil, la HRV et la FC au repos.
+- Ne jamais faire la moyenne de deux capteurs. Appliquer la table « source prioritaire / secours » du cahier des charges (section 3). Le Helio Strap, porté en permanence, est la référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances ; la Suunto (FIT) apporte le GPS, la distance et l'allure.
 - Tous les seuils et pondérations sont dans un seul fichier de réglages (`src/domain/settings.ts`), jamais en dur dans le code.
 - Chaque règle de `src/domain/` a des tests automatiques (Jest, via `jest-expo`) sur données fictives. Après chaque modification d'un calcul, lancer les tests et dire en une phrase ce qu'ils vérifient.
 - Quand un calcul ne peut pas être fait (données manquantes, calibration en cours), l'app l'affiche au lieu d'inventer une valeur.
 
 ## Découpage en lots
 - Le projet avance par lots (voir le cahier des charges, section 7) : un lot = une branche `lot-<n>-<nom>` et un APK testé.
-- **Lot 0** (en cours) : seulement lire Health Connect et afficher, pour les 30 derniers jours, l'inventaire des données reçues (type, app d'origine, nombre d'enregistrements, première et dernière date). Pas de calcul, pas de design soigné.
-- À la fin du lot 0, produire un court rapport des données réellement disponibles par capteur, pour mettre à jour le cahier des charges avant le lot 1.
+- **Lot 0** (terminé) : inventaire des données Health Connect. Résultat dans `docs/RAPPORT_LOT_0.md` : l'app Zepp écrit tous les types lus sauf la VO2max (HRV et poids compris) ; la Suunto n'écrit rien.
+- **Lot 1** (à venir) : récap du matin, à partir du Helio Strap seul. Ne pas le démarrer avant que les points ouverts bloquants du cahier des charges (section 8) soient tranchés par l'utilisateur.
 
 ## Design
 Lire [DESIGN.md](DESIGN.md) avant toute modification d'interface et le respecter. Tant que DESIGN.md n'existe pas (lot 0), garder une interface minimale et lisible, sans travail graphique.

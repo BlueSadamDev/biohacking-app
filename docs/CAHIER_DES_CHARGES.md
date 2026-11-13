@@ -22,17 +22,17 @@ L'application transforme les données de mes capteurs en trois choses : un réca
 
 ## 2. Sources de données
 
-Health Connect sera la voie principale, mais la HRV de la Suunto n'y arrive probablement pas : c'est le premier point à valider. D'après plusieurs intégrateurs, l'app Suunto écrit dans Health Connect les séances, les pas, la distance et la fréquence cardiaque, mais ni la HRV ni (selon certains) le sommeil ([Vora](https://askvora.com/blog/does-suunto-sync-with-apple-health), [FitMesh](https://www.fitmesh.fit/da/sync/suunto)). L'app Zepp (Helio Strap) écrit dans Health Connect depuis 2024, en sens unique ([Notebookcheck](https://www.notebookcheck.net/Amazfit-smartwatches-get-new-Health-Connect-data-sync-feature.951489.0.html)).
+Le Helio Strap, lu via Health Connect, est la source principale et automatique. L'app Zepp écrit dans Health Connect depuis 2024 ([Notebookcheck](https://www.notebookcheck.net/Amazfit-smartwatches-get-new-Health-Connect-data-sync-feature.951489.0.html)). La Suunto, elle, n'écrit rien dans Health Connect (confirmé au lot 0) : ses séances sont importées une fois par mois à partir des fichiers FIT exportés depuis l'app Suunto. Le FIT est le format d'export le plus complet : position, horaires, FC, puissance, cadence ([Suunto](https://www.suunto.com/en-hr/Support/faq-articles/suunto-app/what-type-of-files-can-i-export-from-the-suunto-app/)).
 
-| Source | Données attendues | Voie d'accès | Point de vigilance |
+| Source | Données | Voie d'accès | Point de vigilance |
 | --- | --- | --- | --- |
-| Suunto 9 Peak Pro (app Suunto) | Séances (type, durée, FC, calories, GPS), pas, FC | Health Connect | HRV et sommeil peu ou pas transmis. Plan B : API Suunto (« 247 data » : sommeil, HRV, FC repos), qui exige un programme partenaire ([Tredict](https://www.tredict.com/blog/suunto_hrv_and_sleep_data/)) |
-| Amazfit Helio Strap (app Zepp), porté en permanence | FC continue, sommeil, séances, pas, peut-être HRV et SpO2 | Health Connect | Liste exacte des types écrits à vérifier sur mon téléphone, latence de 15 à 30 min |
-| Poids | Poids, éventuellement % de masse grasse | Saisie manuelle dans l'app pour démarrer ; balance connectée via Health Connect possible plus tard | Pesée dans les mêmes conditions (le matin à jeun) pour lisser le bruit |
+| Amazfit Helio Strap (app Zepp), porté en permanence | FC continue, FC au repos, HRV, sommeil, séances, pas, poids (confirmés au lot 0) ; pas de VO2max | Health Connect, automatique | HRV et FC au repos arrivent en nombreuses mesures par jour (voir section 3) ; latence de 15 à 30 min |
+| Suunto 9 Peak Pro (app Suunto) | Séances détaillées : GPS, distance, dénivelé, allure, FC, cadence | Import mensuel de fichiers FIT, exportés séance par séance (menu « … » d'une séance dans l'app Suunto) | Ni sommeil ni HRV. Données disponibles en différé (jusqu'à 30 jours). Import de plusieurs fichiers d'un coup |
+| Poids | Poids, éventuellement % de masse grasse | Saisie manuelle dans l'app pour démarrer ; Zepp en écrit aussi dans Health Connect | Source prioritaire à trancher (section 8). Pesée dans les mêmes conditions (le matin à jeun) |
 | Suivi macro (app développée par un ami) | Calories et macros par jour (protéines, glucides, lipides) | Import du fichier d'export JSON | Récupérer un exemple d'export et fixer le format avec l'ami (champs, unités, dates) |
 | Ressenti (optionnel) | Fatigue, courbatures, humeur, note de séance (1 à 5) | Saisie dans l'app, 10 secondes le matin | Facultatif, mais très utile pour les corrélations |
 
-**Constat du lot 0** (voir [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md)) : Zepp écrit dans Health Connect tous les types lus au lot 0 (dont la HRV et le poids), sauf la VO2max. La Suunto n'écrit rien : sa connexion à Health Connect échoue du côté de l'app Suunto. Le Helio Strap est donc, pour l'instant, la source unique.
+**Constat du lot 0** (voir [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md)) : Zepp écrit dans Health Connect tous les types lus au lot 0 (dont la HRV et le poids), sauf la VO2max. La Suunto n'écrit rien : sa connexion à Health Connect échoue du côté de l'app Suunto. Le Helio Strap est donc la seule source automatique ; la Suunto passe par l'import mensuel de fichiers FIT.
 
 **Principe d'ouverture** : chaque source passe par un « connecteur » interchangeable. On peut ainsi ajouter plus tard l'API Suunto, des imports FIT/GPX ou une autre app sans toucher au reste.
 
@@ -44,15 +44,15 @@ La règle : pas de moyenne, une source prioritaire par métrique et une source d
 
 | Métrique | Source prioritaire | Secours | Règle |
 | --- | --- | --- | --- |
-| FC pendant les séances | Helio Strap | Suunto | Le capteur optique au poignet décroche en musculation et en escalade (flexion du poignet, prise en main). Le strap est plus stable. |
-| GPS, distance, dénivelé | Suunto | — | Seule la montre a un GPS |
-| Séances | Fusion | — | Deux séances qui se chevauchent à plus de 50 % = une seule séance. Le type et le GPS viennent de la Suunto, la FC du strap. |
-| Sommeil | Helio Strap (porté en permanence) | Suunto | Une seule source à vie, pour garder des tendances comparables |
-| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment |
-| FC au repos | Même source que la HRV | L'autre capteur | Mesurée pendant le sommeil |
-| Pas, calories dépensées | Suunto | Helio Strap | Pas de cumul des deux sources (double comptage) |
+| FC pendant les séances | Helio Strap | Fichier FIT Suunto | Le capteur optique au poignet décroche en musculation et en escalade (flexion du poignet, prise en main). Le strap est plus stable. |
+| GPS, distance, dénivelé, allure | Fichier FIT Suunto | — | Disponible après l'import mensuel |
+| Séances | Helio Strap (immédiat) | — | À l'import FIT, une séance Suunto qui chevauche une séance Helio à plus de 50 % la complète (GPS, type précis) au lieu de créer un doublon |
+| Sommeil | Helio Strap (porté en permanence) | — | Une seule source à vie, pour garder des tendances comparables |
+| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment. Une valeur par nuit (règle proposée dans le rapport du lot 0, à valider) |
+| FC au repos | Helio Strap | — | Mesurée pendant le sommeil ; une valeur par nuit (même règle) |
+| Pas, calories dépensées | Helio Strap | — | Une seule source, pas de cumul (double comptage) |
 
-**Contrôle de cohérence** : si les deux capteurs donnent une FC moyenne de séance qui diffère de plus de 10 %, la séance est signalée « donnée douteuse » et exclue des calculs de tendance.
+**Contrôle de cohérence** : à l'import FIT, si la FC moyenne d'une séance Suunto diffère de plus de 10 % de celle du Helio Strap, la séance est signalée « donnée douteuse » et exclue des calculs de tendance.
 
 **Paramétrable** : le tableau ci-dessus est un réglage de l'application, pas du code figé. On pourra le modifier après quelques semaines de comparaison réelle des deux capteurs.
 
@@ -77,7 +77,7 @@ Quatre écrans et un moteur de règles couvrent le besoin : récap du matin, ale
 
 - Volume et intensité par semaine et par type de sport.
 - Musculation : la montre ne voit ni les charges ni les répétitions. Il faut donc une **saisie rapide des exercices clés** (squat, développé, traction…) pour suivre la force (1RM estimé).
-- Course : allure à FC donnée, VO2max si elle est disponible.
+- Course : allure à FC donnée, à partir des fichiers FIT importés. VO2max : aucune source à ce jour (point ouvert, section 8).
 - Composition corporelle : courbe du poids lissée sur 7 jours, croisée avec les calories et les protéines. On verra ainsi si je prends du muscle ou du gras.
 - **Suggestions d'autres sports** à partir de mes manques : par exemple peu d'endurance fondamentale (zone 2), peu de mobilité ou trop de charge sur le haut du corps.
 
@@ -89,7 +89,7 @@ Quatre écrans et un moteur de règles couvrent le besoin : récap du matin, ale
 ### F5 – Gestion des données
 
 - Synchronisation Health Connect manuelle et automatique (toutes les heures).
-- Import du fichier de nutrition, saisie du poids et du ressenti.
+- Import du fichier de nutrition, import mensuel des fichiers FIT Suunto (plusieurs fichiers d'un coup, avec rappel mensuel), saisie du poids et du ressenti.
 - Export complet en CSV (sauvegarde) et effacement des données.
 - Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données.
 
@@ -150,20 +150,26 @@ Application Expo (React Native, TypeScript), 100 % locale, développée avec Cla
 
 Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données fusionnées et ma norme personnelle. Les alertes viennent ensuite, parce qu'elles ont besoin de 3 à 4 semaines d'historique pour être justes.
 
-&#91;embedded content: Découpage en lots · 5 lots, 4 conditions de passage\]
+1. **Lot 0 – Preuve de faisabilité des données** (terminé) : lecture Health Connect, inventaire des types reçus par source, écran de diagnostic. Résultat : [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md).
+2. **Lot 1 – MVP : récap du matin** : normes personnelles, score de récupération, notification du matin avec une recommandation, saisie du poids et du ressenti. *Condition de passage : 4 semaines d'usage quotidien, calibration des normes terminée.*
+3. **Lot 2 – Alertes, charge et nutrition** : moteur de règles, alertes proactives, charge aiguë / chronique, import Suivi macro, suivi des protéines. *Condition de passage : alertes jugées pertinentes, moins de 2 fausses alertes par semaine.*
+4. **Lot 3 – Progression et corrélations** : saisie des exercices clés, 1RM estimé, composition corporelle, import mensuel des FIT Suunto (GPS, allure), corrélations, suggestions d'autres sports. *Condition de passage : lots 1 à 3 stables et utilisés au quotidien.*
+5. **Lot 4 – Coach IA (plus tard)** : questions en langage naturel sur mes données, modèle embarqué sur le téléphone de préférence.
 
 Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie.
 
-**Révision après le lot 0** : le lot 0 sert à constater quelles données on récupère réellement des deux capteurs. Avant de lancer le lot 1, on ajuste ce cahier des charges en conséquence : sources (section 2), règles de fusion (section 3), indicateurs calculables (section 5) et contenu des lots.
+**Révision après le lot 0** : faite. Ce cahier intègre les constats du lot 0 (sections 2, 3 et 8). Les points ouverts marqués « bloquant » en section 8 doivent être tranchés avant de lancer le lot 1.
 
 ## 8. Risques, points ouverts et prochaines étapes
 
-Le risque principal est l'absence de HRV dans Health Connect. Sans HRV, le score de récupération repose sur la FC au repos et le sommeil, et devient moins fin.
+Le risque HRV est levé : Zepp transmet la HRV. Les points d'attention sont désormais la Suunto hors de Health Connect et la façon de résumer les nombreuses mesures quotidiennes de HRV et de FC au repos.
 
 | Risque | Impact | Parade |
 | --- | --- | --- |
-| HRV absente de Health Connect (Suunto et/ou Zepp) | Score de récupération dégradé | Vérifier au lot 0. Sinon : HRV du strap si Zepp l'écrit, puis API Suunto, ou export manuel |
-| Doublons ou trous de synchro entre les deux apps | Charge et sommeil faux | Règles de fusion (section 3) et écran de diagnostic |
+| HRV et FC au repos en nombreuses mesures par jour | Valeurs du matin instables, normes faussées | Une valeur par nuit (règle du rapport du lot 0, à valider) |
+| Suunto absente de Health Connect | GPS et allure des sorties disponibles en différé (jusqu'à 30 jours) | Import mensuel des FIT. Appli passerelle (Health Sync) en option si le temps réel devient utile |
+| Oubli de l'import mensuel | Progression en course incomplète | Rappel mensuel dans l'app |
+| Doublons ou trous de synchro | Charge et sommeil faux | Règles de fusion (section 3) et écran de diagnostic |
 | Pas de charges ni de répétitions dans les données de musculation | Progression en force invisible | Saisie rapide des exercices clés (F3) |
 | Seuils mal calibrés | Trop d'alertes, que je finis par ignorer | Calibration de 3 à 4 semaines, plafond de 2 alertes par jour, seuils réglables |
 | Changement de format de l'export nutrition | Import cassé | Parseur isolé et message d'erreur clair |
@@ -171,22 +177,24 @@ Le risque principal est l'absence de HRV dans Health Connect. Sans HRV, le score
 **Points ouverts**
 
 - [x] Quels types de données arrivent réellement dans Health Connect depuis Suunto et Zepp ? (lot 0 : tout depuis Zepp sauf VO2max, rien depuis la Suunto, voir [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md))
-- [ ] Plan B pour la Suunto (GPS, type de séance) : attendre un correctif Suunto, import manuel des fichiers de séance (FIT/GPX), ou abandon pour l'instant
-- [ ] Poids : lecture depuis Zepp, saisie manuelle, ou les deux (et laquelle est prioritaire)
-- [ ] VO2max (aucune source) : retirer du cahier des charges ?
-- [ ] HRV et FC au repos arrivent en nombreuses mesures par jour : valider la règle « une valeur par nuit » proposée dans le rapport du lot 0
-- [ ] Exemple de fichier JSON exporté par Suivi macro
+- [x] Plan B pour la Suunto : import manuel mensuel des fichiers FIT (voir décisions)
+- [ ] **Bloquant lot 1** – HRV et FC au repos : valider la règle « une valeur par nuit » proposée dans le rapport du lot 0
+- [ ] **Bloquant lot 1** – Poids : lecture depuis Zepp, saisie manuelle, ou les deux (et laquelle est prioritaire)
+- [ ] VO2max (aucune source) : retirer du cahier des charges, ou la lire plus tard dans les fichiers FIT Suunto si elle y figure
 - [ ] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine
-- [ ] Exercices de musculation clés à suivre
+- [ ] Exercices de musculation clés à suivre (lot 3)
+- [ ] Exemple de fichier JSON exporté par Suivi macro (lot 2)
 
 **Décisions prises**
 
-- Le Helio Strap est porté en permanence : il devient la source de référence pour le sommeil, la HRV et la FC au repos.
+- Le Helio Strap est porté en permanence : il devient la source de référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances, lu via Health Connect.
+- Suunto : pas de Health Connect. Import mensuel des fichiers FIT exportés depuis l'app Suunto (GPS, distance, allure), au lot 3.
 - Nutrition : export JSON de l'app Suivi macro.
 - Poids : saisie manuelle pour démarrer.
+- Design : style sombre inspiré de Whoop, maquettes du lot 1 validées.
 
 **Prochaines étapes**
 
-1. Valider ou ajuster ce cahier des charges.
-2. Passer au design : parcours, écrans du lot 1, identité visuelle.
-3. Lancer le lot 0 avec Claude Code pour lever le risque HRV, puis réviser ce cahier des charges selon les données réellement disponibles.
+1. Trancher les deux points ouverts bloquants (règle « une valeur par nuit », source du poids).
+2. Rédiger DESIGN.md à partir des maquettes du lot 1.
+3. Lancer le lot 1 avec Claude Code.

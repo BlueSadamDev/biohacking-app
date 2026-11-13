@@ -1,10 +1,15 @@
-// Écran de diagnostic : inventaire des données Health Connect (30 derniers jours)
-// et synchronisation vers la base locale (lot 1). Uniquement des comptages,
-// jamais de valeurs de santé. Interface minimale : il deviendra l'écran
-// « diagnostic » accessible depuis l'accueil à l'étape 3.
+// Écran de diagnostic (accessible depuis l'accueil et les réglages) :
+// inventaire des données Health Connect (30 derniers jours) et synchronisation
+// vers la base locale. Uniquement des comptages, jamais de valeurs de santé.
+// Interface volontairement simple.
 
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
+
+import { AppText as Text } from '@/components/AppText';
+import { BackHeader, Screen } from '@/components/Screen';
+import { colors, fonts } from '@/components/theme';
 
 import { countRows, loadNightInputs } from '@/db/healthData';
 import { summarizeNights, type NightsSummary } from '@/domain/diagnostic';
@@ -81,6 +86,7 @@ async function fetchScreenState(): Promise<ScreenState> {
 }
 
 export default function InventoryScreen() {
+  const router = useRouter();
   const [state, setState] = useState<ScreenState>({ kind: 'loading' });
   const [sync, setSync] = useState<SyncState>({ kind: 'idle' });
 
@@ -109,11 +115,11 @@ export default function InventoryScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Diagnostic</Text>
+    <Screen bottomInset>
+      <BackHeader title="Diagnostic" onBack={() => router.back()} />
       <Text style={styles.subtitle}>Données reçues sur les {DAYS} derniers jours</Text>
 
-      {state.kind === 'loading' && <ActivityIndicator size="large" style={styles.block} />}
+      {state.kind === 'loading' && <ActivityIndicator size="large" color={colors.text} style={styles.block} />}
 
       {state.kind === 'unavailable' && (
         <Message text="Health Connect n'est pas disponible sur ce téléphone. Il est intégré à Android 14 et plus récent." />
@@ -160,7 +166,7 @@ export default function InventoryScreen() {
           ))}
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -215,7 +221,7 @@ function SyncSection({ state, onSync }: { state: SyncState; onSync: () => void }
       </Text>
       <View style={styles.spacer} />
       <Button title="Synchroniser maintenant" onPress={onSync} disabled={state.kind === 'running'} />
-      {state.kind === 'running' && <ActivityIndicator style={styles.block} />}
+      {state.kind === 'running' && <ActivityIndicator color={colors.text} style={styles.block} />}
       {state.kind === 'error' && (
         <Text style={styles.warning}>La synchronisation a échoué : {state.message}</Text>
       )}
@@ -259,18 +265,16 @@ function SyncSection({ state, onSync }: { state: SyncState; onSync: () => void }
 }
 
 const styles = StyleSheet.create({
-  section: { fontSize: 18, fontWeight: 'bold', marginTop: 20, marginBottom: 4 },
-  container: { padding: 16, paddingTop: 48, paddingBottom: 48 },
-  title: { fontSize: 22, fontWeight: 'bold' },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 16 },
+  section: { fontSize: 18, fontFamily: fonts.body600, marginTop: 20, marginBottom: 4 },
+  subtitle: { fontSize: 14, color: colors.textMuted },
   block: { marginTop: 8 },
   spacer: { height: 8 },
-  meta: { fontSize: 12, color: '#666', marginBottom: 8 },
+  meta: { fontSize: 12, color: colors.textMuted, marginBottom: 8 },
   message: { fontSize: 15, marginBottom: 12 },
-  card: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginTop: 12 },
-  cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 4 },
+  card: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, marginTop: 12 },
+  cardTitle: { fontSize: 17, fontFamily: fonts.body600, marginBottom: 4 },
   origin: { marginTop: 6 },
-  originName: { fontWeight: '600' },
-  muted: { fontSize: 12, color: '#666' },
-  warning: { color: '#b00020' },
+  originName: { fontFamily: fonts.body600, marginTop: 6 },
+  muted: { fontSize: 12, color: colors.textMuted },
+  warning: { color: colors.low },
 });

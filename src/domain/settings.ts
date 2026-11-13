@@ -68,6 +68,17 @@ export const SETTINGS = {
   /** Couleurs d'état (DESIGN.md) : vert ≥ goodMin, corail ≤ lowMax, ambre entre les deux. */
   zones: { goodMin: 67, lowMax: 33 },
 
+  /** Affichage des graphiques de tendance (barres en ambre = valeur défavorable). */
+  display: {
+    /** FC au repos : barre en ambre si elle dépasse la moyenne 30 j de plus de N bpm. */
+    restingHrHighBpm: 3,
+    /** Sommeil : barre en ambre en dessous de N minutes. */
+    sleepShortMinutes: 6 * 60,
+  },
+
+  /** Saisie du matin : poids accepté (kg). */
+  entry: { weightMinKg: 30, weightMaxKg: 250 },
+
   /** Synchronisation Health Connect. */
   sync: {
     /** Profondeur de la toute première synchronisation (jours). */

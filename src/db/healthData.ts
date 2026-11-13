@@ -2,7 +2,7 @@
 // Convertit les lignes de la base vers les types de `src/domain/`.
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
-import type { Sample, SleepSession } from '@/domain/nightly';
+import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
 
 import { getDb } from './database';
 
@@ -104,4 +104,35 @@ export async function countRows(): Promise<Record<string, number>> {
     result[table] = row?.n ?? 0;
   }
   return result;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Valeurs par nuit des `days` derniers jours.
+ * 160 jours par défaut : 90 jours de graphique + 60 jours de norme + marge.
+ */
+export async function loadNights(days = 160): Promise<NightValue[]> {
+  return computeNights(await loadNightInputs(Date.now() - days * DAY_MS));
+}
+
+export type SourcesStatus = {
+  /** Dernière synchro réussie, tous types confondus. */
+  lastSync: number | null;
+  rows: Record<string, number>;
+  lastWeight: { time: number; source: WeightEntry['source'] } | null;
+};
+
+/** État des sources pour l'écran « Sources de données ». */
+export async function loadSourcesStatus(): Promise<SourcesStatus> {
+  const db = await getDb();
+  const syncs = await getAllLastSyncs();
+  const lastWeight = await db.getFirstAsync<{ time: number; source: WeightEntry['source'] }>(
+    'SELECT time_ms AS time, source FROM weight ORDER BY time_ms DESC LIMIT 1',
+  );
+  return {
+    lastSync: syncs.size ? Math.max(...syncs.values()) : null,
+    rows: await countRows(),
+    lastWeight,
+  };
 }

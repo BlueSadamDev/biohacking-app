@@ -355,3 +355,19 @@ export async function syncHealthConnect(now: number = Date.now()): Promise<SyncT
   }
   return reports;
 }
+
+/**
+ * Accès à Health Connect, pour l'affichage :
+ * 'ok' (tout est autorisé), 'partial' (certains types refusés), 'no-permission',
+ * 'unavailable' (Health Connect absent), 'update-required'.
+ */
+export type AccessState = 'ok' | 'partial' | 'no-permission' | 'unavailable' | 'update-required';
+
+export async function checkAccess(): Promise<AccessState> {
+  const status = await getStatus();
+  if (status !== 'available') return status;
+  const granted = await getGrantedReadTypes();
+  const count = SYNC_TYPES.filter(({ type }) => granted.has(type)).length;
+  if (count === 0) return 'no-permission';
+  return count === SYNC_TYPES.length ? 'ok' : 'partial';
+}

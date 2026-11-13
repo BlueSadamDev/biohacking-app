@@ -1,5 +1,22 @@
 import { at, ORIGIN } from './__fixtures__/nights';
-import { stepsByDay, weightByDay, type WeightEntry } from './daily';
+import { parseWeight, stepsByDay, weightByDay, type WeightEntry } from './daily';
+
+describe('lecture du poids saisi', () => {
+  it('accepte la virgule ou le point, arrondit au dixième', () => {
+    expect(parseWeight('78,4')).toBe(78.4);
+    expect(parseWeight(' 78.46 ')).toBe(78.5);
+    expect(parseWeight('80')).toBe(80);
+  });
+  it('champ vide : pas de poids', () => {
+    expect(parseWeight('')).toBeNull();
+  });
+  it('refuse le texte et les valeurs non plausibles', () => {
+    expect(parseWeight('abc')).toBe('invalid');
+    expect(parseWeight('7,8,4')).toBe('invalid');
+    expect(parseWeight('8')).toBe('invalid');
+    expect(parseWeight('780')).toBe('invalid');
+  });
+});
 
 const zepp = (time: number, kg: number): WeightEntry => ({ time, kg, source: 'health_connect', origin: ORIGIN });
 const manual = (time: number, kg: number): WeightEntry => ({ time, kg, source: 'manual', origin: 'saisie' });

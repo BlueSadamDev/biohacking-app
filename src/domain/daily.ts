@@ -3,6 +3,20 @@
 // n'est retenue que les jours sans saisie. Jamais de moyenne des deux.
 
 import { dayKey } from './dates';
+import { SETTINGS, type Settings } from './settings';
+
+/**
+ * Lit le poids tapé dans la saisie du matin (« 78,4 » ou « 78.4 »).
+ * Renvoie null si le champ est vide, 'invalid' si la valeur n'est pas plausible.
+ */
+export function parseWeight(text: string, settings: Settings = SETTINGS): number | null | 'invalid' {
+  const clean = text.trim().replace(',', '.');
+  if (clean === '') return null;
+  if (!/^\d+(\.\d+)?$/.test(clean)) return 'invalid';
+  const kg = Number(clean);
+  if (kg < settings.entry.weightMinKg || kg > settings.entry.weightMaxKg) return 'invalid';
+  return Math.round(kg * 10) / 10;
+}
 
 export type WeightEntry = {
   time: number;

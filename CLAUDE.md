@@ -113,6 +113,7 @@ Quand une modification change ce que décrit DESIGN.md (couleur, bouton, écran)
   - `generateInlineModules` (SyntaxError JSON) → ajouter `npm_config_warn: "false"` dans l'env du workflow.
   - `Could not get unknown property 'BIOHACK_...'` → passer les propriétés via `./gradlew -PKEY=VALUE` (pas via `gradle.properties`).
   - Dans les blocs `signingConfigs`, utiliser `project.getProperty('KEY')` plutôt que la variable nue `KEY`.
+  - APK de production qui plante à l'ouverture (`NoSuchMethodException: androidx.work.impl.WorkDatabase_Impl.<init>`) → le compactage R8 a retiré du code utilisé par la tâche de fond : garder `enableMinifyInReleaseBuilds: false` et `enableShrinkResourcesInReleaseBuilds: false` dans `expo-build-properties` (`app.json`).
   - Classe en double `HealthConnectPackage` au build → le paquet obsolète `expo-health-connect` est présent : le retirer et relancer `npx expo prebuild --clean`.
 - Donner les commandes exactes à copier-coller pour lancer le workflow.
 - Expliquer comment télécharger et installer l'APK sur le téléphone (artifact → ZIP → `.apk`).

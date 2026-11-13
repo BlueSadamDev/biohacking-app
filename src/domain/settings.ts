@@ -79,8 +79,24 @@ export const SETTINGS = {
   /** Saisie du matin : poids accepté (kg). */
   entry: { weightMinKg: 30, weightMaxKg: 250 },
 
+  /** Notification du récap du matin. */
+  notification: {
+    /** Heure par défaut (modifiable dans Réglages). */
+    defaultHour: 7,
+    defaultMinute: 30,
+    /** Pas de réglage de l'heure (minutes). */
+    stepMinutes: 15,
+    /**
+     * Notifications programmées à l'avance (jours). Si la tâche de fond ne tourne pas
+     * pendant quelques jours, le rappel arrive quand même (avec un texte générique).
+     */
+    daysAhead: 7,
+  },
+
   /** Synchronisation Health Connect. */
   sync: {
+    /** Synchro en arrière-plan : au plus une fois par N minutes (Android impose 15 minimum). */
+    backgroundIntervalMinutes: 60,
     /** Profondeur de la toute première synchronisation (jours). */
     firstSyncDays: 90,
     /** Recouvrement à chaque synchro, pour rattraper les données arrivées en retard (jours). */

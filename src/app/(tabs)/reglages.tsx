@@ -4,7 +4,17 @@
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
+
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleMorningNotifications,
+  type NotificationPermission,
+} from '@/background/morningNotification';
+import { getNotificationTime, setNotificationTime } from '@/db/appSettings';
+import { DEFAULT_TIME, formatTime, shiftTime, type TimeOfDay } from '@/domain/notification';
+import { askReadPermissions, hasBackgroundAccess } from '@/sources/healthConnect';
 
 import { AccessBanner } from '@/components/AccessBanner';
 import { AppText } from '@/components/AppText';
@@ -103,14 +113,95 @@ export default function SourcesScreen() {
         <AppText variant="small">Suivi macro (calories, protéines) : import prévu dans une prochaine version.</AppText>
       </Card>
 
+      <NotificationCard />
+
       <PrimaryButton title="Synchroniser maintenant" busy={syncing} onPress={syncAndRefresh} />
       <SecondaryButton title="Diagnostic des données" onPress={() => router.push('/diagnostic')} />
     </Screen>
   );
 }
 
+/** Heure de la notification du matin, autorisations notifications et arrière-plan. */
+function NotificationCard() {
+  const [time, setTime] = useState<TimeOfDay | null>(null);
+  const [permission, setPermission] = useState<NotificationPermission | null>(null);
+  const [background, setBackground] = useState<boolean | null>(null);
+
+  const refresh = useCallback(() => {
+    getNotificationTime().then(setTime).catch(() => setTime(DEFAULT_TIME));
+    getNotificationPermission().then(setPermission).catch(() => setPermission(null));
+    hasBackgroundAccess().then(setBackground).catch(() => setBackground(null));
+  }, []);
+  useFocusEffect(refresh);
+
+  async function shift(delta: number) {
+    if (!time) return;
+    const next = shiftTime(time, delta);
+    setTime(next);
+    await setNotificationTime(next);
+    await scheduleMorningNotifications().catch(() => undefined);
+  }
+
+  async function allowNotifications() {
+    // Après un refus, Android ne redemande plus : on ouvre les réglages de l'app.
+    const result = permission === 'denied' ? 'denied' : await requestNotificationPermission();
+    if (result === 'denied') await Linking.openSettings();
+    else await scheduleMorningNotifications().catch(() => undefined);
+    refresh();
+  }
+
+  async function allowBackground() {
+    await askReadPermissions();
+    refresh();
+  }
+
+  const step = SETTINGS.notification.stepMinutes;
+  return (
+    <Card style={styles.card}>
+      <AppText variant="label">Notification du matin</AppText>
+      <View style={styles.timeRow}>
+        <View style={styles.timeButton}>
+          <SecondaryButton title={`− ${step} min`} onPress={() => shift(-step)} disabled={!time} />
+        </View>
+        <AppText variant="tileValue" style={styles.time} accessibilityLiveRegion="polite">
+          {time ? formatTime(time) : '…'}
+        </AppText>
+        <View style={styles.timeButton}>
+          <SecondaryButton title={`+ ${step} min`} onPress={() => shift(step)} disabled={!time} />
+        </View>
+      </View>
+      <View style={styles.row}>
+        <AppText variant="bodySmall" style={styles.rowLabel}>
+          Notifications
+        </AppText>
+        <Pill
+          text={permission === 'granted' ? 'autorisées' : 'non autorisées'}
+          color={permission === 'granted' ? colors.good : colors.low}
+        />
+      </View>
+      {permission !== null && permission !== 'granted' && (
+        <SecondaryButton title="Autoriser les notifications" onPress={allowNotifications} />
+      )}
+      <View style={styles.row}>
+        <AppText variant="bodySmall" style={styles.rowLabel}>
+          Synchro en arrière-plan
+        </AppText>
+        <Pill text={background ? 'autorisée' : 'non autorisée'} color={background ? colors.good : colors.low} />
+      </View>
+      {background === false && <SecondaryButton title="Autoriser la lecture en arrière-plan" onPress={allowBackground} />}
+      <AppText variant="small">
+        Sans lecture en arrière-plan, la nuit se synchronise seulement quand tu ouvres l’app : la notification
+        t’invite alors à l’ouvrir.
+      </AppText>
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { gap: 10 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  timeButton: { flex: 1 },
+  time: { minWidth: 84, textAlign: 'center' },
   row: { flexDirection: 'row', alignItems: 'center' },
   rowLabel: { flex: 1 },
 });

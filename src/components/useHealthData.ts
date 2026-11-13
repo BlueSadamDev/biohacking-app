@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
+import { scheduleMorningNotifications } from '@/background/morningNotification';
 import { loadNights } from '@/db/healthData';
 import { dayKey } from '@/domain/dates';
 import type { NightValue } from '@/domain/nightly';
@@ -53,6 +54,8 @@ export async function syncNow(): Promise<void> {
   } finally {
     setState({ syncing: false });
     await reloadFromDb();
+    // Le texte de la notification du matin suit les dernières données.
+    await scheduleMorningNotifications().catch(() => undefined);
   }
 }
 

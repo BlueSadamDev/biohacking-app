@@ -11,7 +11,8 @@
   - `src/sources/` : un connecteur par source de données (Health Connect, import FIT Suunto, import Suivi macro, saisie manuelle) ;
   - `src/domain/` : fusion des capteurs, normes personnelles, scores, règles d'alerte (calculs purs, sans interface) ;
   - `src/db/` : base de données locale ;
-  - `src/components/` : composants d'interface réutilisables.
+  - `src/components/` : composants d'interface réutilisables ;
+  - `src/background/` : tâche de fond (synchro horaire) et notification du récap du matin.
 
 ## Données de santé et confidentialité
 - Toutes les données restent sur le téléphone. Aucun appel réseau dans le code de l'application, aucun SDK d'analytics, de suivi des plantages ou de publicité.

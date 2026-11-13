@@ -12,6 +12,7 @@ import {
   readRecords,
   requestPermission,
   SdkAvailabilityStatus,
+  type BackgroundAccessPermission,
   type Permission,
   type ReadHealthDataHistoryPermission,
   type RecordType,
@@ -86,11 +87,20 @@ export type TypeInventory = {
 
 const SYNC_TYPE_SET = new Set<string>(SYNC_TYPES.map(({ type }) => type));
 
-/** Permissions demandées : lecture des types du lot 1 + lecture de l'historique (plus de 30 jours). */
-const READ_PERMISSIONS: (Permission | ReadHealthDataHistoryPermission)[] = [
+/**
+ * Permissions demandées : lecture des types du lot 1, lecture de l'historique
+ * (plus de 30 jours) et lecture en arrière-plan (synchro quand l'app est fermée).
+ */
+const READ_PERMISSIONS: (Permission | ReadHealthDataHistoryPermission | BackgroundAccessPermission)[] = [
   ...SYNC_TYPES.map(({ type }): Permission => ({ accessType: 'read', recordType: type })),
   { accessType: 'read', recordType: 'ReadHealthDataHistory' },
+  { accessType: 'read', recordType: 'BackgroundAccessPermission' },
 ];
+
+/** La synchro en arrière-plan est-elle autorisée ? */
+export async function hasBackgroundAccess(): Promise<boolean> {
+  return (await getGrantedReadTypes()).has('BackgroundAccessPermission');
+}
 
 /** Vérifie si Health Connect est présent et à jour sur le téléphone. */
 export async function getStatus(): Promise<HealthConnectStatus> {

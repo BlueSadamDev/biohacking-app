@@ -16,7 +16,8 @@ import { metricView } from '@/components/metricView';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import { RecoveryRing } from '@/components/RecoveryRing';
 import { Screen } from '@/components/Screen';
-import { colors, space, zoneColor } from '@/components/theme';
+import { Logo } from '@/components/Logo';
+import { colors, fonts, space, zoneColor } from '@/components/theme';
 import { useHealthData } from '@/components/useHealthData';
 import type { Metric, MorningRecap } from '@/domain/recap';
 
@@ -48,8 +49,14 @@ export default function HomeScreen() {
     <Screen refreshing={syncing} onRefresh={sync}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <AppText variant="small">{formatLongDate(new Date())}</AppText>
-          <AppText variant="title">Récap du matin</AppText>
+          <View style={styles.brand}>
+            <Logo size={18} />
+            <AppText style={styles.wordmark}>aube</AppText>
+            <AppText variant="small" style={styles.date} numberOfLines={1}>
+              · {formatLongDate(new Date())}
+            </AppText>
+          </View>
+          <AppText variant="title">Ton récap du matin</AppText>
         </View>
         <RoundButton label="Diagnostic des données" onPress={() => router.push('/diagnostic')}>
           <PulseIcon />
@@ -114,7 +121,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center' },
-  headerText: { flex: 1, gap: 2 },
+  headerText: { flex: 1, gap: 4 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wordmark: { fontFamily: fonts.display600, fontSize: 15, letterSpacing: 15 * 0.04, color: colors.text },
+  date: { flexShrink: 1, fontSize: 13 },
   loading: { marginVertical: 60 },
   emptyCard: { gap: 8 },
   ringBlock: { alignItems: 'center', gap: 12, marginVertical: 4 },

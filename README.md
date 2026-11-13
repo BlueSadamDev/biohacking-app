@@ -1,6 +1,6 @@
-# biohacking-app
+# Aube (biohacking-app)
 
-Application Android personnelle de biohacking. Elle lit les données de la montre Suunto 9 Peak Pro et du bracelet Amazfit Helio Strap via Health Connect, puis produit un récap du matin, des alertes et des insights sport. Toutes les données restent sur le téléphone.
+**Aube** est une application Android personnelle de biohacking. Elle lit les données du bracelet Amazfit Helio Strap via Health Connect, importe une fois par mois les séances de la montre Suunto 9 Peak Pro (fichiers FIT), puis produit un récap du matin, des alertes et des insights sport. Toutes les données restent sur le téléphone.
 
 - Cahier des charges : [docs/CAHIER_DES_CHARGES.md](docs/CAHIER_DES_CHARGES.md)
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
@@ -46,7 +46,7 @@ Par GitHub Actions, déclenchement manuel (onglet Actions > choisir le workflow 
 
 | APK | Workflow | Artifact | Particularités |
 |---|---|---|---|
-| Développement | `build-dev-apk.yml` | `biohacking-dev-apk` | Nom « Biohacking (dev) », s'installe à côté de l'app de production. Signé avec la clé de développement d'Expo : aucun secret nécessaire. À reconstruire seulement quand une dépendance native ou une permission change. |
+| Développement | `build-dev-apk.yml` | `biohacking-dev-apk` | Nom « Aube (dev) », s'installe à côté de l'app de production. Signé avec la clé de développement d'Expo : aucun secret nécessaire. À reconstruire seulement quand une dépendance native ou une permission change. |
 | Production | `build-apk.yml` | `biohacking-apk` | Sans permission Internet (le build échoue si elle est présente), sans accès au stockage ni affichage par-dessus les autres apps. Signé avec les 4 secrets ci-dessous. |
 
 ```powershell

@@ -19,9 +19,19 @@ export type HealthData = {
   nights: NightValue[];
   recap: MorningRecap | null;
   error: string | null;
+  /** Première synchro du lancement terminée (l'écran Aube peut disparaître). */
+  launched: boolean;
 };
 
-let state: HealthData = { loading: true, syncing: false, access: null, nights: [], recap: null, error: null };
+let state: HealthData = {
+  loading: true,
+  syncing: false,
+  access: null,
+  nights: [],
+  recap: null,
+  error: null,
+  launched: false,
+};
 const listeners = new Set<() => void>();
 
 function setState(patch: Partial<HealthData>) {
@@ -52,8 +62,8 @@ export async function syncNow(): Promise<void> {
   } catch (e) {
     setState({ error: message(e) });
   } finally {
-    setState({ syncing: false });
     await reloadFromDb();
+    setState({ syncing: false, launched: true });
     // Le texte de la notification du matin suit les dernières données.
     await scheduleMorningNotifications().catch(() => undefined);
   }

@@ -101,6 +101,8 @@ export const SETTINGS = {
     firstSyncDays: 90,
     /** Recouvrement à chaque synchro, pour rattraper les données arrivées en retard (jours). */
     overlapDays: 2,
+    /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
+    launchScreenMaxSeconds: 10,
   },
 } as const;
 

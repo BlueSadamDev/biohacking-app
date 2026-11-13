@@ -26,6 +26,48 @@ export const SETTINGS = {
     awakeStageCodes: [1, 3] as readonly number[],
   },
 
+  /** Normes personnelles (cahier des charges, section 5). La nuit du jour n'entre jamais dans sa propre norme. */
+  norms: {
+    /** HRV : moyenne glissante sur N nuits (nuit du jour comprise). */
+    hrvShortWindowDays: 7,
+    /** Nombre minimum de nuits pour calculer la moyenne courte. */
+    hrvShortWindowMinNights: 3,
+    /** HRV : plage normale calculée sur les N nuits précédentes. */
+    hrvBaselineDays: 60,
+    /** Largeur de la plage normale : moyenne ± k écarts-types. */
+    hrvRangeSd: 1,
+    /** FC au repos : moyenne des N nuits précédentes. */
+    restingHrBaselineDays: 30,
+    /** Nombre minimum de nuits pour qu'une norme existe. */
+    baselineMinNights: 3,
+  },
+
+  /** Calibration : pas de score coloré tant qu'il n'y a pas assez de nuits. */
+  calibration: {
+    /** Nuits complètes (HRV et FC au repos calculables) nécessaires. */
+    requiredNights: 28,
+    /** Période sur laquelle on compte ces nuits (jours). */
+    windowDays: 60,
+  },
+
+  /** Score de récupération 0-100 : somme pondérée de 3 sous-scores. */
+  recovery: {
+    weights: { hrv: 0.5, restingHr: 0.25, sleep: 0.25 },
+    /** Sous-score d'une nuit exactement dans la norme. */
+    neutral: 70,
+    /** HRV : points gagnés (ou perdus) par écart-type au-dessus (ou au-dessous) de la norme. */
+    hrvPointsPerSd: 20,
+    /** FC au repos : points perdus par bpm au-dessus de la norme (gagnés en dessous). */
+    restingHrPointsPerBpm: 8,
+    /** Sommeil : durée dormie qui donne 100 (minutes). */
+    sleepTargetMinutes: 7.5 * 60,
+    /** Contribution « + » ou « − » si le sous-score s'écarte du neutre de plus de N points. */
+    contributionMargin: 5,
+  },
+
+  /** Couleurs d'état (DESIGN.md) : vert ≥ goodMin, corail ≤ lowMax, ambre entre les deux. */
+  zones: { goodMin: 67, lowMax: 33 },
+
   /** Synchronisation Health Connect. */
   sync: {
     /** Profondeur de la toute première synchronisation (jours). */

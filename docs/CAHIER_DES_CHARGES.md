@@ -28,7 +28,7 @@ Le Helio Strap, lu via Health Connect, est la source principale et automatique. 
 | --- | --- | --- | --- |
 | Amazfit Helio Strap (app Zepp), porté en permanence | FC continue, FC au repos, HRV, sommeil, séances, pas, poids (confirmés au lot 0) ; pas de VO2max | Health Connect, automatique | HRV et FC au repos arrivent en nombreuses mesures par jour (voir section 3) ; latence de 15 à 30 min |
 | Suunto 9 Peak Pro (app Suunto) | Séances détaillées : GPS, distance, dénivelé, allure, FC, cadence | Import mensuel de fichiers FIT, exportés séance par séance (menu « … » d'une séance dans l'app Suunto) | Ni sommeil ni HRV. Données disponibles en différé (jusqu'à 30 jours). Import de plusieurs fichiers d'un coup |
-| Poids | Poids, éventuellement % de masse grasse | Saisie manuelle dans l'app pour démarrer ; Zepp en écrit aussi dans Health Connect | Source prioritaire à trancher (section 8). Pesée dans les mêmes conditions (le matin à jeun) |
+| Poids | Poids, éventuellement % de masse grasse | Zepp via Health Connect (prioritaire) ; saisie manuelle dans l'app en secours | Saisie manuelle utilisée seulement les jours sans pesée Zepp. Pesée dans les mêmes conditions (le matin à jeun) |
 | Suivi macro (app développée par un ami) | Calories et macros par jour (protéines, glucides, lipides) | Import du fichier d'export JSON | Récupérer un exemple d'export et fixer le format avec l'ami (champs, unités, dates) |
 | Ressenti (optionnel) | Fatigue, courbatures, humeur, note de séance (1 à 5) | Saisie dans l'app, 10 secondes le matin | Facultatif, mais très utile pour les corrélations |
 
@@ -48,8 +48,11 @@ La règle : pas de moyenne, une source prioritaire par métrique et une source d
 | GPS, distance, dénivelé, allure | Fichier FIT Suunto | — | Disponible après l'import mensuel |
 | Séances | Helio Strap (immédiat) | — | À l'import FIT, une séance Suunto qui chevauche une séance Helio à plus de 50 % la complète (GPS, type précis) au lieu de créer un doublon |
 | Sommeil | Helio Strap (porté en permanence) | — | Une seule source à vie, pour garder des tendances comparables |
-| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment. Une valeur par nuit (règle proposée dans le rapport du lot 0, à valider) |
-| FC au repos | Helio Strap | — | Mesurée pendant le sommeil ; une valeur par nuit (même règle) |
+| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment. Une valeur par nuit : moyenne des mesures prises pendant le sommeil principal, calculée sur le logarithme de la rMSSD (atténue les pics isolés) |
+| FC au repos | Helio Strap | — | Une valeur par nuit : moyenne des 5 valeurs les plus basses mesurées pendant le sommeil principal (moins sensible qu'un minimum unique à une mesure erronée) |
+| Poids | Zepp (Health Connect) | Saisie manuelle | Jamais de moyenne des deux : la saisie ne sert que les jours sans pesée Zepp |
+
+Pour la HRV et la FC au repos, sans sommeil principal enregistré la nuit concernée, la valeur est affichée « non calculable ». Les paramètres (dont le nombre de valeurs basses retenues) sont dans `src/domain/settings.ts`.
 | Pas, calories dépensées | Helio Strap | — | Une seule source, pas de cumul (double comptage) |
 
 **Contrôle de cohérence** : à l'import FIT, si la FC moyenne d'une séance Suunto diffère de plus de 10 % de celle du Helio Strap, la séance est signalée « donnée douteuse » et exclue des calculs de tendance.
@@ -158,7 +161,7 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 
 Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie.
 
-**Révision après le lot 0** : faite. Ce cahier intègre les constats du lot 0 (sections 2, 3 et 8). Les points ouverts marqués « bloquant » en section 8 doivent être tranchés avant de lancer le lot 1.
+**Révision après le lot 0** : faite. Ce cahier intègre les constats du lot 0 (sections 2, 3 et 8). Les deux points bloquants pour le lot 1 (valeur par nuit, source du poids) sont tranchés.
 
 ## 8. Risques, points ouverts et prochaines étapes
 
@@ -166,7 +169,7 @@ Le risque HRV est levé : Zepp transmet la HRV. Les points d'attention sont dés
 
 | Risque | Impact | Parade |
 | --- | --- | --- |
-| HRV et FC au repos en nombreuses mesures par jour | Valeurs du matin instables, normes faussées | Une valeur par nuit (règle du rapport du lot 0, à valider) |
+| HRV et FC au repos en nombreuses mesures par jour | Valeurs du matin instables, normes faussées | Une valeur par nuit (règle validée, section 3) |
 | Suunto absente de Health Connect | GPS et allure des sorties disponibles en différé (jusqu'à 30 jours) | Import mensuel des FIT. Appli passerelle (Health Sync) en option si le temps réel devient utile |
 | Oubli de l'import mensuel | Progression en course incomplète | Rappel mensuel dans l'app |
 | Doublons ou trous de synchro | Charge et sommeil faux | Règles de fusion (section 3) et écran de diagnostic |
@@ -178,8 +181,8 @@ Le risque HRV est levé : Zepp transmet la HRV. Les points d'attention sont dés
 
 - [x] Quels types de données arrivent réellement dans Health Connect depuis Suunto et Zepp ? (lot 0 : tout depuis Zepp sauf VO2max, rien depuis la Suunto, voir [RAPPORT_LOT_0.md](RAPPORT_LOT_0.md))
 - [x] Plan B pour la Suunto : import manuel mensuel des fichiers FIT (voir décisions)
-- [ ] **Bloquant lot 1** – HRV et FC au repos : valider la règle « une valeur par nuit » proposée dans le rapport du lot 0
-- [ ] **Bloquant lot 1** – Poids : lecture depuis Zepp, saisie manuelle, ou les deux (et laquelle est prioritaire)
+- [x] HRV et FC au repos : règle « une valeur par nuit » validée (voir section 3)
+- [x] Poids : Zepp prioritaire, saisie manuelle en secours (voir section 3)
 - [ ] VO2max (aucune source) : retirer du cahier des charges, ou la lire plus tard dans les fichiers FIT Suunto si elle y figure
 - [ ] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine
 - [ ] Exercices de musculation clés à suivre (lot 3)
@@ -190,11 +193,11 @@ Le risque HRV est levé : Zepp transmet la HRV. Les points d'attention sont dés
 - Le Helio Strap est porté en permanence : il devient la source de référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances, lu via Health Connect.
 - Suunto : pas de Health Connect. Import mensuel des fichiers FIT exportés depuis l'app Suunto (GPS, distance, allure), au lot 3.
 - Nutrition : export JSON de l'app Suivi macro.
-- Poids : saisie manuelle pour démarrer.
+- Poids : lu depuis Zepp via Health Connect ; saisie manuelle dans l'app en secours, les jours sans pesée Zepp.
+- HRV : une valeur par nuit, moyenne (sur le logarithme) des mesures du sommeil principal. FC au repos : moyenne des 5 valeurs les plus basses du sommeil principal. Sans sommeil enregistré : « non calculable ».
 - Design : style sombre inspiré de Whoop, maquettes du lot 1 validées.
 
 **Prochaines étapes**
 
-1. Trancher les deux points ouverts bloquants (règle « une valeur par nuit », source du poids).
-2. Rédiger DESIGN.md à partir des maquettes du lot 1.
-3. Lancer le lot 1 avec Claude Code.
+1. Rédiger DESIGN.md à partir des maquettes du lot 1.
+2. Lancer le lot 1 avec Claude Code.

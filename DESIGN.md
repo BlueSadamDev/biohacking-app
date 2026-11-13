@@ -1,6 +1,18 @@
-# DESIGN.md – App biohacking
+# DESIGN.md – Aube
 
-Référence visuelle : les maquettes du lot 1 (canevas « App biohacking – maquettes du lot 1 »). Ce fichier en fixe les règles pour le code. En cas de doute, il fait foi ; s'il doit changer, le modifier ici d'abord.
+Référence visuelle : les maquettes du lot 1 et la rangée « Aube · identité » du canevas de maquettes. Ce fichier en fixe les règles pour le code. En cas de doute, il fait foi ; s'il doit changer, le modifier ici d'abord.
+
+## Identité
+- **Nom affiché** : « Aube » (dans `app.json` : `name`). Le mot-symbole s'écrit en minuscules : **aube**, Space Grotesk 600, espacement des lettres 0,04 em, couleur `text`.
+- **Logo (monogramme)** : un « A » en trait épais blanc (`text`), extrémités et angle arrondis, dont la barre horizontale est un horizon ambre (`#F5B83D`) surmonté d'un petit demi-soleil ambre. Dessin de référence (viewBox 0 0 120 120) :
+  - jambages : chemin `M24 98 L60 18 L96 98`, trait 12, bouts et jointures arrondis ;
+  - soleil : demi-disque de rayon 12 centré en (60, 70) ;
+  - horizon : rectangle 48 × 6 en (36, 72), coins arrondis 3.
+  - En petit (≤ 48 px) : retirer le soleil, épaissir le trait à 14 et l'horizon à 8 (rectangle 52 × 8 en (34, 70)).
+- **Icône Android** : logo centré sur fond `bg` (`#0B0F14`), icône adaptative (avant-plan = logo, arrière-plan = `bg`), le logo occupant environ 60 % de la zone sûre. Générer les fichiers à partir d'un SVG unique rangé dans `assets/brand/`.
+- **Écran de démarrage** : fond `bg`, logo 132 px centré, « aube » en 44 px dessous, puis « Ton récap du matin » (15 px, `textMuted`). En bas : barre de progression fine (160 × 4 px) et « Synchronisation de ta nuit… » pendant la synchro Health Connect du lancement.
+- **En-tête de l'accueil** : petit logo (18 px, version simplifiée) + « aube » (15 px) + « · date du jour » en `textMuted`, au-dessus du titre « Ton récap du matin ».
+- L'ambre du logo est le seul usage non sémantique de `mid` : on ne l'utilise pas ailleurs comme couleur décorative.
 
 ## Principes
 - **Sombre, sobre, orienté données** : fond presque noir, cartes anthracite, peu de couleurs. Inspiration Whoop pour l'ambiance, sans reprendre ses éléments propres (logo, noms, icônes).
@@ -53,17 +65,18 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 ## Composants
 - **Anneau de récupération** : diamètre 196 px, épaisseur 14 px, piste `surfaceAlt`, arc dans la couleur d'état proportionnel au score. Au centre : score + « Récupération ». Dessous : pastille d'état (fond teinté, texte coloré, 14/600).
 - **Carte « Recommandation du jour »** : fond teinté de la couleur d'état, bordure 1 px de la couleur d'état, libellé de section dans la couleur d'état, phrase d'action en 16/600, justification courte en `textSoft`.
-- **Tuile d'indicateur** : carte `surface`, contenu centré. Libellé sur une seule ligne (taille ajustée si besoin) pour aligner les valeurs des tuiles voisines, puis valeur, écart à la norme en 13 px (couleur `good` si favorable, `textMuted` si neutre, `mid` si défavorable) et repère de comparaison en 11 px `textMuted` (« vs moy. 30 j »). Écarts courts : « −4 bpm », « −45 min ». Une tuile cliquable ouvre l'écran détail.
+- **Tuile d'indicateur** : carte `surface`, libellé / valeur / écart à la norme (couleur `good` si favorable, `textMuted` si neutre, `mid` si défavorable). Une tuile cliquable ouvre l'écran détail.
 - **Jauge** (charge, calibration) : hauteur 8 px, piste `track`, remplissage `info`, bornes en 11 px `textMuted`.
 - **Bouton principal** : fond `text`, texte `bg`, 52 px de haut, 15/600. Après validation : fond `good` + « Enregistré ✓ ».
 - **Bouton secondaire** : contour `border`, fond transparent, texte `text`.
 - **Sélecteur 1 à 5** : 5 boutons égaux de 44 px ; sélectionné = fond `text` / texte `bg` ; sinon contour `border`.
 - **Onglets de période (7 j / 30 j / 90 j)** : groupe sur fond `surface`, onglet actif fond `track`.
 - **Graphique de tendance** : barres arrondies en haut, `#5C6B7E` par défaut, `mid` pour les valeurs sous la plage, dernière barre (aujourd'hui) en `good` ; plage normale en bande `info` à 10 % avec bords pointillés.
-- **Barre de navigation** : 72 px, 4 onglets à terme (Aujourd'hui, Tendances, Sport, Réglages), icône + libellé 11 px, actif en `text`, inactifs en `#8B97A6`. Au lot 1, seulement 2 onglets : Aujourd'hui et Réglages (les autres arrivent avec leur lot).
+- **Barre de navigation** : 72 px, 4 onglets (Aujourd'hui, Tendances, Sport, Réglages), icône + libellé 11 px, actif en `text`, inactifs en `#8B97A6`.
 
 ## Écrans du lot 1
-1. **Accueil – récap du matin** : date, titre, accès au diagnostic (bouton rond), anneau + pastille, carte Recommandation, 3 tuiles (HRV, FC au repos, Sommeil), jauge de charge 7 j / 28 j, bouton « Saisir poids et ressenti », navigation.
+0. **Démarrage** : voir « Identité ».
+1. **Accueil – récap du matin** : en-tête aube + date, titre, accès au diagnostic (bouton rond), anneau + pastille, carte Recommandation, 3 tuiles (HRV, FC au repos, Sommeil), jauge de charge 7 j / 28 j, bouton « Saisir poids et ressenti », navigation.
 2. **Détail d'un indicateur** (HRV d'abord, même gabarit pour FC au repos et sommeil) : retour, valeur + pastille d'état + moyenne 7 j, onglets de période, graphique avec plage normale et légende, carte « Ce qui fait ton score de récupération » (contributions +, =, −).
 3. **Saisie du matin** : poids (champ numérique, kg), ressentis Énergie / Courbatures / Humeur (1 à 5), note libre facultative, bouton Enregistrer.
 4. **Sources de données** : calibration des normes (jauge « n / 28 jours »), carte Helio Strap (dernière synchro, types reçus), carte Suunto (dernier import FIT, nombre de séances, bouton « Importer des FIT »), poids et Suivi macro, bouton « Synchroniser maintenant ».

@@ -53,7 +53,7 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 ## Composants
 - **Anneau de récupération** : diamètre 196 px, épaisseur 14 px, piste `surfaceAlt`, arc dans la couleur d'état proportionnel au score. Au centre : score + « Récupération ». Dessous : pastille d'état (fond teinté, texte coloré, 14/600).
 - **Carte « Recommandation du jour »** : fond teinté de la couleur d'état, bordure 1 px de la couleur d'état, libellé de section dans la couleur d'état, phrase d'action en 16/600, justification courte en `textSoft`.
-- **Tuile d'indicateur** : carte `surface`, libellé / valeur / écart à la norme (couleur `good` si favorable, `textMuted` si neutre, `mid` si défavorable). Une tuile cliquable ouvre l'écran détail.
+- **Tuile d'indicateur** : carte `surface`, contenu centré. Libellé sur une seule ligne (taille ajustée si besoin) pour aligner les valeurs des tuiles voisines, puis valeur, écart à la norme en 13 px (couleur `good` si favorable, `textMuted` si neutre, `mid` si défavorable) et repère de comparaison en 11 px `textMuted` (« vs moy. 30 j »). Écarts courts : « −4 bpm », « −45 min ». Une tuile cliquable ouvre l'écran détail.
 - **Jauge** (charge, calibration) : hauteur 8 px, piste `track`, remplissage `info`, bornes en 11 px `textMuted`.
 - **Bouton principal** : fond `text`, texte `bg`, 52 px de haut, 15/600. Après validation : fond `good` + « Enregistré ✓ ».
 - **Bouton secondaire** : contour `border`, fond transparent, texte `text`.

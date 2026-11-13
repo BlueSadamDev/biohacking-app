@@ -97,6 +97,7 @@ export default function HomeScreen() {
                   value={view.value}
                   unit={view.unit}
                   note={view.note}
+                  context={view.context}
                   tone={view.tone}
                   onPress={() => router.push({ pathname: '/detail/[metric]', params: { metric: m } })}
                 />

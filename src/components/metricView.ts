@@ -25,29 +25,39 @@ export type MetricView = {
   label: string;
   value: string;
   unit?: string;
-  /** Écart à la norme, court. */
+  /** Écart à la norme, court (« −4 bpm »). */
   note: string;
+  /** Repère de comparaison (« vs moy. 30 j »). */
+  context?: string;
   tone: Tone;
   /** Texte et couleur de la pastille d'état (écran détail). */
   status: string;
   statusColor?: string;
 };
 
-function deviationNote(recap: MorningRecap, metric: Metric, value: number): string {
+/** Écart en minutes : « 45 min » sous une heure, sinon « 1 h 15 ». */
+function formatGap(minutes: number): string {
+  return minutes < 60 ? `${minutes} min` : formatDuration(minutes);
+}
+
+/** Écart à la norme (en couleur) et repère de comparaison (en gris). */
+function deviation(recap: MorningRecap, metric: Metric, value: number): { note: string; context?: string } {
   if (metric === 'hrv') {
     const b = recap.hrv.baseline;
+    if (!b) return { note: '' };
     const ln = Math.log(value);
-    if (!b) return '';
-    return ln < b.low ? 'Sous ta plage' : ln > b.high ? 'Au-dessus de ta plage' : 'Dans ta plage';
+    const note = ln < b.low ? 'Sous ta plage' : ln > b.high ? 'Au-dessus' : 'Dans ta plage';
+    return { note, context: 'norme 60 j' };
   }
   if (metric === 'restingHr') {
     const d = recap.restingHr.delta;
-    if (d === null) return '';
+    if (d === null) return { note: '' };
     const r = Math.round(d);
-    return r === 0 ? '= moyenne 30 j' : `${r > 0 ? '+' : '−'}${Math.abs(r)} bpm vs 30 j`;
+    return { note: r === 0 ? '= moyenne' : `${r > 0 ? '+' : '−'}${Math.abs(r)} bpm`, context: 'vs moy. 30 j' };
   }
-  const diff = Math.round(value - SETTINGS.recovery.sleepTargetMinutes);
-  return diff >= 0 ? 'Objectif atteint' : `−${formatDuration(-diff)} vs objectif`;
+  const target = SETTINGS.recovery.sleepTargetMinutes;
+  const diff = Math.round(value - target);
+  return { note: diff >= 0 ? 'Objectif atteint' : `−${formatGap(-diff)}`, context: `obj. ${formatDuration(target)}` };
 }
 
 export function metricView(recap: MorningRecap | null, metric: Metric): MetricView {
@@ -72,8 +82,8 @@ export function metricView(recap: MorningRecap | null, metric: Metric): MetricVi
   if (!component || component.effect === null) {
     return { label, ...shown, note: component?.explanation ?? '', tone: 'neutral', status: 'Norme indisponible' };
   }
-  const note = deviationNote(recap, metric, raw);
-  if (component.effect === 'up') return { label, ...shown, note, tone: 'good', status: 'Favorable', statusColor: colors.good };
-  if (component.effect === 'down') return { label, ...shown, note, tone: 'bad', status: 'À surveiller', statusColor: colors.mid };
-  return { label, ...shown, note, tone: 'neutral', status: 'Dans ta norme' };
+  const gap = deviation(recap, metric, raw);
+  if (component.effect === 'up') return { label, ...shown, ...gap, tone: 'good', status: 'Favorable', statusColor: colors.good };
+  if (component.effect === 'down') return { label, ...shown, ...gap, tone: 'bad', status: 'À surveiller', statusColor: colors.mid };
+  return { label, ...shown, ...gap, tone: 'neutral', status: 'Dans ta norme' };
 }

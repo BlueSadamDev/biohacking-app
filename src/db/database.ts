@@ -1,0 +1,120 @@
+// Base de données locale (SQLite), stockée uniquement sur le téléphone.
+// Les heures sont enregistrées en millisecondes depuis 1970 (UTC).
+// Chaque donnée lue dans Health Connect garde son identifiant (pas de doublon)
+// et son app d'origine (`origin`).
+
+import * as SQLite from 'expo-sqlite';
+
+/**
+ * Évolutions successives du schéma. Ne jamais modifier une étape existante :
+ * ajouter une nouvelle étape à la fin.
+ */
+const MIGRATIONS: string[] = [
+  // 1 – Lot 1 : données Health Connect, saisies du matin, état de synchro.
+  `
+  CREATE TABLE hc_sleep (
+    id TEXT PRIMARY KEY NOT NULL,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    stages_json TEXT NOT NULL,
+    origin TEXT NOT NULL
+  );
+  CREATE INDEX hc_sleep_end ON hc_sleep (end_ms);
+
+  CREATE TABLE hc_hrv (
+    id TEXT PRIMARY KEY NOT NULL,
+    time_ms INTEGER NOT NULL,
+    rmssd_ms REAL NOT NULL,
+    origin TEXT NOT NULL
+  );
+  CREATE INDEX hc_hrv_time ON hc_hrv (time_ms);
+
+  CREATE TABLE hc_resting_hr (
+    id TEXT PRIMARY KEY NOT NULL,
+    time_ms INTEGER NOT NULL,
+    bpm REAL NOT NULL,
+    origin TEXT NOT NULL
+  );
+  CREATE INDEX hc_resting_hr_time ON hc_resting_hr (time_ms);
+
+  -- FC continue : seulement les mesures prises pendant un sommeil (volume limité).
+  CREATE TABLE hc_heart_rate (
+    record_id TEXT NOT NULL,
+    time_ms INTEGER NOT NULL,
+    bpm REAL NOT NULL,
+    origin TEXT NOT NULL,
+    PRIMARY KEY (record_id, time_ms)
+  );
+  CREATE INDEX hc_heart_rate_time ON hc_heart_rate (time_ms);
+
+  CREATE TABLE hc_steps (
+    id TEXT PRIMARY KEY NOT NULL,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    count INTEGER NOT NULL,
+    origin TEXT NOT NULL
+  );
+  CREATE INDEX hc_steps_start ON hc_steps (start_ms);
+
+  -- Poids : source 'health_connect' (Zepp) ou 'manual' (saisie dans l'app).
+  CREATE TABLE weight (
+    id TEXT PRIMARY KEY NOT NULL,
+    time_ms INTEGER NOT NULL,
+    kg REAL NOT NULL,
+    source TEXT NOT NULL,
+    origin TEXT NOT NULL
+  );
+  CREATE INDEX weight_time ON weight (time_ms);
+
+  -- Ressenti du matin (1 à 5), une ligne par jour.
+  CREATE TABLE morning_entry (
+    date TEXT PRIMARY KEY NOT NULL,
+    energy INTEGER,
+    soreness INTEGER,
+    mood INTEGER,
+    note TEXT,
+    saved_ms INTEGER NOT NULL
+  );
+
+  -- Dernière synchro réussie par type de donnée.
+  CREATE TABLE sync_state (
+    record_type TEXT PRIMARY KEY NOT NULL,
+    last_sync_ms INTEGER NOT NULL
+  );
+
+  -- Réglages modifiables dans l'app (ex. heure de la notification).
+  CREATE TABLE app_setting (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL
+  );
+  `,
+];
+
+async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
+  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  const current = row?.user_version ?? 0;
+  for (let version = current; version < MIGRATIONS.length; version++) {
+    await db.withExclusiveTransactionAsync(async (tx) => {
+      await tx.execAsync(MIGRATIONS[version]);
+      await tx.execAsync(`PRAGMA user_version = ${version + 1}`);
+    });
+  }
+}
+
+let opening: Promise<SQLite.SQLiteDatabase> | null = null;
+
+/** Ouvre la base (une seule fois) et applique les évolutions du schéma. */
+export function getDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!opening) {
+    opening = (async () => {
+      const db = await SQLite.openDatabaseAsync('biohacking.db');
+      await db.execAsync('PRAGMA journal_mode = WAL;');
+      await migrate(db);
+      return db;
+    })();
+    opening.catch(() => {
+      opening = null;
+    });
+  }
+  return opening;
+}

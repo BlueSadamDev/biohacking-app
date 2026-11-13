@@ -1,8 +1,8 @@
-// Connecteur Health Connect (lecture seule).
-// Lot 0 : inventaire des données reçues sur les N derniers jours,
-// par type de donnée et par app d'origine (dataOrigin).
-// Aucune valeur de santé n'est conservée ni écrite dans les logs :
-// on ne garde que l'app d'origine et la date de chaque enregistrement.
+// Connecteur Health Connect (lecture seule, jamais d'écriture).
+// - Inventaire (écran de diagnostic) : types reçus par app d'origine, sans valeurs.
+// - Synchronisation (lot 1) : copie dans la base locale du sommeil, de la HRV,
+//   de la FC au repos, de la FC (pendant le sommeil), des pas et du poids.
+// Aucune valeur de santé n'est écrite dans les logs.
 
 import {
   getGrantedPermissions,
@@ -13,10 +13,27 @@ import {
   requestPermission,
   SdkAvailabilityStatus,
   type Permission,
+  type ReadHealthDataHistoryPermission,
   type RecordType,
 } from 'react-native-health-connect';
 
-/** Types lus au lot 0, avec leur nom affiché à l'écran. */
+import { getLastSync, loadSleeps, setLastSync, upsertRows } from '@/db/healthData';
+import type { SleepSession } from '@/domain/nightly';
+import { SETTINGS } from '@/domain/settings';
+
+/** Types lus par l'app au lot 1 (les seuls dont la permission est demandée). */
+export const SYNC_TYPES = [
+  { type: 'SleepSession', label: 'Sommeil' },
+  { type: 'HeartRateVariabilityRmssd', label: 'HRV (rMSSD)' },
+  { type: 'RestingHeartRate', label: 'FC au repos' },
+  { type: 'HeartRate', label: 'Fréquence cardiaque' },
+  { type: 'Steps', label: 'Pas' },
+  { type: 'Weight', label: 'Poids' },
+] as const satisfies readonly { type: RecordType; label: string }[];
+
+type SyncType = (typeof SYNC_TYPES)[number]['type'];
+
+/** Types affichés dans l'inventaire du diagnostic (ceux du lot 0). */
 export const INVENTORY_TYPES: { type: RecordType; label: string }[] = [
   { type: 'Steps', label: 'Pas' },
   { type: 'Distance', label: 'Distance' },
@@ -58,16 +75,22 @@ export type OriginSummary = {
 export type TypeInventory = {
   type: RecordType;
   label: string;
-  /** 'ok' : lu ; 'denied' : permission refusée ; 'error' : lecture impossible. */
-  state: 'ok' | 'denied' | 'error';
+  /**
+   * 'ok' : lu ; 'denied' : permission refusée ; 'not-requested' : type non utilisé
+   * au lot en cours (permission non demandée) ; 'error' : lecture impossible.
+   */
+  state: 'ok' | 'denied' | 'not-requested' | 'error';
   origins: OriginSummary[];
   errorMessage?: string;
 };
 
-const READ_PERMISSIONS: Permission[] = INVENTORY_TYPES.map(({ type }) => ({
-  accessType: 'read',
-  recordType: type,
-}));
+const SYNC_TYPE_SET = new Set<string>(SYNC_TYPES.map(({ type }) => type));
+
+/** Permissions demandées : lecture des types du lot 1 + lecture de l'historique (plus de 30 jours). */
+const READ_PERMISSIONS: (Permission | ReadHealthDataHistoryPermission)[] = [
+  ...SYNC_TYPES.map(({ type }): Permission => ({ accessType: 'read', recordType: type })),
+  { accessType: 'read', recordType: 'ReadHealthDataHistory' },
+];
 
 /** Vérifie si Health Connect est présent et à jour sur le téléphone. */
 export async function getStatus(): Promise<HealthConnectStatus> {
@@ -151,7 +174,8 @@ export async function readInventory(days: number): Promise<TypeInventory[]> {
   const results: TypeInventory[] = [];
   for (const { type, label } of INVENTORY_TYPES) {
     if (!granted.has(type)) {
-      results.push({ type, label, state: 'denied', origins: [] });
+      const state = SYNC_TYPE_SET.has(type) ? 'denied' : 'not-requested';
+      results.push({ type, label, state, origins: [] });
       continue;
     }
     try {
@@ -168,4 +192,166 @@ export async function readInventory(days: number): Promise<TypeInventory[]> {
     }
   }
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Synchronisation vers la base locale (lot 1)
+// ---------------------------------------------------------------------------
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type SyncTypeReport = {
+  type: SyncType;
+  label: string;
+  /** 'ok' : synchronisé ; 'denied' : permission refusée ; 'error' : lecture impossible. */
+  state: 'ok' | 'denied' | 'error';
+  /** Nombre d'enregistrements lus (jamais de valeurs). */
+  count: number;
+  errorMessage?: string;
+};
+
+/** Lit tous les enregistrements d'un type entre deux instants (toutes les pages). */
+async function readAll<T extends SyncType>(type: T, since: number, until: number) {
+  const records = [];
+  let pageToken: string | undefined;
+  do {
+    const result = await readRecords(type, {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: new Date(since).toISOString(),
+        endTime: new Date(until).toISOString(),
+      },
+      pageSize: 5000,
+      pageToken,
+    });
+    records.push(...result.records);
+    pageToken = result.pageToken || undefined;
+  } while (pageToken);
+  return records;
+}
+
+const ms = (iso: string) => new Date(iso).getTime();
+
+function idOf(record: { metadata?: { id?: string } }, fallback: string): string {
+  return record.metadata?.id || fallback;
+}
+
+function originOf(record: { metadata?: { dataOrigin?: string } }): string {
+  return record.metadata?.dataOrigin ?? 'inconnue';
+}
+
+function insideAnySleep(time: number, sleeps: SleepSession[]): boolean {
+  return sleeps.some((s) => time >= s.start && time <= s.end);
+}
+
+/** Lit un type dans Health Connect et l'enregistre dans la base. Renvoie le nombre lu. */
+async function syncType(type: SyncType, since: number, until: number): Promise<number> {
+  switch (type) {
+    case 'SleepSession': {
+      const records = await readAll('SleepSession', since, until);
+      await upsertRows(
+        'hc_sleep',
+        ['id', 'start_ms', 'end_ms', 'stages_json', 'origin'],
+        records.map((r) => [
+          idOf(r, `sleep-${r.startTime}`),
+          ms(r.startTime),
+          ms(r.endTime),
+          JSON.stringify((r.stages ?? []).map((s) => ({ start: ms(s.startTime), end: ms(s.endTime), stage: s.stage }))),
+          originOf(r),
+        ]),
+      );
+      return records.length;
+    }
+    case 'HeartRateVariabilityRmssd': {
+      const records = await readAll('HeartRateVariabilityRmssd', since, until);
+      await upsertRows(
+        'hc_hrv',
+        ['id', 'time_ms', 'rmssd_ms', 'origin'],
+        records.map((r) => [idOf(r, `hrv-${r.time}`), ms(r.time), r.heartRateVariabilityMillis, originOf(r)]),
+      );
+      return records.length;
+    }
+    case 'RestingHeartRate': {
+      const records = await readAll('RestingHeartRate', since, until);
+      await upsertRows(
+        'hc_resting_hr',
+        ['id', 'time_ms', 'bpm', 'origin'],
+        records.map((r) => [idOf(r, `rhr-${r.time}`), ms(r.time), r.beatsPerMinute, originOf(r)]),
+      );
+      return records.length;
+    }
+    case 'HeartRate': {
+      // FC continue : on ne garde que les mesures prises pendant un sommeil déjà synchronisé.
+      const records = await readAll('HeartRate', since, until);
+      const sleeps = await loadSleeps(since - DAY_MS);
+      const rows = records.flatMap((r) => {
+        const id = idOf(r, `hr-${r.startTime}`);
+        const origin = originOf(r);
+        return r.samples
+          .map((s) => ({ time: ms(s.time), bpm: s.beatsPerMinute }))
+          .filter((s) => insideAnySleep(s.time, sleeps))
+          .map((s) => [id, s.time, s.bpm, origin]);
+      });
+      await upsertRows('hc_heart_rate', ['record_id', 'time_ms', 'bpm', 'origin'], rows);
+      return records.length;
+    }
+    case 'Steps': {
+      const records = await readAll('Steps', since, until);
+      await upsertRows(
+        'hc_steps',
+        ['id', 'start_ms', 'end_ms', 'count', 'origin'],
+        records.map((r) => [idOf(r, `steps-${r.startTime}`), ms(r.startTime), ms(r.endTime), r.count, originOf(r)]),
+      );
+      return records.length;
+    }
+    case 'Weight': {
+      const records = await readAll('Weight', since, until);
+      await upsertRows(
+        'weight',
+        ['id', 'time_ms', 'kg', 'source', 'origin'],
+        records.map((r) => [
+          `hc-${idOf(r, r.time)}`,
+          ms(r.time),
+          r.weight.inKilograms,
+          'health_connect',
+          originOf(r),
+        ]),
+      );
+      return records.length;
+    }
+  }
+}
+
+/**
+ * Synchronise les types du lot 1 depuis Health Connect vers la base locale.
+ * Première fois : `firstSyncDays` jours d'historique. Ensuite : depuis la dernière
+ * synchro réussie, moins `overlapDays` jours (données arrivées en retard).
+ * Le sommeil passe en premier : la FC continue est filtrée sur les sommeils connus.
+ */
+export async function syncHealthConnect(now: number = Date.now()): Promise<SyncTypeReport[]> {
+  const granted = await getGrantedReadTypes();
+  const reports: SyncTypeReport[] = [];
+  for (const { type, label } of SYNC_TYPES) {
+    if (!granted.has(type)) {
+      reports.push({ type, label, state: 'denied', count: 0 });
+      continue;
+    }
+    const last = await getLastSync(type);
+    const since =
+      last === null ? now - SETTINGS.sync.firstSyncDays * DAY_MS : last - SETTINGS.sync.overlapDays * DAY_MS;
+    try {
+      const count = await syncType(type, since, now);
+      await setLastSync(type, now);
+      reports.push({ type, label, state: 'ok', count });
+    } catch (e) {
+      reports.push({
+        type,
+        label,
+        state: 'error',
+        count: 0,
+        errorMessage: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return reports;
 }

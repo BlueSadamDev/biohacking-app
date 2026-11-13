@@ -44,7 +44,7 @@
 ## Découpage en lots
 - Le projet avance par lots (voir le cahier des charges, section 7) : un lot = une branche `lot-<n>-<nom>` et un APK testé.
 - **Lot 0** (terminé) : inventaire des données Health Connect. Résultat dans `docs/RAPPORT_LOT_0.md` : l'app Zepp écrit tous les types lus sauf la VO2max (HRV et poids compris) ; la Suunto n'écrit rien.
-- **Lot 1** (à venir) : récap du matin, à partir du Helio Strap seul. Ne pas le démarrer avant que les points ouverts bloquants du cahier des charges (section 8) soient tranchés par l'utilisateur.
+- **Lot 1** (en cours, branche `lot-1-recap-matin`) : récap du matin, à partir du Helio Strap seul. Points bloquants tranchés : une valeur par nuit (HRV, FC au repos) et poids (saisie manuelle prioritaire, Zepp en secours).
 
 ## Design
 Lire [DESIGN.md](DESIGN.md) avant toute modification d'interface et le respecter. Tant que DESIGN.md n'existe pas (lot 0), garder une interface minimale et lisible, sans travail graphique.

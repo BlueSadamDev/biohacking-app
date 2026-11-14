@@ -79,7 +79,7 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 1. **Accueil – récap du matin** : en-tête aube + date, titre, accès au diagnostic (bouton rond), anneau + pastille, carte Recommandation, 3 tuiles (HRV, FC au repos, Sommeil), jauge de charge 7 j / 28 j, bouton « Saisir poids et ressenti », navigation.
 2. **Détail d'un indicateur** (HRV d'abord, même gabarit pour FC au repos et sommeil) : retour, valeur + pastille d'état + moyenne 7 j, onglets de période, graphique avec plage normale et légende, carte « Ce qui fait ton score de récupération » (contributions +, =, −).
 3. **Saisie du matin** : poids (champ numérique, kg), ressentis Énergie / Courbatures / Humeur (1 à 5), note libre facultative, bouton Enregistrer.
-4. **Sources de données** : calibration des normes (jauge « n / 28 jours »), carte Helio Strap (dernière synchro, types reçus), carte Suunto (« hors périmètre jusqu'au lot 3 », sans bouton), poids et Suivi macro (via Health Connect), bouton « Synchroniser maintenant ».
+4. **Sources de données** : calibration des normes (jauge « n / 28 jours »), carte Helio Strap (dernière synchro, types reçus), carte Suunto (« hors périmètre », sans bouton), poids et Suivi macro (via Health Connect), bouton « Synchroniser maintenant ».
 
 ## Écrans du lot 2
 
@@ -159,6 +159,67 @@ Accessible par l'onglet Réglages. Groupes, dans l'ordre :
 4. **Données** : « Sources de données » (ouvre l'écran Sources),
    « Exporter mes données (CSV) », « Effacer toutes les données » en
    `low` avec une confirmation obligatoire.
+
+## Écrans du lot 3
+
+### Nouveaux composants
+- **Barre des zones cardiaques** : barre empilée de 12 px, rayon 6, 2 px
+  entre les segments, largeur de chaque segment = part du temps.
+  Couleurs : Z1 `#5C6B7E`, Z2 `info`, Z3 `mid`, Z4-5 `low`. Légende en
+  dessous sur 4 colonnes (11 px, `textMuted`, Z2 en `#7DB8FF`), puis une
+  ligne d'état : « Zone 2 : <n> min sur <cible> min visées » en `good` si
+  la cible est atteinte, sinon `mid`.
+- **Ligne d'exercice (force)** : hauteur minimale 52, séparateur
+  `surfaceAlt` au-dessus. À gauche : nom (14/600) et tendance (12 ;
+  `good` si en hausse, `mid` si stable depuis 6 semaines, `textMuted`
+  sinon). Au centre : mini-barres des 12 dernières semaines (largeur 5,
+  hauteur 8 à 32 px, `#5C6B7E`, la dernière dans la couleur de la
+  tendance). À droite : 1RM estimé en Space Grotesk 20/600 + « kg ».
+- **Sélecteur − / +** : champ de 48 px de haut, contour `border`, fond
+  `bg`, rayon 12 ; boutons − et + de 44 × 44 de part et d'autre de la
+  valeur (Space Grotesk 17/600 + unité 12 `textMuted`). Pas de 2,5 kg
+  pour la charge, de 1 pour les répétitions (1 à 12). Chaque bouton a un
+  aria-label (« Plus 2,5 kg »…).
+- **Carte suggestion** : fond `info` à 10 %, bordure 1 px `info`, rayon 16.
+  Libellé « À essayer cette semaine » (12/600, `#7DB8FF`, majuscules),
+  proposition en 16/600, puis le manque comblé et où le faire à Paris
+  (13, `textSoft`), puis éventuellement un second manque en 12 `textMuted`.
+- **Carte lien observé** : fond `surface`, rayon 16. Ligne 1 :
+  « Lien fort | modéré | faible » (12/600) et « <n> jours comparés »
+  (12, `textMuted`). Couleur du libellé et de la barre mise en avant :
+  `good` si le lien est favorable, `mid` s'il est défavorable, `info` si
+  le lien est faible. Puis la phrase (15/600), deux barres de comparaison
+  (situation de référence en `#5C6B7E`, situation étudiée dans la
+  couleur du lien, valeurs à droite), puis l'action conseillée (13,
+  `textSoft`).
+
+### Sport (onglet Sport)
+L'écran défile. Ordre : « Semaine du … au … » + titre « Ta progression » →
+carte « Cette semaine » (séances faites / cible, temps d'activité, charge
+7 j / 28 j, puis barre des zones cardiaques) → carte « Force · 1RM estimé »
+(3 lignes d'exercice : squat, développé couché, soulevé de terre ;
+« sur 12 semaines ») → carte « Composition corporelle » (poids moyen 7 j
+en Space Grotesk 28/600, tendance en kg/semaine, courbe du poids lissé
+avec la cible en pointillé, puis une phrase d'interprétation) → carte
+suggestion → bouton « Saisir ma séance de musculation » → navigation.
+
+### Saisie de séance de musculation
+Retour + titre « Ta séance » + « Meilleure série de chaque exercice ».
+Carte de la séance détectée (type, durée, date, « détectée par le Helio
+Strap », FC moyenne). Puis une carte par exercice clé : nom, bouton
+« Pas fait » (la carte passe à 60 % d'opacité et masque la saisie),
+sélecteurs charge et répétitions côte à côte, puis « 1RM estimé <n> kg »
+avec l'écart à ton niveau (`good` + « record » si au-dessus). Bouton
+« Enregistrer la séance » en bas.
+
+### Tendances (onglet Tendances)
+« Calculé sur tes 90 derniers jours » + titre « Ce que tes données
+disent ». Pastilles vers les détails (HRV, FC au repos, Sommeil, Poids).
+Libellé « Liens observés » puis les cartes lien observé, du plus fort au
+plus faible (3 au plus). En bas, centré (12, `textMuted`) : « Un lien
+observé n'est pas une preuve de cause. » et « Seuls les liens assez
+réguliers sur au moins 20 jours sont affichés. » S'il n'y en a aucun :
+« Pas encore assez de données pour repérer des liens fiables. »
 
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.

@@ -8,6 +8,7 @@ import { nutritionByDay } from '@/domain/nutrition';
 import { effectiveHrMax } from '@/domain/profile';
 import { SETTINGS } from '@/domain/settings';
 import type { ExerciseProgress } from '@/domain/strength';
+import { weeklySuggestions, type WeeklySuggestions } from '@/domain/suggestions';
 import { weekActivity, type WeekActivity } from '@/domain/zones';
 
 import { getUserSettings } from './appSettings';
@@ -37,6 +38,23 @@ export async function loadBodyComposition(strength: ExerciseProgress[], now: Dat
     strength,
     proteinGPerKg: user.proteinGPerKg,
     targetWeightKg: user.targetWeightKg,
+    today: dayKey(now),
+  });
+}
+
+/** Suggestions d'autres sports de la semaine (manques repérés sur les séances locales). */
+export async function loadSuggestions(now: Date = new Date()): Promise<WeeklySuggestions> {
+  const s = SETTINGS.suggestions;
+  const [sessions, samples, user] = await Promise.all([
+    loadExercises(now.getTime() - (s.mobilityWindowDays + 1) * DAY_MS),
+    loadExerciseHeartRate(now.getTime() - (s.zone2WindowDays + 1) * DAY_MS),
+    getUserSettings(),
+  ]);
+  return weeklySuggestions({
+    sessions,
+    samples,
+    hrMax: effectiveHrMax(user, now)?.bpm ?? null,
+    zone2Target: user.zone2TargetMinutes,
     today: dayKey(now),
   });
 }

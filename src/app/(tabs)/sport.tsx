@@ -1,7 +1,7 @@
 // Onglet Sport (DESIGN.md, « Écrans du lot 3 »).
 // Ordre : « Semaine du … au … » + « Ta progression » → carte « Cette semaine » → carte « Force · 1RM estimé »
-// → carte « Composition corporelle » → bouton « Saisir ma séance de musculation ».
-// La carte Suggestion arrive à l'étape suivante.
+// → carte « Composition corporelle » → carte suggestion (seulement s'il y a un manque)
+// → bouton « Saisir ma séance de musculation ».
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -14,12 +14,14 @@ import { formatWeekRange } from '@/components/format';
 import { Screen } from '@/components/Screen';
 import { SportWeekCard } from '@/components/SportWeekCard';
 import { StrengthCard } from '@/components/StrengthCard';
+import { SuggestionCard } from '@/components/SuggestionCard';
 import { useHealthData } from '@/components/useHealthData';
-import { loadBodyComposition, loadSportWeek, type SportWeek } from '@/db/sportData';
+import { loadBodyComposition, loadSportWeek, loadSuggestions, type SportWeek } from '@/db/sportData';
 import { loadStrengthHistory } from '@/db/strength';
 import type { BodyComposition } from '@/domain/bodyComposition';
 import { dayKey } from '@/domain/dates';
 import { strengthProgress, type ExerciseProgress } from '@/domain/strength';
+import type { WeeklySuggestions } from '@/domain/suggestions';
 
 export default function SportScreen() {
   const router = useRouter();
@@ -27,17 +29,19 @@ export default function SportScreen() {
   const [week, setWeek] = useState<SportWeek | null>(null);
   const [strength, setStrength] = useState<ExerciseProgress[] | null>(null);
   const [body, setBody] = useState<BodyComposition | null>(null);
+  const [suggest, setSuggest] = useState<WeeklySuggestions>(null);
   const [error, setError] = useState(false);
 
   const refresh = useCallback(() => {
     const now = new Date();
     (async () => {
-      const [w, entries] = await Promise.all([loadSportWeek(now), loadStrengthHistory(now)]);
+      const [w, entries, suggestions] = await Promise.all([loadSportWeek(now), loadStrengthHistory(now), loadSuggestions(now)]);
       const progress = strengthProgress(entries, dayKey(now));
       const composition = await loadBodyComposition(progress, now);
       setWeek(w);
       setStrength(progress);
       setBody(composition);
+      setSuggest(suggestions);
       setError(false);
     })().catch(() => setError(true));
   }, []);
@@ -58,6 +62,7 @@ export default function SportScreen() {
           {week && <SportWeekCard week={week} load={load} />}
           {strength && <StrengthCard progress={strength} />}
           {body && <BodyCompositionCard data={body} />}
+          {suggest && <SuggestionCard primary={suggest.primary} secondary={suggest.secondary} />}
         </>
       )}
       <PrimaryButton title="Saisir ma séance de musculation" onPress={() => router.push('/seance')} />

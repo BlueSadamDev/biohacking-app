@@ -232,6 +232,17 @@ export const SETTINGS = {
     ] as readonly BodyRule[],
   },
 
+  /** Suggestions d'autres sports (lot 3) : combler les manques, avec des activités faciles à Paris. */
+  suggestions: {
+    /** Endurance douce : minutes de zone 2 sur les N derniers jours (aujourd'hui compris), comparées à la cible hebdomadaire. */
+    zone2WindowDays: 7,
+    /** Mobilité : aucune séance de ces types (yoga 83, étirements 71, pilates 48) depuis N jours. */
+    mobilityTypes: [83, 71, 48] as readonly number[],
+    mobilityWindowDays: 21,
+    /** Quand plusieurs manques : ordre de priorité (le premier donne la suggestion principale). */
+    gapPriority: ['endurance', 'mobility'] as readonly ('endurance' | 'mobility')[],
+  },
+
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */
   nutrition: {
     reachedFraction: 0.9,

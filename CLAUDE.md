@@ -2,7 +2,7 @@
 
 ## Contexte
 - L'utilisateur ne sait pas développer. Tout expliquer en français simple, sans jargon (ou expliquer chaque terme technique).
-- Projet : application Android personnelle de biohacking. Elle lit via Health Connect les données du bracelet Amazfit Helio Strap (source principale, automatique) et les repas écrits par l'app Suivi macro (calories et macros). La montre Suunto 9 Peak Pro n'écrit pas dans Health Connect : elle est hors périmètre jusqu'au lot 3. Elle produit un récap du matin, des alertes et des insights sport. Usage strictement personnel : pas de Play Store, pas de comptes utilisateurs.
+- Projet : application Android personnelle de biohacking. Elle lit via Health Connect les données du bracelet Amazfit Helio Strap (source principale, automatique) et les repas écrits par l'app Suivi macro (calories et macros). La montre Suunto 9 Peak Pro n'écrit pas dans Health Connect : elle est abandonnée pour l'instant, hors périmètre (ses séances seraient lues comme une source de plus si une appli passerelle comme Health Sync ou FitnessSyncer les écrivait un jour dans Health Connect). Elle produit un récap du matin, des alertes et des insights sport. Usage strictement personnel : pas de Play Store, pas de comptes utilisateurs.
 - Référence fonctionnelle : [docs/CAHIER_DES_CHARGES.md](docs/CAHIER_DES_CHARGES.md). Le lire avant chaque nouveau lot ou fonctionnalité. Ne rien développer qui n'y figure pas sans demander.
 - Livrable : un APK de test installable sur le téléphone (Android 14 ou plus récent).
 - Technologie imposée : Expo (React Native, TypeScript) et GitHub Actions pour les APK. Ne proposer aucun autre framework sans demander.
@@ -31,7 +31,7 @@
 - Gérer proprement les cas « Health Connect absent », « permission refusée » et « aucune donnée », avec un message clair à l'écran.
 
 ## Règles de calcul
-- Ne jamais faire la moyenne de deux capteurs. Appliquer la table « source prioritaire / secours » du cahier des charges (section 3). Le Helio Strap, porté en permanence, est la référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances. La Suunto (GPS, distance, allure) est hors périmètre jusqu'au lot 3.
+- Ne jamais faire la moyenne de deux capteurs. Appliquer la table « source prioritaire / secours » du cahier des charges (section 3). Le Helio Strap, porté en permanence, est la référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances. La Suunto est hors périmètre : pas de GPS, de distance ni d'allure ; la course est suivie par la FC du Helio Strap (zones cardiaques).
 - Tous les seuils et pondérations sont dans un seul fichier de réglages (`src/domain/settings.ts`), jamais en dur dans le code.
 - Chaque règle de `src/domain/` a des tests automatiques (Jest, via `jest-expo`) sur données fictives. Après chaque modification d'un calcul, lancer les tests et dire en une phrase ce qu'ils vérifient.
 - Quand un calcul ne peut pas être fait (données manquantes, calibration en cours), l'app l'affiche au lieu d'inventer une valeur.

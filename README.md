@@ -4,7 +4,19 @@
 
 - Cahier des charges : [docs/CAHIER_DES_CHARGES.md](docs/CAHIER_DES_CHARGES.md)
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
-- Technologie : Expo (React Native, TypeScript), Expo Router. Les écrans sont dans `src/app/`.
+- Charte graphique et identité : [DESIGN.md](DESIGN.md)
+- Technologie : Expo (React Native, TypeScript), Expo Router.
+- État : lot 1 (récap du matin) terminé.
+
+## Organisation du code
+
+- `src/app/` : les écrans (Accueil, Détail, Saisie du matin, Réglages, Diagnostic).
+- `src/sources/` : lecture de Health Connect et saisie manuelle.
+- `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
+- `src/db/` : base de données locale (SQLite).
+- `src/components/` : composants d'interface réutilisables.
+- `src/background/` : synchro en arrière-plan et notification du récap du matin.
+- `assets/brand/` : logos SVG d'Aube, source de l'icône et de l'écran de démarrage.
 
 ## Installer le projet sur l'ordinateur
 
@@ -28,6 +40,7 @@ Pour un worktree (copie de travail séparée), même principe avec un dossier d�
 npx expo-doctor
 npx expo lint
 npx tsc --noEmit
+npx jest
 ```
 
 ## Lancer l'app

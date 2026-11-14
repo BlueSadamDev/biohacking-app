@@ -1,6 +1,6 @@
 # Aube (biohacking-app)
 
-**Aube** est une application Android personnelle de biohacking. Elle lit les données du bracelet Amazfit Helio Strap via Health Connect, importe une fois par mois les séances de la montre Suunto 9 Peak Pro (fichiers FIT), puis produit un récap du matin, des alertes et des insights sport. Toutes les données restent sur le téléphone.
+**Aube** est une application Android personnelle de biohacking. Elle lit via Health Connect les données du bracelet Amazfit Helio Strap et les repas de l'app Suivi macro, puis produit un récap du matin, des alertes et des insights sport. Toutes les données restent sur le téléphone.
 
 - Cahier des charges : [docs/CAHIER_DES_CHARGES.md](docs/CAHIER_DES_CHARGES.md)
 - Règles de travail : [CLAUDE.md](CLAUDE.md)

@@ -2,7 +2,7 @@ name: Build APK de développement
 
 # APK de développement (avec expo-dev-client) : se recharge depuis `npx expo start`.
 # À reconstruire seulement quand une dépendance native ou une permission change.
-# Installé sous le nom "Biohacking (dev)", à côté de l'app de production.
+# Installé sous le nom "Aube (dev)", à côté de l'app de production.
 # Signé avec la clé de développement standard d'Expo : aucun secret nécessaire.
 # Déclenchement uniquement manuel : onglet Actions > "Run workflow".
 on:
@@ -39,7 +39,7 @@ jobs:
         run: |
           VERSION_CODE=$((1 + GITHUB_RUN_NUMBER))
           jq ".expo.android.package = \"com.bluesadamdev.biohacking.dev\"
-            | .expo.name = \"Biohacking (dev)\"
+            | .expo.name = \"Aube (dev)\"
             | .expo.android.versionCode = $VERSION_CODE" app.json > app.json.tmp && mv app.json.tmp app.json
           echo "versionCode : $VERSION_CODE"
 

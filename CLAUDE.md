@@ -11,7 +11,8 @@
   - `src/sources/` : un connecteur par source de données (Health Connect, import FIT Suunto, import Suivi macro, saisie manuelle) ;
   - `src/domain/` : fusion des capteurs, normes personnelles, scores, règles d'alerte (calculs purs, sans interface) ;
   - `src/db/` : base de données locale ;
-  - `src/components/` : composants d'interface réutilisables.
+  - `src/components/` : composants d'interface réutilisables ;
+  - `src/background/` : tâche de fond (synchro horaire) et notification du récap du matin.
 
 ## Données de santé et confidentialité
 - Toutes les données restent sur le téléphone. Aucun appel réseau dans le code de l'application, aucun SDK d'analytics, de suivi des plantages ou de publicité.
@@ -44,7 +45,7 @@
 ## Découpage en lots
 - Le projet avance par lots (voir le cahier des charges, section 7) : un lot = une branche `lot-<n>-<nom>` et un APK testé.
 - **Lot 0** (terminé) : inventaire des données Health Connect. Résultat dans `docs/RAPPORT_LOT_0.md` : l'app Zepp écrit tous les types lus sauf la VO2max (HRV et poids compris) ; la Suunto n'écrit rien.
-- **Lot 1** (à venir) : récap du matin, à partir du Helio Strap seul. Ne pas le démarrer avant que les points ouverts bloquants du cahier des charges (section 8) soient tranchés par l'utilisateur.
+- **Lot 1** (en cours, branche `lot-1-recap-matin`) : récap du matin, à partir du Helio Strap seul. Points bloquants tranchés : une valeur par nuit (HRV, FC au repos) et poids (saisie manuelle prioritaire, Zepp en secours).
 
 ## Design
 Lire [DESIGN.md](DESIGN.md) avant toute modification d'interface et le respecter. Tant que DESIGN.md n'existe pas (lot 0), garder une interface minimale et lisible, sans travail graphique.
@@ -112,6 +113,7 @@ Quand une modification change ce que décrit DESIGN.md (couleur, bouton, écran)
   - `generateInlineModules` (SyntaxError JSON) → ajouter `npm_config_warn: "false"` dans l'env du workflow.
   - `Could not get unknown property 'BIOHACK_...'` → passer les propriétés via `./gradlew -PKEY=VALUE` (pas via `gradle.properties`).
   - Dans les blocs `signingConfigs`, utiliser `project.getProperty('KEY')` plutôt que la variable nue `KEY`.
+  - APK de production qui plante à l'ouverture (`NoSuchMethodException: androidx.work.impl.WorkDatabase_Impl.<init>`) → le compactage R8 a retiré du code utilisé par la tâche de fond : garder `enableMinifyInReleaseBuilds: false` et `enableShrinkResourcesInReleaseBuilds: false` dans `expo-build-properties` (`app.json`).
   - Classe en double `HealthConnectPackage` au build → le paquet obsolète `expo-health-connect` est présent : le retirer et relancer `npx expo prebuild --clean`.
 - Donner les commandes exactes à copier-coller pour lancer le workflow.
 - Expliquer comment télécharger et installer l'APK sur le téléphone (artifact → ZIP → `.apk`).

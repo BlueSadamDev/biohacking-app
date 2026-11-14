@@ -141,7 +141,8 @@ Pendant la calibration, un message unique à la place de la liste :
 ### Réglages
 Accessible par l'onglet Réglages. Groupes, dans l'ordre :
 1. **Mes cibles** : poids visé (kg, vide = « à définir »), protéines
-   (g/kg, défaut 1,8), calories par jour (kcal), séances par semaine.
+   (g/kg, défaut 1,8), calories par jour (kcal), séances par semaine,
+   zone 2 par semaine (min, défaut 120 ; ajoutée au lot 3).
    Sous le groupe : « Soit <n> g de protéines par jour avec ton poids
    actuel (moyenne 7 j). »
 2. **Profil cardiaque** : année de naissance (sert à estimer la FC max),

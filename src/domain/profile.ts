@@ -15,6 +15,8 @@ export type UserSettings = {
   /** Calories par jour ; null = « à définir ». */
   caloriesKcal: number | null;
   sessionsPerWeek: number;
+  /** Minutes de zone 2 visées par semaine. */
+  zone2TargetMinutes: number;
   birthYear: number | null;
   /** Sexe : choisit le coefficient du TRIMP ; null = « à définir ». */
   sex: Sex | null;
@@ -32,6 +34,7 @@ export function defaultUserSettings(settings: Settings = SETTINGS): UserSettings
     proteinGPerKg: settings.targets.proteinGPerKgDefault,
     caloriesKcal: null,
     sessionsPerWeek: settings.targets.sessionsPerWeekDefault,
+    zone2TargetMinutes: settings.targets.zone2MinutesDefault,
     birthYear: null,
     sex: null,
     hrMaxBpm: null,

@@ -90,6 +90,9 @@ export const SETTINGS = {
     caloriesMax: 6000,
     sessionsPerWeekDefault: 4,
     sessionsPerWeekMax: 14,
+    /** Minutes de zone 2 visées par semaine (lot 3). */
+    zone2MinutesDefault: 120,
+    zone2MinutesMax: 1500,
     /** Poids moyen utilisé pour la cible de protéines : moyenne sur N jours. */
     weightAverageDays: 7,
   },
@@ -126,6 +129,20 @@ export const SETTINGS = {
     underMax: 0.8,
     balancedMax: 1.3,
     highMin: 1.5,
+  },
+
+  /** Zones cardiaques (lot 3) : temps passé dans chaque zone pendant les séances, FC du Helio Strap. */
+  heartZones: {
+    /**
+     * Bas des zones 2 à 5, en part de la FC max : Z2 dès 60 %, Z3 dès 70 %, Z4 dès 80 %, Z5 dès 90 %.
+     * Sous 60 % : zone 1 (échauffement et repos entre les séries compris).
+     */
+    lowerBounds: [0.6, 0.7, 0.8, 0.9] as readonly number[],
+    /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
+    maxSampleGapSeconds: 120,
+    /** Séance sans assez de FC : moins de N mesures ou moins de cette part de la durée couverte. */
+    minSamples: 5,
+    minCoverage: 0.5,
   },
 
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */

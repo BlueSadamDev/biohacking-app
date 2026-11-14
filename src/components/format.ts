@@ -21,6 +21,15 @@ export function formatLongDate(date: Date): string {
   return capitalize(date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
 }
 
+/** « Semaine du 9 au 15 novembre » (ou « du 30 novembre au 6 décembre »). */
+export function formatWeekRange(startKey: string, endKey: string): string {
+  const start = dateFromKey(startKey);
+  const end = dateFromKey(endKey);
+  const month = (d: Date) => d.toLocaleDateString('fr-FR', { month: 'long' });
+  const from = start.getMonth() === end.getMonth() ? `${start.getDate()}` : `${start.getDate()} ${month(start)}`;
+  return `Semaine du ${from} au ${end.getDate()} ${month(end)}`;
+}
+
 /** « 13/11 ». */
 export function formatShortDate(key: string): string {
   const [, m, d] = key.split('-');

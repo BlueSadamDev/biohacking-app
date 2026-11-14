@@ -1,9 +1,10 @@
-// Barre de navigation : 72 px, 2 onglets au lot 1 (Aujourd'hui, Réglages).
+// Barre de navigation : 72 px. Onglets : Aujourd'hui, Sport (lot 3), Réglages.
+// L'onglet Tendances (lot 3) s'insérera après Aujourd'hui.
 
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SettingsIcon, TodayIcon } from '@/components/Icons';
+import { SettingsIcon, SportIcon, TodayIcon } from '@/components/Icons';
 import { colors, fonts } from '@/components/theme';
 
 export default function TabsLayout() {
@@ -26,6 +27,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{ title: 'Aujourd’hui', tabBarIcon: ({ color }) => <TodayIcon color={color} /> }}
+      />
+      <Tabs.Screen
+        name="sport"
+        options={{ title: 'Sport', tabBarIcon: ({ color }) => <SportIcon color={color} /> }}
       />
       <Tabs.Screen
         name="reglages"

@@ -182,6 +182,16 @@ export default function SettingsScreen() {
             onCommit={(v) => save('sessionsPerWeek', v ?? t.sessionsPerWeekDefault)}
           />
         </SettingRow>
+        <SettingRow label="Zone 2 par semaine">
+          <NumberField
+            label="Minutes de zone 2 par semaine"
+            value={user.zone2TargetMinutes}
+            unit="min"
+            parse={(s) => parseNumber(s, 0, t.zone2MinutesMax)}
+            format={asInt}
+            onCommit={(v) => save('zone2TargetMinutes', v ?? t.zone2MinutesDefault)}
+          />
+        </SettingRow>
       </SettingsGroup>
 
       <SettingsGroup

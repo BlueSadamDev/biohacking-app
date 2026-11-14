@@ -48,6 +48,18 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+/** Onglet « Sport » : haltère. */
+export function SportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Line x1="8" y1="12" x2="16" y2="12" />
+      <Path d="M6 8v8M8 7v10M18 8v8M16 7v10" />
+      <Line x1="3" y1="12" x2="6" y2="12" />
+      <Line x1="18" y1="12" x2="21" y2="12" />
+    </Icon>
+  );
+}
+
 /** Retour. */
 export function BackIcon(props: IconProps) {
   return (

@@ -1,8 +1,9 @@
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { Stack, useRouter, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Déclare la tâche de fond dès le démarrage (obligatoire pour qu'Android puisse la lancer).
 import { setupBackground } from '@/background/syncTask';
@@ -18,6 +19,7 @@ export default function RootLayout() {
   const [loaded, error] = useFonts(fontFiles);
   const { launched } = useHealthData();
   const [timedOut, setTimedOut] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (loaded || error) SplashScreen.hideAsync();
@@ -27,6 +29,18 @@ export default function RootLayout() {
   useEffect(() => {
     setupBackground().catch(() => undefined);
   }, []);
+
+  // Notification touchée : ouvrir l'écran qu'elle indique (rappel de saisie → /seance).
+  const response = Notifications.useLastNotificationResponse();
+  const handled = useRef<string | null>(null);
+  useEffect(() => {
+    if (!response || !loaded) return;
+    const id = response.notification.request.identifier;
+    const url = response.notification.request.content.data?.url;
+    if (handled.current === id || typeof url !== 'string') return;
+    handled.current = id;
+    router.push(url as Href);
+  }, [response, loaded, router]);
 
   // Sécurité : l'écran Aube ne reste jamais plus de quelques secondes.
   useEffect(() => {

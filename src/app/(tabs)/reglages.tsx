@@ -90,7 +90,7 @@ export default function SettingsScreen() {
   function confirmErase() {
     Alert.alert(
       'Effacer toutes les données ?',
-      'Tes saisies (poids, ressenti) seront perdues définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
+      'Tes saisies (poids, ressenti, musculation) seront perdues définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
       [
         { text: 'Annuler', style: 'cancel' },
         {

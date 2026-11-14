@@ -1,7 +1,33 @@
 // Résumé des nuits pour l'écran de diagnostic : uniquement des comptages,
 // jamais de valeurs de santé.
 
+import { exerciseTypeLabel } from './exerciseTypes';
+import type { ExerciseSession } from './load';
 import type { NightValue } from './nightly';
+import { SETTINGS, type Settings } from './settings';
+import { isStrengthSession } from './strength';
+
+export type SessionTypeCount = {
+  type: number;
+  label: string;
+  count: number;
+  /** Ce type déclenche la saisie de musculation (settings.ts). */
+  strength: boolean;
+};
+
+/** Nombre de séances par type (pour vérifier sous quel type Zepp enregistre chaque sport). */
+export function sessionTypeCounts(sessions: ExerciseSession[], settings: Settings = SETTINGS): SessionTypeCount[] {
+  const counts = new Map<number, number>();
+  for (const s of sessions) counts.set(s.exerciseType, (counts.get(s.exerciseType) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([type, count]) => ({
+      type,
+      label: exerciseTypeLabel(type),
+      count,
+      strength: isStrengthSession({ exerciseType: type }, settings),
+    }))
+    .sort((a, b) => b.count - a.count || a.type - b.type);
+}
 
 export type NightsSummary = {
   nights: number;

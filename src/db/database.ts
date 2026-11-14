@@ -136,6 +136,20 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX alert_date ON alert (date);
   `,
+  // 4 – Lot 3 : meilleure série des exercices clés (saisie après chaque séance de musculation).
+  `
+  CREATE TABLE strength_set (
+    id TEXT PRIMARY KEY NOT NULL,
+    session_id TEXT,
+    date TEXT NOT NULL,
+    exercise TEXT NOT NULL,
+    load_kg REAL,
+    reps INTEGER,
+    skipped INTEGER NOT NULL,
+    created_ms INTEGER NOT NULL
+  );
+  CREATE INDEX strength_set_date ON strength_set (date);
+  `,
 ];
 
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {

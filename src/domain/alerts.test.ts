@@ -1,5 +1,6 @@
 import { meal } from './__fixtures__/meals';
 import { at, series } from './__fixtures__/nights';
+import { set, weeklySets } from './__fixtures__/strength';
 import {
   evaluateAlerts,
   isQuietTime,
@@ -202,6 +203,20 @@ describe('poids', () => {
   });
 });
 
+describe('force (lot 3)', () => {
+  it('stagnation sur 6 semaines : alerte « changer de programme »', () => {
+    // Record fictif à 110 kg il y a 10 semaines, puis 105 kg chaque semaine.
+    const strength = [set(addDays(TODAY, -70), 'bench', 110, 5), ...weeklySets(TODAY, 'bench', 8, () => 105)];
+    const alert = evaluateAlerts(base({ strength }))[0];
+    expect(alert).toMatchObject({ rule: 'strength-stagnation', theme: 'load', level: 'watch', title: 'Force qui stagne' });
+    expect(alert.finding).toContain('développé couché');
+  });
+  it('force en hausse : pas d’alerte', () => {
+    const strength = weeklySets(TODAY, 'squat', 10, (i) => 100 + 2.5 * i);
+    expect(evaluateAlerts(base({ strength }))).toEqual([]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 
 function alert(rule: Alert['rule'], level: Alert['level'] = 'watch'): Alert {
@@ -245,6 +260,11 @@ describe('sélection des alertes', () => {
   });
   it('sauf si elle s’aggrave (niveau supérieur)', () => {
     expect(selectAlerts([alert('hrv-low', 'important')], ctx({ history: [past('hrv-low', 1)] }))).toHaveLength(1);
+  });
+
+  it('la stagnation de la force n’est pas répétée pendant 14 jours', () => {
+    expect(selectAlerts([alert('strength-stagnation')], ctx({ history: [past('strength-stagnation', 10)] }))).toEqual([]);
+    expect(selectAlerts([alert('strength-stagnation')], ctx({ history: [past('strength-stagnation', 14)] }))).toHaveLength(1);
   });
   it('Important : notification immédiate ; À surveiller : dans le récap du matin', () => {
     const [a, b] = selectAlerts([alert('load-high', 'important'), alert('hrv-low')], ctx());

@@ -145,6 +145,41 @@ export const SETTINGS = {
     minCoverage: 0.5,
   },
 
+  /** Musculation (lot 3) : saisie de la meilleure série des 3 exercices clés, 1RM estimé (Epley). */
+  strength: {
+    /**
+     * Types de séance Health Connect qui déclenchent la saisie : musculation (70),
+     * haltérophilie (81), poids du corps (13), fractionné intense (36).
+     */
+    sessionTypes: [70, 81, 13, 36] as readonly number[],
+    /** Sélecteurs de la saisie : charge (kg) et répétitions. */
+    loadStepKg: 2.5,
+    loadMinKg: 2.5,
+    loadMaxKg: 400,
+    /** Charge proposée la première fois (barre olympique vide). */
+    loadDefaultKg: 20,
+    repsMin: 1,
+    repsMax: 12,
+    repsDefault: 5,
+    /** Historique affiché (mini-barres) : N semaines. */
+    historyWeeks: 12,
+    /** « En hausse » : meilleur 1RM des N derniers jours ≥ celui des N jours d'avant × (1 + fraction). */
+    recentDays: 21,
+    risingFraction: 0.01,
+    /** « En baisse » : meilleur 1RM récent < celui d'avant × (1 − fraction). */
+    fallingFraction: 0.03,
+    /**
+     * Stagnation (cahier des charges, section 5) : pas de nouveau record (à `risingFraction` près)
+     * depuis N jours, avec au moins M saisies sur cette période et un historique plus ancien.
+     */
+    stagnationDays: 42,
+    stagnationMinEntries: 3,
+    /** Saisies nécessaires avant d'afficher une tendance. */
+    trendMinEntries: 3,
+    /** L'alerte de stagnation n'est pas répétée pendant N jours. */
+    alertRepeatDays: 14,
+  },
+
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */
   nutrition: {
     reachedFraction: 0.9,

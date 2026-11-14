@@ -6,16 +6,16 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lot 1 (récap du matin) terminé.
+- État : lot 1 (récap du matin) terminé ; lot 2 (alertes, charge, nutrition) en test.
 
 ## Organisation du code
 
-- `src/app/` : les écrans (Accueil, Détail, Saisie du matin, Réglages, Diagnostic).
-- `src/sources/` : lecture de Health Connect et saisie manuelle.
-- `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
-- `src/db/` : base de données locale (SQLite).
+- `src/app/` : les écrans (Accueil, Détail, Saisie du matin, Réglages, Sources de données, Alertes, Diagnostic).
+- `src/sources/` : lecture de Health Connect (dont les repas de Suivi macro et les séances) et saisie manuelle.
+- `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation, charge d'entraînement, nutrition, alertes, export CSV). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
+- `src/db/` : base de données locale (SQLite), réglages de l'utilisateur, historique des alertes, export CSV et effacement.
 - `src/components/` : composants d'interface réutilisables.
-- `src/background/` : synchro en arrière-plan et notification du récap du matin.
+- `src/background/` : synchro en arrière-plan, moteur d'alertes et notification du récap du matin.
 - `assets/brand/` : logos SVG d'Aube, source de l'icône et de l'écran de démarrage.
 
 ## Installer le projet sur l'ordinateur

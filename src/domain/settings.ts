@@ -129,7 +129,13 @@ export const SETTINGS = {
   },
 
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */
-  nutrition: { reachedFraction: 0.9 },
+  nutrition: {
+    reachedFraction: 0.9,
+    /** Rappel du matin : calories de la veille à plus de ±N (part de la cible) de la cible. */
+    caloriesToleranceFraction: 0.1,
+    /** Fenêtre du compteur « Sous la cible · n jours sur 7 ». */
+    weekDays: 7,
+  },
 
   /** Alertes (cahier des charges, sections 4 F2 et 5). */
   alerts: {

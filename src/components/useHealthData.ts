@@ -10,6 +10,8 @@ import { runAlertEngine } from '@/background/alertEngine';
 import { loadAlertsOverview, type AlertsOverview } from '@/db/alerts';
 import { loadNights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
+import { loadYesterdayNutrition } from '@/db/nutritionData';
+import type { NutritionDayView } from '@/domain/nutrition';
 import { dayKey } from '@/domain/dates';
 import { buildLoadSummary, type LoadSummary } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
@@ -26,6 +28,8 @@ export type HealthData = {
   load: LoadSummary | null;
   /** Alerte du jour et alertes non lues (bouton Alertes de l'accueil). */
   alerts: AlertsOverview | null;
+  /** Nutrition d'hier par rapport aux cibles. */
+  nutrition: NutritionDayView | null;
   error: string | null;
   /** Première synchro du lancement terminée (l'écran Aube peut disparaître). */
   launched: boolean;
@@ -39,6 +43,7 @@ let state: HealthData = {
   recap: null,
   load: null,
   alerts: null,
+  nutrition: null,
   error: null,
   launched: false,
 };
@@ -57,13 +62,14 @@ export async function reloadFromDb(): Promise<void> {
     const nights = await loadNights();
     const now = new Date();
     const today = dayKey(now);
-    const [load, alerts] = await Promise.all([
+    const [load, alerts, nutrition] = await Promise.all([
       loadLoadInputs(nights, today, now)
         .then(buildLoadSummary)
         .catch(() => null),
       loadAlertsOverview(today).catch(() => null),
+      loadYesterdayNutrition(today, now).catch(() => null),
     ]);
-    setState({ nights, recap: buildRecap(nights, today), load, alerts, loading: false });
+    setState({ nights, recap: buildRecap(nights, today), load, alerts, nutrition, loading: false });
   } catch (e) {
     setState({ loading: false, error: message(e) });
   }

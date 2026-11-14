@@ -11,6 +11,7 @@ import { PrimaryButton } from '@/components/Buttons';
 import { Card, Pill } from '@/components/Card';
 import { formatLongDate } from '@/components/format';
 import { LoadCard } from '@/components/LoadCard';
+import { NutritionCard } from '@/components/NutritionCard';
 import { MetricTile } from '@/components/MetricTile';
 import { metricView } from '@/components/metricView';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -34,7 +35,7 @@ function ringOf(recap: MorningRecap | null): ComponentProps<typeof RecoveryRing>
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { loading, syncing, access, recap, nights, load, alerts, error, sync, reload } = useHealthData();
+  const { loading, syncing, access, recap, nights, load, alerts, nutrition, error, sync, reload } = useHealthData();
 
   // En revenant sur l'accueil (après une saisie par exemple), on relit la base.
   useFocusEffect(
@@ -120,6 +121,8 @@ export default function HomeScreen() {
           </View>
 
           <LoadCard load={load} />
+
+          <NutritionCard view={nutrition} />
         </>
       )}
 

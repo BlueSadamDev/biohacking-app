@@ -20,7 +20,16 @@ function topRoundedBar(x: number, y: number, w: number, h: number): string {
   return `M${x},${y + h} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + w - r},${y} Q${x + w},${y} ${x + w},${y + r} L${x + w},${y + h} Z`;
 }
 
-export function TrendChart({ data, unfavorableLabel }: { data: ChartData; unfavorableLabel: string }) {
+export function TrendChart({
+  data,
+  unfavorableLabel,
+  emptyText = 'Aucune nuit sur cette période',
+}: {
+  data: ChartData;
+  /** Absent : pas de légende « valeur défavorable » (aucune barre en ambre). */
+  unfavorableLabel?: string;
+  emptyText?: string;
+}) {
   const [width, setWidth] = useState(0);
   const values = data.points.map((p) => p.value).filter((v): v is number => v !== null);
   const refs = [
@@ -78,7 +87,7 @@ export function TrendChart({ data, unfavorableLabel }: { data: ChartData; unfavo
         )}
         {!hasData && (
           <View style={styles.empty}>
-            <AppText variant="small">Aucune nuit sur cette période</AppText>
+            <AppText variant="small">{emptyText}</AppText>
           </View>
         )}
       </View>
@@ -95,7 +104,7 @@ export function TrendChart({ data, unfavorableLabel }: { data: ChartData; unfavo
       <View style={styles.legend}>
         {data.band && <Legend color={tint(colors.info, 0.35)} text="Plage normale" />}
         {data.referenceLabel && <Legend color={colors.textMuted} text={data.referenceLabel} line />}
-        <Legend color={colors.mid} text={unfavorableLabel} />
+        {unfavorableLabel && <Legend color={colors.mid} text={unfavorableLabel} />}
         <Legend color={colors.good} text="Aujourd’hui" />
       </View>
     </View>

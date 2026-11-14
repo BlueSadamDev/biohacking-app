@@ -2,6 +2,15 @@
 // Aucun seuil ni aucune pondération ne doit être écrit en dur ailleurs :
 // pour changer une règle, on change une valeur ici.
 
+/** Règle d'interprétation de la composition corporelle (voir `bodyComposition.rules`). */
+export type BodyRule = {
+  weight?: readonly ('loss' | 'stable' | 'slow-gain' | 'fast-gain')[];
+  strength?: readonly ('up' | 'flat' | 'down')[];
+  protein?: readonly ('reached' | 'below')[];
+  tone: 'good' | 'mid' | 'neutral';
+  text: string;
+};
+
 export const SETTINGS = {
   /** Règle « une valeur par nuit » (cahier des charges, section 3). */
   night: {
@@ -178,6 +187,49 @@ export const SETTINGS = {
     trendMinEntries: 3,
     /** L'alerte de stagnation n'est pas répétée pendant N jours. */
     alertRepeatDays: 14,
+  },
+
+  /**
+   * Composition corporelle (lot 3) : poids lissé 7 j, tendance sur 28 jours,
+   * phrase d'interprétation croisant poids, force et protéines.
+   */
+  bodyComposition: {
+    /** Tendance : pente (droite des moindres carrés) du poids lissé sur N jours, en kg par semaine. */
+    trendDays: 28,
+    /** Pesées nécessaires sur ces N jours pour calculer la tendance. */
+    trendMinWeighings: 14,
+    /** Poids « stable » : pente entre −N et +N kg par semaine. */
+    stableKgPerWeek: 0.1,
+    /** Prise « rapide » au-delà de N kg par semaine (même seuil que l'alerte poids du lot 2). */
+    fastGainKgPerWeek: 0.35,
+    /** Protéines : moyenne sur N jours avec repas, « atteintes » à 90 % de la cible (nutrition.reachedFraction). */
+    proteinDays: 28,
+    proteinMinDays: 10,
+    /** Cible de poids « atteinte » à ± N kg. */
+    targetToleranceKg: 0.5,
+    /** Courbe du poids lissé sur la carte : N jours. */
+    chartDays: 56,
+    /**
+     * Règles d'interprétation, dans l'ordre : la première qui correspond donne la phrase.
+     * weight : tendance du poids ; strength : tendance de la force (null = inconnue) ;
+     * protein : 'reached' | 'below' | null (inconnu). Un critère absent accepte tout.
+     * tone : 'good' (vert), 'mid' (ambre) ou 'neutral' (gris).
+     */
+    rules: [
+      { weight: ['slow-gain'], strength: ['up'], protein: ['reached'], tone: 'good', text: 'Profil de prise de muscle : poids en hausse lente, force en hausse et protéines au rendez-vous.' },
+      { weight: ['slow-gain'], strength: ['up'], tone: 'mid', text: 'Prise lente et force en hausse : monte tes protéines pour que la prise soit surtout du muscle.' },
+      { weight: ['fast-gain'], strength: ['flat', 'down'], tone: 'mid', text: 'Prise plus rapide que ta force : surveille les calories.' },
+      { weight: ['fast-gain'], strength: ['up'], tone: 'mid', text: 'Ta force suit, mais la prise est rapide : retire environ 200 kcal par jour pour limiter le gras.' },
+      { weight: ['fast-gain'], tone: 'mid', text: 'Prise rapide : surveille les calories et saisis tes séances pour suivre ta force.' },
+      { weight: ['slow-gain'], strength: ['flat', 'down'], tone: 'mid', text: 'Poids en hausse sans progrès de force : vérifie ton programme et tes calories.' },
+      { weight: ['stable'], strength: ['up'], tone: 'good', text: 'Poids stable et force en hausse : tu gagnes en force sans prendre de gras.' },
+      { weight: ['stable'], strength: ['flat', 'down'], tone: 'neutral', text: 'Poids et force stables : pour prendre du muscle, ajoute environ 200 kcal par jour et vise la progression des charges.' },
+      { weight: ['loss'], strength: ['up', 'flat'], protein: ['reached'], tone: 'good', text: 'Poids en baisse en gardant ta force : tu perds surtout du gras.' },
+      { weight: ['loss'], strength: ['down'], tone: 'mid', text: 'Poids et force en baisse : remonte un peu les calories et garde tes protéines.' },
+      { weight: ['loss'], tone: 'neutral', text: 'Poids en baisse : garde tes protéines à la cible pour préserver ton muscle.' },
+      { weight: ['slow-gain'], tone: 'neutral', text: 'Prise lente : saisis tes séances de musculation pour savoir si ta force suit.' },
+      { weight: ['stable'], tone: 'neutral', text: 'Poids stable : saisis tes séances de musculation pour suivre ta force.' },
+    ] as readonly BodyRule[],
   },
 
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */

@@ -1,21 +1,23 @@
 // Onglet Sport (DESIGN.md, « Écrans du lot 3 »).
 // Ordre : « Semaine du … au … » + « Ta progression » → carte « Cette semaine » → carte « Force · 1RM estimé »
-// → bouton « Saisir ma séance de musculation ».
-// Les cartes Composition corporelle et Suggestion arrivent aux étapes suivantes.
+// → carte « Composition corporelle » → bouton « Saisir ma séance de musculation ».
+// La carte Suggestion arrive à l'étape suivante.
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { BodyCompositionCard } from '@/components/BodyCompositionCard';
 import { PrimaryButton } from '@/components/Buttons';
 import { formatWeekRange } from '@/components/format';
 import { Screen } from '@/components/Screen';
 import { SportWeekCard } from '@/components/SportWeekCard';
 import { StrengthCard } from '@/components/StrengthCard';
 import { useHealthData } from '@/components/useHealthData';
-import { loadSportWeek, type SportWeek } from '@/db/sportData';
+import { loadBodyComposition, loadSportWeek, type SportWeek } from '@/db/sportData';
 import { loadStrengthHistory } from '@/db/strength';
+import type { BodyComposition } from '@/domain/bodyComposition';
 import { dayKey } from '@/domain/dates';
 import { strengthProgress, type ExerciseProgress } from '@/domain/strength';
 
@@ -24,17 +26,20 @@ export default function SportScreen() {
   const { load, syncing, sync } = useHealthData();
   const [week, setWeek] = useState<SportWeek | null>(null);
   const [strength, setStrength] = useState<ExerciseProgress[] | null>(null);
+  const [body, setBody] = useState<BodyComposition | null>(null);
   const [error, setError] = useState(false);
 
   const refresh = useCallback(() => {
     const now = new Date();
-    Promise.all([loadSportWeek(now), loadStrengthHistory(now)])
-      .then(([w, entries]) => {
-        setWeek(w);
-        setStrength(strengthProgress(entries, dayKey(now)));
-        setError(false);
-      })
-      .catch(() => setError(true));
+    (async () => {
+      const [w, entries] = await Promise.all([loadSportWeek(now), loadStrengthHistory(now)]);
+      const progress = strengthProgress(entries, dayKey(now));
+      const composition = await loadBodyComposition(progress, now);
+      setWeek(w);
+      setStrength(progress);
+      setBody(composition);
+      setError(false);
+    })().catch(() => setError(true));
   }, []);
   useFocusEffect(refresh);
   // Après une synchro (la charge est recalculée), on relit aussi la semaine.
@@ -52,6 +57,7 @@ export default function SportScreen() {
         <>
           {week && <SportWeekCard week={week} load={load} />}
           {strength && <StrengthCard progress={strength} />}
+          {body && <BodyCompositionCard data={body} />}
         </>
       )}
       <PrimaryButton title="Saisir ma séance de musculation" onPress={() => router.push('/seance')} />

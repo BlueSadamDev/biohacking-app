@@ -3,6 +3,7 @@
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
+import type { Meal } from '@/domain/nutrition';
 
 import { getDb } from './database';
 
@@ -94,10 +95,39 @@ export async function loadSteps(sinceMs: number): Promise<StepsRecord[]> {
   );
 }
 
+export type ExerciseSession = { id: string; start: number; end: number; exerciseType: number; origin: string };
+
+export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]> {
+  const db = await getDb();
+  return db.getAllAsync<ExerciseSession>(
+    'SELECT id, start_ms AS start, end_ms AS "end", exercise_type AS exerciseType, origin FROM hc_exercise WHERE end_ms >= ? ORDER BY start_ms',
+    sinceMs,
+  );
+}
+
+export async function loadMeals(sinceMs: number): Promise<Meal[]> {
+  const db = await getDb();
+  return db.getAllAsync<Meal>(
+    `SELECT start_ms AS start, energy_kcal AS energyKcal, protein_g AS proteinG,
+            carbs_g AS carbsG, fat_g AS fatG, origin
+     FROM hc_nutrition WHERE start_ms >= ? ORDER BY start_ms`,
+    sinceMs,
+  );
+}
+
 /** Nombre de lignes par table (écran de diagnostic : des comptages, jamais de valeurs). */
 export async function countRows(): Promise<Record<string, number>> {
   const db = await getDb();
-  const tables = ['hc_sleep', 'hc_hrv', 'hc_resting_hr', 'hc_heart_rate', 'hc_steps', 'weight'];
+  const tables = [
+    'hc_sleep',
+    'hc_hrv',
+    'hc_resting_hr',
+    'hc_heart_rate',
+    'hc_steps',
+    'weight',
+    'hc_exercise',
+    'hc_nutrition',
+  ];
   const result: Record<string, number> = {};
   for (const table of tables) {
     const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`);

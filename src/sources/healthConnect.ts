@@ -1,7 +1,8 @@
 // Connecteur Health Connect (lecture seule, jamais d'écriture).
 // - Inventaire (écran de diagnostic) : types reçus par app d'origine, sans valeurs.
-// - Synchronisation (lot 1) : copie dans la base locale du sommeil, de la HRV,
-//   de la FC au repos, de la FC (pendant le sommeil), des pas et du poids.
+// - Synchronisation : copie dans la base locale du sommeil, des séances, de la HRV,
+//   de la FC au repos, de la FC (pendant le sommeil et les séances), des pas,
+//   du poids (lot 1) et des repas (lot 2).
 // Aucune valeur de santé n'est écrite dans les logs.
 
 import {
@@ -18,18 +19,22 @@ import {
   type RecordType,
 } from 'react-native-health-connect';
 
-import { getLastSync, loadSleeps, setLastSync, upsertRows } from '@/db/healthData';
-import type { SleepSession } from '@/domain/nightly';
+import { getLastSync, loadExercises, loadSleeps, setLastSync, upsertRows } from '@/db/healthData';
 import { SETTINGS } from '@/domain/settings';
 
-/** Types lus par l'app au lot 1 (les seuls dont la permission est demandée). */
+/**
+ * Types lus par l'app (les seuls dont la permission est demandée).
+ * Ordre important : sommeil et séances avant la FC continue, qui est filtrée sur eux.
+ */
 export const SYNC_TYPES = [
   { type: 'SleepSession', label: 'Sommeil' },
+  { type: 'ExerciseSession', label: "Séances d'exercice" },
   { type: 'HeartRateVariabilityRmssd', label: 'HRV (rMSSD)' },
   { type: 'RestingHeartRate', label: 'FC au repos' },
   { type: 'HeartRate', label: 'Fréquence cardiaque' },
   { type: 'Steps', label: 'Pas' },
   { type: 'Weight', label: 'Poids' },
+  { type: 'Nutrition', label: 'Nutrition (repas)' },
 ] as const satisfies readonly { type: RecordType; label: string }[];
 
 type SyncType = (typeof SYNC_TYPES)[number]['type'];
@@ -49,6 +54,7 @@ export const INVENTORY_TYPES: { type: RecordType; label: string }[] = [
   { type: 'OxygenSaturation', label: 'SpO2' },
   { type: 'Vo2Max', label: 'VO2max' },
   { type: 'Weight', label: 'Poids' },
+  { type: 'Nutrition', label: 'Nutrition (repas)' },
 ];
 
 /** Noms lisibles des apps d'origine connues (sinon on affiche le nom technique). */
@@ -88,7 +94,7 @@ export type TypeInventory = {
 const SYNC_TYPE_SET = new Set<string>(SYNC_TYPES.map(({ type }) => type));
 
 /**
- * Permissions demandées : lecture des types du lot 1, lecture de l'historique
+ * Permissions demandées : lecture des types synchronisés, lecture de l'historique
  * (plus de 30 jours) et lecture en arrière-plan (synchro quand l'app est fermée).
  */
 const READ_PERMISSIONS: (Permission | ReadHealthDataHistoryPermission | BackgroundAccessPermission)[] = [
@@ -250,9 +256,11 @@ function originOf(record: { metadata?: { dataOrigin?: string } }): string {
   return record.metadata?.dataOrigin ?? 'inconnue';
 }
 
-function insideAnySleep(time: number, sleeps: SleepSession[]): boolean {
-  return sleeps.some((s) => time >= s.start && time <= s.end);
+function insideAny(time: number, periods: { start: number; end: number }[]): boolean {
+  return periods.some((p) => time >= p.start && time <= p.end);
 }
+
+const grams = (mass?: { inGrams: number }) => (mass && Number.isFinite(mass.inGrams) ? mass.inGrams : null);
 
 /** Lit un type dans Health Connect et l'enregistre dans la base. Renvoie le nombre lu. */
 async function syncType(type: SyncType, since: number, until: number): Promise<number> {
@@ -267,6 +275,34 @@ async function syncType(type: SyncType, since: number, until: number): Promise<n
           ms(r.startTime),
           ms(r.endTime),
           JSON.stringify((r.stages ?? []).map((s) => ({ start: ms(s.startTime), end: ms(s.endTime), stage: s.stage }))),
+          originOf(r),
+        ]),
+      );
+      return records.length;
+    }
+    case 'ExerciseSession': {
+      const records = await readAll('ExerciseSession', since, until);
+      await upsertRows(
+        'hc_exercise',
+        ['id', 'start_ms', 'end_ms', 'exercise_type', 'origin'],
+        records.map((r) => [idOf(r, `exercise-${r.startTime}`), ms(r.startTime), ms(r.endTime), r.exerciseType, originOf(r)]),
+      );
+      return records.length;
+    }
+    case 'Nutrition': {
+      const records = await readAll('Nutrition', since, until);
+      await upsertRows(
+        'hc_nutrition',
+        ['id', 'start_ms', 'end_ms', 'energy_kcal', 'protein_g', 'carbs_g', 'fat_g', 'meal_type', 'origin'],
+        records.map((r) => [
+          idOf(r, `meal-${r.startTime}`),
+          ms(r.startTime),
+          ms(r.endTime),
+          r.energy && Number.isFinite(r.energy.inKilocalories) ? r.energy.inKilocalories : null,
+          grams(r.protein),
+          grams(r.totalCarbohydrate),
+          grams(r.totalFat),
+          r.mealType ?? null,
           originOf(r),
         ]),
       );
@@ -291,15 +327,19 @@ async function syncType(type: SyncType, since: number, until: number): Promise<n
       return records.length;
     }
     case 'HeartRate': {
-      // FC continue : on ne garde que les mesures prises pendant un sommeil déjà synchronisé.
+      // FC continue : on ne garde que les mesures prises pendant un sommeil ou une séance
+      // déjà synchronisés (volume limité ; la séance sert au calcul de la charge).
       const records = await readAll('HeartRate', since, until);
-      const sleeps = await loadSleeps(since - DAY_MS);
+      const periods: { start: number; end: number }[] = [
+        ...(await loadSleeps(since - DAY_MS)),
+        ...(await loadExercises(since - DAY_MS)),
+      ];
       const rows = records.flatMap((r) => {
         const id = idOf(r, `hr-${r.startTime}`);
         const origin = originOf(r);
         return r.samples
           .map((s) => ({ time: ms(s.time), bpm: s.beatsPerMinute }))
-          .filter((s) => insideAnySleep(s.time, sleeps))
+          .filter((s) => insideAny(s.time, periods))
           .map((s) => [id, s.time, s.bpm, origin]);
       });
       await upsertRows('hc_heart_rate', ['record_id', 'time_ms', 'bpm', 'origin'], rows);
@@ -333,10 +373,10 @@ async function syncType(type: SyncType, since: number, until: number): Promise<n
 }
 
 /**
- * Synchronise les types du lot 1 depuis Health Connect vers la base locale.
+ * Synchronise les types lus depuis Health Connect vers la base locale.
  * Première fois : `firstSyncDays` jours d'historique. Ensuite : depuis la dernière
  * synchro réussie, moins `overlapDays` jours (données arrivées en retard).
- * Le sommeil passe en premier : la FC continue est filtrée sur les sommeils connus.
+ * Le sommeil et les séances passent en premier : la FC continue est filtrée sur eux.
  */
 export async function syncHealthConnect(now: number = Date.now()): Promise<SyncTypeReport[]> {
   const granted = await getGrantedReadTypes();

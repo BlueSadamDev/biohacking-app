@@ -206,9 +206,11 @@ const TABLE_LABELS: Record<string, string> = {
   hc_sleep: 'Séances de sommeil',
   hc_hrv: 'Mesures HRV',
   hc_resting_hr: 'Mesures FC au repos',
-  hc_heart_rate: 'Mesures FC pendant le sommeil',
+  hc_heart_rate: 'Mesures FC (sommeil et séances)',
   hc_steps: 'Enregistrements de pas',
   weight: 'Pesées',
+  hc_exercise: "Séances d'exercice",
+  hc_nutrition: 'Repas',
 };
 
 function SyncSection({ state, onSync }: { state: SyncState; onSync: () => void }) {

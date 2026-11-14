@@ -2,13 +2,13 @@
 
 ## Contexte
 - L'utilisateur ne sait pas développer. Tout expliquer en français simple, sans jargon (ou expliquer chaque terme technique).
-- Projet : application Android personnelle de biohacking. Elle lit les données du bracelet Amazfit Helio Strap via Health Connect (source principale, automatique) et importe une fois par mois les séances de la montre Suunto 9 Peak Pro à partir de fichiers FIT exportés depuis l'app Suunto (la Suunto n'écrit pas dans Health Connect). Elle produit un récap du matin, des alertes et des insights sport. Usage strictement personnel : pas de Play Store, pas de comptes utilisateurs.
+- Projet : application Android personnelle de biohacking. Elle lit via Health Connect les données du bracelet Amazfit Helio Strap (source principale, automatique) et les repas écrits par l'app Suivi macro (calories et macros). La montre Suunto 9 Peak Pro n'écrit pas dans Health Connect : elle est hors périmètre jusqu'au lot 3. Elle produit un récap du matin, des alertes et des insights sport. Usage strictement personnel : pas de Play Store, pas de comptes utilisateurs.
 - Référence fonctionnelle : [docs/CAHIER_DES_CHARGES.md](docs/CAHIER_DES_CHARGES.md). Le lire avant chaque nouveau lot ou fonctionnalité. Ne rien développer qui n'y figure pas sans demander.
 - Livrable : un APK de test installable sur le téléphone (Android 14 ou plus récent).
 - Technologie imposée : Expo (React Native, TypeScript) et GitHub Actions pour les APK. Ne proposer aucun autre framework sans demander.
 - **Pas d'Expo Go** : la bibliothèque Health Connect contient du code natif, qu'Expo Go ne sait pas charger. Les tests se font avec un **build de développement** (une version de l'app qui contient `expo-dev-client` et se recharge depuis l'ordinateur pendant le développement), construit par GitHub Actions.
 - L'application utilise Expo Router : les écrans sont dans `src/app/`, le reste dans `src/` hors de `src/app/` :
-  - `src/sources/` : un connecteur par source de données (Health Connect, import FIT Suunto, import Suivi macro, saisie manuelle) ;
+  - `src/sources/` : un connecteur par source de données (Health Connect, saisie manuelle) ;
   - `src/domain/` : fusion des capteurs, normes personnelles, scores, règles d'alerte (calculs purs, sans interface) ;
   - `src/db/` : base de données locale ;
   - `src/components/` : composants d'interface réutilisables ;
@@ -27,17 +27,11 @@
 - `minSdkVersion` d'au moins 26, réglé via `expo-build-properties`.
 - Application en **lecture seule** : ne jamais écrire dans Health Connect.
 - Ne demander que les permissions de lecture nécessaires au lot en cours, et les lister dans le plan avant de les ajouter.
-- Toujours conserver l'**app d'origine** (`dataOrigin`) de chaque enregistrement. Aujourd'hui seule l'app Zepp (Helio Strap) écrit dans Health Connect, mais d'autres sources pourront s'ajouter : sans l'origine, la fusion serait impossible.
+- Toujours conserver l'**app d'origine** (`dataOrigin`) de chaque enregistrement. Aujourd'hui deux apps écrivent dans Health Connect : Zepp (Helio Strap) et Suivi macro (repas). D'autres sources pourront s'ajouter : sans l'origine, la fusion serait impossible.
 - Gérer proprement les cas « Health Connect absent », « permission refusée » et « aucune donnée », avec un message clair à l'écran.
 
-## Import FIT Suunto
-- Import manuel et groupé : l'utilisateur sélectionne plusieurs fichiers `.fit` d'un coup (`expo-document-picker`). La lecture se fait entièrement sur le téléphone, avec une bibliothèque JavaScript de lecture FIT à proposer et faire valider avant ajout.
-- Un fichier déjà importé n'est jamais importé deux fois (identifiant : date et heure de début de la séance).
-- Une séance Suunto qui chevauche une séance du Helio Strap à plus de 50 % la complète (GPS, distance, type précis) au lieu de créer un doublon.
-- Les fichiers `.fit` réels ne vont jamais dans le dépôt : tests uniquement sur des fichiers fictifs ou anonymisés.
-
 ## Règles de calcul
-- Ne jamais faire la moyenne de deux capteurs. Appliquer la table « source prioritaire / secours » du cahier des charges (section 3). Le Helio Strap, porté en permanence, est la référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances ; la Suunto (FIT) apporte le GPS, la distance et l'allure.
+- Ne jamais faire la moyenne de deux capteurs. Appliquer la table « source prioritaire / secours » du cahier des charges (section 3). Le Helio Strap, porté en permanence, est la référence pour le sommeil, la HRV, la FC au repos, les pas et la FC des séances. La Suunto (GPS, distance, allure) est hors périmètre jusqu'au lot 3.
 - Tous les seuils et pondérations sont dans un seul fichier de réglages (`src/domain/settings.ts`), jamais en dur dans le code.
 - Chaque règle de `src/domain/` a des tests automatiques (Jest, via `jest-expo`) sur données fictives. Après chaque modification d'un calcul, lancer les tests et dire en une phrase ce qu'ils vérifient.
 - Quand un calcul ne peut pas être fait (données manquantes, calibration en cours), l'app l'affiche au lieu d'inventer une valeur.
@@ -62,7 +56,7 @@ Quand une modification change ce que décrit DESIGN.md (couleur, bouton, écran)
 
 ## Dépendances
 - Pour ajouter un module Expo (SQLite, notifications, tâches de fond, etc.) : utiliser `npx expo install <nom>`, jamais `npm install`, afin de garantir la compatibilité avec le SDK.
-- Modules prévus (à ajouter seulement quand le lot en a besoin, avec validation) : `react-native-health-connect`, `expo-build-properties`, `expo-dev-client`, `expo-sqlite`, `expo-notifications`, `expo-background-task` + `expo-task-manager`, `expo-document-picker` (import du JSON Suivi macro), `jest-expo`.
+- Modules prévus (à ajouter seulement quand le lot en a besoin, avec validation) : `react-native-health-connect`, `expo-build-properties`, `expo-dev-client`, `expo-sqlite`, `expo-notifications`, `expo-background-task` + `expo-task-manager`, `jest-expo`.
 - Tâches de fond : `expo-background-task` (minimum 15 minutes entre deux exécutions sur Android). Synchro au plus une fois par heure.
 - Ne jamais ajouter manuellement `expo-modules-core` ni `expo-modules-autolinking` dans `package.json` : ce sont des dépendances internes gérées par Expo. Lancer `npx expo install --fix` si nécessaire.
 - **Dependabot** : ne jamais fusionner une PR Dependabot qui touche les dépendances npm (Dependabot ne connaît pas les versions attendues par le SDK Expo). À la place : `npx expo install --check`, puis `npx expo install --fix` sur une branche dédiée, et fermer la PR Dependabot avec une explication. Les PR Dependabot sur les actions GitHub (`.github/workflows`) peuvent être fusionnées après un build réussi.

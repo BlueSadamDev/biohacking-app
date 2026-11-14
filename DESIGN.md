@@ -79,7 +79,75 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 1. **Accueil – récap du matin** : en-tête aube + date, titre, accès au diagnostic (bouton rond), anneau + pastille, carte Recommandation, 3 tuiles (HRV, FC au repos, Sommeil), jauge de charge 7 j / 28 j, bouton « Saisir poids et ressenti », navigation.
 2. **Détail d'un indicateur** (HRV d'abord, même gabarit pour FC au repos et sommeil) : retour, valeur + pastille d'état + moyenne 7 j, onglets de période, graphique avec plage normale et légende, carte « Ce qui fait ton score de récupération » (contributions +, =, −).
 3. **Saisie du matin** : poids (champ numérique, kg), ressentis Énergie / Courbatures / Humeur (1 à 5), note libre facultative, bouton Enregistrer.
-4. **Sources de données** : calibration des normes (jauge « n / 28 jours »), carte Helio Strap (dernière synchro, types reçus), carte Suunto (dernier import FIT, nombre de séances, bouton « Importer des FIT »), poids et Suivi macro, bouton « Synchroniser maintenant ».
+4. **Sources de données** : calibration des normes (jauge « n / 28 jours »), carte Helio Strap (dernière synchro, types reçus), carte Suunto (« hors périmètre jusqu'au lot 3 », sans bouton), poids et Suivi macro (via Health Connect), bouton « Synchroniser maintenant ».
+
+## Écrans du lot 2
+
+### Nouveaux composants
+- **Bouton Alertes (en-tête de l'accueil)** : rond 44 × 44, fond `surface`,
+  icône cloche en trait. Pastille de 9 px en haut à droite, couleur du
+  niveau de la dernière alerte non lue (`mid` ou `low`), absente s'il n'y
+  en a pas. aria-label : « Alertes : n nouvelles ».
+- **Carte alerte du jour** (accueil) : fond `surface`, rayon 14, point de
+  8 px de la couleur du niveau, puis « Alerte · <thème> » (12/600, couleur
+  du niveau), titre (14/600), constat en une ligne (13, `textMuted`),
+  chevron à droite. Toute la carte ouvre l'historique.
+- **Carte alerte (historique)** : fond `surface`, rayon 16. Ligne 1 :
+  « <niveau> · <thème> » (12/600, couleur du niveau) et la date à droite.
+  Puis titre (15/600), « Constat · … » et « Cause probable · … »
+  (13, libellés en `textMuted`, texte en `textSoft`), et l'action en
+  13/600 `text`.
+- **Niveaux d'alerte** : « À surveiller » = `mid`, « Important » = `low`.
+  Toujours écrits en toutes lettres.
+- **Filtres** (pastilles) : hauteur 36, rayon pilule. Actif : fond `text`,
+  texte `bg`. Inactif : contour `border`, texte `textSoft`.
+- **Barre de progression nutrition** : comme la jauge, couleur selon la
+  cible : `good` si atteinte (au moins 90 % de la cible), `mid` si en
+  dessous, avec une ligne d'état sous la barre (« Dans la cible »,
+  « Sous la cible · n jours sur 7 cette semaine »).
+- **Ligne de réglage** : hauteur minimale 52, libellé à gauche (14),
+  valeur à droite : champ numérique 96 × 40 (contour `border`, fond `bg`,
+  aligné à droite) suivi de l'unité (13, `textMuted`), ou valeur en
+  Space Grotesk 15/600. Séparateur 1 px `surfaceAlt` entre les lignes,
+  lignes regroupées dans une carte `surface` de rayon 16, titre de groupe
+  en libellé de section au-dessus.
+- **Interrupteur** : 52 × 32, rayon 16, bouton rond de 24 px `text` ;
+  activé = piste `good`, bouton à droite ; désactivé = piste `border`.
+  role="switch" et aria-checked.
+
+### Accueil (lot 2)
+L'écran défile. Ordre : en-tête (aube + date, bouton Alertes) → anneau et
+pastille → Recommandation du jour → carte alerte du jour (seulement s'il
+y en a une, et jamais pendant la calibration) → 3 tuiles de la nuit →
+jauge de charge 7 j / 28 j (texte d'état coloré : `good` équilibrée,
+`mid` en hausse ou sous-charge, `low` au-dessus de 1,5) → carte
+« Nutrition d'hier » (protéines puis calories avec leurs barres, puis
+glucides, lipides et nombre de repas en petit ; mention « via Suivi
+macro » en haut à droite) → bouton « Saisir poids et ressenti » →
+navigation.
+
+### Historique des alertes
+Retour + titre « Alertes », filtres Toutes / Récupération / Charge /
+Nutrition, liste des cartes alerte de la plus récente à la plus ancienne.
+En bas, centré (12, `textMuted`) : « Au plus 2 alertes par jour · silence
+de <plage> » et « Ces alertes ne remplacent pas un avis médical. »
+Pendant la calibration, un message unique à la place de la liste :
+« Les alertes s'activeront après 28 jours de données (n / 28). »
+
+### Réglages
+Accessible par l'onglet Réglages. Groupes, dans l'ordre :
+1. **Mes cibles** : poids visé (kg, vide = « à définir »), protéines
+   (g/kg, défaut 1,8), calories par jour (kcal), séances par semaine.
+   Sous le groupe : « Soit <n> g de protéines par jour avec ton poids
+   actuel (moyenne 7 j). »
+2. **Profil cardiaque** : FC max (bpm), estimée par défaut. Sous le
+   groupe : « Sert au calcul de la charge. Laisse la valeur estimée si tu
+   ne connais pas la tienne. »
+3. **Notifications** : heure du récap (défaut 7:30), plage silencieuse
+   (défaut 22:00 – 7:00), interrupteur « Alertes ».
+4. **Données** : « Sources de données » (ouvre l'écran Sources),
+   « Exporter mes données (CSV) », « Effacer toutes les données » en
+   `low` avec une confirmation obligatoire.
 
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.

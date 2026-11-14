@@ -18,7 +18,7 @@ import { colors, fonts } from './theme';
 /** Haut de l'échelle de la jauge (ratio). */
 const GAUGE_MAX = 2;
 
-function statusView(status: LoadStatus): { text: string; color: string } {
+export function statusView(status: LoadStatus): { text: string; color: string } {
   switch (status) {
     case 'balanced':
       return { text: 'Charge équilibrée', color: colors.good };

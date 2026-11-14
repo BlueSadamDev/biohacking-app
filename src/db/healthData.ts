@@ -137,6 +137,7 @@ export async function countRows(): Promise<Record<string, number>> {
     'weight',
     'hc_exercise',
     'hc_nutrition',
+    'strength_set',
   ];
   const result: Record<string, number> = {};
   for (const table of tables) {

@@ -2,6 +2,15 @@
 // Aucun seuil ni aucune pondération ne doit être écrit en dur ailleurs :
 // pour changer une règle, on change une valeur ici.
 
+/** Règle d'interprétation de la composition corporelle (voir `bodyComposition.rules`). */
+export type BodyRule = {
+  weight?: readonly ('loss' | 'stable' | 'slow-gain' | 'fast-gain')[];
+  strength?: readonly ('up' | 'flat' | 'down')[];
+  protein?: readonly ('reached' | 'below')[];
+  tone: 'good' | 'mid' | 'neutral';
+  text: string;
+};
+
 export const SETTINGS = {
   /** Règle « une valeur par nuit » (cahier des charges, section 3). */
   night: {
@@ -90,6 +99,9 @@ export const SETTINGS = {
     caloriesMax: 6000,
     sessionsPerWeekDefault: 4,
     sessionsPerWeekMax: 14,
+    /** Minutes de zone 2 visées par semaine (lot 3). */
+    zone2MinutesDefault: 120,
+    zone2MinutesMax: 1500,
     /** Poids moyen utilisé pour la cible de protéines : moyenne sur N jours. */
     weightAverageDays: 7,
   },
@@ -126,6 +138,131 @@ export const SETTINGS = {
     underMax: 0.8,
     balancedMax: 1.3,
     highMin: 1.5,
+  },
+
+  /** Zones cardiaques (lot 3) : temps passé dans chaque zone pendant les séances, FC du Helio Strap. */
+  heartZones: {
+    /**
+     * Bas des zones 2 à 5, en part de la FC max : Z2 dès 60 %, Z3 dès 70 %, Z4 dès 80 %, Z5 dès 90 %.
+     * Sous 60 % : zone 1 (échauffement et repos entre les séries compris).
+     */
+    lowerBounds: [0.6, 0.7, 0.8, 0.9] as readonly number[],
+    /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
+    maxSampleGapSeconds: 120,
+    /** Séance sans assez de FC : moins de N mesures ou moins de cette part de la durée couverte. */
+    minSamples: 5,
+    minCoverage: 0.5,
+  },
+
+  /** Musculation (lot 3) : saisie de la meilleure série des 3 exercices clés, 1RM estimé (Epley). */
+  strength: {
+    /**
+     * Types de séance Health Connect qui déclenchent la saisie : musculation (70),
+     * haltérophilie (81), poids du corps (13), fractionné intense (36).
+     */
+    sessionTypes: [70, 81, 13, 36] as readonly number[],
+    /** Sélecteurs de la saisie : charge (kg) et répétitions. */
+    loadStepKg: 2.5,
+    loadMinKg: 2.5,
+    loadMaxKg: 400,
+    /** Charge proposée la première fois (barre olympique vide). */
+    loadDefaultKg: 20,
+    repsMin: 1,
+    repsMax: 12,
+    repsDefault: 5,
+    /** Historique affiché (mini-barres) : N semaines. */
+    historyWeeks: 12,
+    /** « En hausse » : meilleur 1RM des N derniers jours ≥ celui des N jours d'avant × (1 + fraction). */
+    recentDays: 21,
+    risingFraction: 0.01,
+    /** « En baisse » : meilleur 1RM récent < celui d'avant × (1 − fraction). */
+    fallingFraction: 0.03,
+    /**
+     * Stagnation (cahier des charges, section 5) : pas de nouveau record (à `risingFraction` près)
+     * depuis N jours, avec au moins M saisies sur cette période et un historique plus ancien.
+     */
+    stagnationDays: 42,
+    stagnationMinEntries: 3,
+    /** Saisies nécessaires avant d'afficher une tendance. */
+    trendMinEntries: 3,
+    /** L'alerte de stagnation n'est pas répétée pendant N jours. */
+    alertRepeatDays: 14,
+  },
+
+  /**
+   * Composition corporelle (lot 3) : poids lissé 7 j, tendance sur 28 jours,
+   * phrase d'interprétation croisant poids, force et protéines.
+   */
+  bodyComposition: {
+    /** Tendance : pente (droite des moindres carrés) du poids lissé sur N jours, en kg par semaine. */
+    trendDays: 28,
+    /** Pesées nécessaires sur ces N jours pour calculer la tendance. */
+    trendMinWeighings: 14,
+    /** Poids « stable » : pente entre −N et +N kg par semaine. */
+    stableKgPerWeek: 0.1,
+    /** Prise « rapide » au-delà de N kg par semaine (même seuil que l'alerte poids du lot 2). */
+    fastGainKgPerWeek: 0.35,
+    /** Protéines : moyenne sur N jours avec repas, « atteintes » à 90 % de la cible (nutrition.reachedFraction). */
+    proteinDays: 28,
+    proteinMinDays: 10,
+    /** Cible de poids « atteinte » à ± N kg. */
+    targetToleranceKg: 0.5,
+    /** Courbe du poids lissé sur la carte : N jours. */
+    chartDays: 56,
+    /**
+     * Règles d'interprétation, dans l'ordre : la première qui correspond donne la phrase.
+     * weight : tendance du poids ; strength : tendance de la force (null = inconnue) ;
+     * protein : 'reached' | 'below' | null (inconnu). Un critère absent accepte tout.
+     * tone : 'good' (vert), 'mid' (ambre) ou 'neutral' (gris).
+     */
+    rules: [
+      { weight: ['slow-gain'], strength: ['up'], protein: ['reached'], tone: 'good', text: 'Profil de prise de muscle : poids en hausse lente, force en hausse et protéines au rendez-vous.' },
+      { weight: ['slow-gain'], strength: ['up'], tone: 'mid', text: 'Prise lente et force en hausse : monte tes protéines pour que la prise soit surtout du muscle.' },
+      { weight: ['fast-gain'], strength: ['flat', 'down'], tone: 'mid', text: 'Prise plus rapide que ta force : surveille les calories.' },
+      { weight: ['fast-gain'], strength: ['up'], tone: 'mid', text: 'Ta force suit, mais la prise est rapide : retire environ 200 kcal par jour pour limiter le gras.' },
+      { weight: ['fast-gain'], tone: 'mid', text: 'Prise rapide : surveille les calories et saisis tes séances pour suivre ta force.' },
+      { weight: ['slow-gain'], strength: ['flat', 'down'], tone: 'mid', text: 'Poids en hausse sans progrès de force : vérifie ton programme et tes calories.' },
+      { weight: ['stable'], strength: ['up'], tone: 'good', text: 'Poids stable et force en hausse : tu gagnes en force sans prendre de gras.' },
+      { weight: ['stable'], strength: ['flat', 'down'], tone: 'neutral', text: 'Poids et force stables : pour prendre du muscle, ajoute environ 200 kcal par jour et vise la progression des charges.' },
+      { weight: ['loss'], strength: ['up', 'flat'], protein: ['reached'], tone: 'good', text: 'Poids en baisse en gardant ta force : tu perds surtout du gras.' },
+      { weight: ['loss'], strength: ['down'], tone: 'mid', text: 'Poids et force en baisse : remonte un peu les calories et garde tes protéines.' },
+      { weight: ['loss'], tone: 'neutral', text: 'Poids en baisse : garde tes protéines à la cible pour préserver ton muscle.' },
+      { weight: ['slow-gain'], tone: 'neutral', text: 'Prise lente : saisis tes séances de musculation pour savoir si ta force suit.' },
+      { weight: ['stable'], tone: 'neutral', text: 'Poids stable : saisis tes séances de musculation pour suivre ta force.' },
+    ] as readonly BodyRule[],
+  },
+
+  /** Suggestions d'autres sports (lot 3) : combler les manques, avec des activités faciles à Paris. */
+  suggestions: {
+    /** Endurance douce : minutes de zone 2 sur les N derniers jours (aujourd'hui compris), comparées à la cible hebdomadaire. */
+    zone2WindowDays: 7,
+    /** Mobilité : aucune séance de ces types (yoga 83, étirements 71, pilates 48) depuis N jours. */
+    mobilityTypes: [83, 71, 48] as readonly number[],
+    mobilityWindowDays: 21,
+    /** Quand plusieurs manques : ordre de priorité (le premier donne la suggestion principale). */
+    gapPriority: ['endurance', 'mobility'] as readonly ('endurance' | 'mobility')[],
+  },
+
+  /**
+   * Liens observés (lot 3, onglet Tendances) : pour chaque paire, on compare deux groupes de jours
+   * (situation étudiée / situation de référence) sur le résultat qui suit.
+   * Force du lien = écart des moyennes ÷ écart-type commun (« d de Cohen »).
+   */
+  correlations: {
+    windowDays: 90,
+    /** Jours comparables nécessaires (tous groupes confondus), et minimum par groupe. */
+    minDays: 20,
+    minPerGroup: 5,
+    /** Régularité : même sens dans la 1re et la 2e moitié de la période, avec au moins N jours par groupe dans chaque moitié. */
+    minPerGroupPerHalf: 2,
+    /** Seuils de force (valeur absolue du d de Cohen). Sous `weak`, le lien n'est pas affiché. */
+    weak: 0.3,
+    moderate: 0.5,
+    strong: 0.8,
+    /** Au plus N liens affichés, du plus fort au plus faible. */
+    maxShown: 3,
+    /** Séance « du soir » : commencée à partir de cette heure. */
+    lateSessionHour: 20,
   },
 
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */

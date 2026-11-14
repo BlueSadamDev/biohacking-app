@@ -11,8 +11,8 @@ import { AppText as Text } from '@/components/AppText';
 import { BackHeader, Screen } from '@/components/Screen';
 import { colors, fonts } from '@/components/theme';
 
-import { countRows, loadNightInputs } from '@/db/healthData';
-import { summarizeNights, type NightsSummary } from '@/domain/diagnostic';
+import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
+import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
 import { computeNights } from '@/domain/nightly';
 import {
   askReadPermissions,
@@ -114,6 +114,14 @@ export default function InventoryScreen() {
     fetchScreenState().then(setState);
   }, []);
 
+  // Séances par type (base locale, 90 jours) : relu après chaque synchro.
+  const [types, setTypes] = useState<SessionTypeCount[] | null>(null);
+  useEffect(() => {
+    loadExercises(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      .then((s) => setTypes(sessionTypeCounts(s)))
+      .catch(() => setTypes(null));
+  }, [sync]);
+
   return (
     <Screen bottomInset>
       <BackHeader title="Diagnostic" onBack={() => router.back()} />
@@ -148,6 +156,7 @@ export default function InventoryScreen() {
       {state.kind === 'ready' && (
         <View style={styles.block}>
           <SyncSection state={sync} onSync={startSync} />
+          <SessionTypesSection types={types} />
           <Text style={styles.section}>Inventaire</Text>
           <Text style={styles.meta}>Lu le {formatDate(state.readAt)}</Text>
           <Button title="Actualiser" onPress={load} />
@@ -211,7 +220,29 @@ const TABLE_LABELS: Record<string, string> = {
   weight: 'Pesées',
   hc_exercise: "Séances d'exercice",
   hc_nutrition: 'Repas',
+  strength_set: 'Séries de musculation saisies',
 };
+
+/** Séances par type : sert à vérifier sous quel type Zepp enregistre chaque sport. */
+function SessionTypesSection({ types }: { types: SessionTypeCount[] | null }) {
+  if (types === null) return null;
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>Séances par type (90 jours)</Text>
+      <Text style={styles.muted}>
+        Les types marqués « saisie » proposent la saisie de musculation. Un type manquant se règle dans
+        src/domain/settings.ts.
+      </Text>
+      {types.length === 0 && <Text>Aucune séance dans la base.</Text>}
+      {types.map((t) => (
+        <Text key={t.type}>
+          {t.label} ({t.type}) : {t.count}
+          {t.strength ? ' · saisie' : ''}
+        </Text>
+      ))}
+    </View>
+  );
+}
 
 function SyncSection({ state, onSync }: { state: SyncState; onSync: () => void }) {
   return (

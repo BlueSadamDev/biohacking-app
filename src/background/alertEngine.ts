@@ -11,6 +11,7 @@ import { saveAlerts, loadAlertHistory } from '@/db/alerts';
 import { getUserSettings } from '@/db/appSettings';
 import { loadMeals, loadNights, loadWeights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
+import { loadStrengthHistory } from '@/db/strength';
 import { evaluateAlerts, LEVEL_LABEL, selectAlerts, type SelectedAlert } from '@/domain/alerts';
 import { calibrationStatus } from '@/domain/calibration';
 import { weightByDay } from '@/domain/daily';
@@ -62,9 +63,10 @@ async function run(now: Date): Promise<SelectedAlert[]> {
   const loadHistoryDays = loadInputs.historyStart ? daysBetween(loadInputs.historyStart, today) + 1 : 0;
 
   const weeks = 7 * (a.weightWeeks + 1) + 1;
-  const [weights, meals] = await Promise.all([
+  const [weights, meals, strength] = await Promise.all([
     loadWeights(now.getTime() - weeks * DAY_MS),
     loadMeals(now.getTime() - (a.proteinWindowDays + 2) * DAY_MS),
+    loadStrengthHistory(now),
   ]);
 
   const candidates = evaluateAlerts({
@@ -74,6 +76,7 @@ async function run(now: Date): Promise<SelectedAlert[]> {
     weights: weightByDay(weights),
     nutrition: nutritionByDay(meals),
     proteinGPerKg: user.proteinGPerKg,
+    strength,
     today,
   });
 

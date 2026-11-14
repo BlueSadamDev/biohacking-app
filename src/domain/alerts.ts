@@ -17,6 +17,7 @@ import type { TimeOfDay } from './notification';
 import type { DayNutrition } from './nutrition';
 import { averageWeight, proteinTargetGrams } from './profile';
 import { SETTINGS, type Settings } from './settings';
+import { EXERCISE_LABEL, stagnantExercises, type StrengthEntry } from './strength';
 
 export type AlertLevel = 'watch' | 'important';
 export type AlertTheme = 'recovery' | 'load' | 'nutrition';
@@ -30,7 +31,8 @@ export type AlertRule =
   | 'bedtime-irregular'
   | 'load-under'
   | 'protein-low'
-  | 'weight-trend';
+  | 'weight-trend'
+  | 'strength-stagnation';
 
 /** Ordre de priorité quand il faut choisir (au plus 2 par jour). */
 const PRIORITY: AlertRule[] = [
@@ -44,6 +46,7 @@ const PRIORITY: AlertRule[] = [
   'bedtime-irregular',
   'load-under',
   'weight-trend',
+  'strength-stagnation',
 ];
 
 export type Alert = {
@@ -79,6 +82,8 @@ export type AlertInputs = {
   weights: Map<string, DailyWeight>;
   nutrition: Map<string, DayNutrition>;
   proteinGPerKg: number;
+  /** Saisies de musculation (lot 3) ; absentes = pas de règle de stagnation. */
+  strength?: StrengthEntry[];
   today: string;
 };
 
@@ -126,7 +131,7 @@ function ratioOn(input: AlertInputs, date: string, settings: Settings): number |
 }
 
 /** Minutes depuis 18 h la veille : rend comparables les couchers avant et après minuit. */
-function bedtimeMinutes(start: number): number {
+export function bedtimeMinutes(start: number): number {
   const d = new Date(start);
   return (((d.getHours() - 18) * 60 + d.getMinutes()) % 1440 + 1440) % 1440;
 }
@@ -299,7 +304,28 @@ export function evaluateAlerts(input: AlertInputs, settings: Settings = SETTINGS
     }
   }
 
+  // Force : stagnation sur 6 semaines (lot 3).
+  const stagnant = input.strength ? stagnantExercises(input.strength, today, settings) : [];
+  if (stagnant.length > 0) {
+    const names = stagnant.map((e) => EXERCISE_LABEL[e].toLowerCase());
+    const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`;
+    const weeks = Math.round(settings.strength.stagnationDays / 7);
+    result.push(
+      make('strength-stagnation', today, 'watch', 'load', {
+        title: 'Force qui stagne',
+        finding: `Pas de nouveau record en ${list} depuis ${weeks} semaines.`,
+        cause: 'Le même programme depuis trop longtemps : ton corps s’y est habitué.',
+        action: 'Change de programme pour 4 à 6 semaines : autres plages de répétitions, variantes ou volume.',
+      }),
+    );
+  }
+
   return result.sort((x, y) => PRIORITY.indexOf(x.rule) - PRIORITY.indexOf(y.rule));
+}
+
+/** Jours sans répétition d'une même règle (la stagnation évolue lentement : pas de rappel tous les 3 jours). */
+function repeatDaysFor(rule: AlertRule, settings: Settings): number {
+  return rule === 'strength-stagnation' ? settings.strength.alertRepeatDays : settings.alerts.repeatDays;
 }
 
 // ---------------------------------------------------------------------------
@@ -349,7 +375,8 @@ export function selectAlerts(candidates: Alert[], ctx: SelectionContext, setting
   if (!ctx.calibrationDone || !ctx.alertsEnabled) return [];
 
   const fresh = candidates.filter((c) => {
-    const recent = ctx.history.filter((h) => h.rule === c.rule && h.date > addDays(ctx.today, -a.repeatDays) && h.date <= ctx.today);
+    const repeat = repeatDaysFor(c.rule, settings);
+    const recent = ctx.history.filter((h) => h.rule === c.rule && h.date > addDays(ctx.today, -repeat) && h.date <= ctx.today);
     return recent.every((h) => rank(c.level) > rank(h.level));
   });
 

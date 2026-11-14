@@ -16,6 +16,13 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / (24 * 60 * 60 * 1000));
 }
 
+/** Lundi de la semaine qui contient ce jour (clé de jour). */
+export function startOfWeek(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const weekday = new Date(y, m - 1, d).getDay(); // 0 = dimanche
+  return addDays(key, -((weekday + 6) % 7));
+}
+
 /** Ajoute (ou retire) des jours calendaires à une clé de jour. */
 export function addDays(key: string, days: number): string {
   const [y, m, d] = key.split('-').map(Number);

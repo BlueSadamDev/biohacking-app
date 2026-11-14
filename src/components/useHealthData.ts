@@ -7,6 +7,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { scheduleMorningNotifications } from '@/background/morningNotification';
 import { runAlertEngine } from '@/background/alertEngine';
+import { runStrengthReminder } from '@/background/strengthReminder';
 import { loadAlertsOverview, type AlertsOverview } from '@/db/alerts';
 import { loadNights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
@@ -88,6 +89,7 @@ export async function syncNow(): Promise<void> {
   } finally {
     // Alertes calculées sur les données fraîches (sans effet pendant la calibration).
     await runAlertEngine().catch(() => undefined);
+    await runStrengthReminder().catch(() => undefined);
     await reloadFromDb();
     setState({ syncing: false, launched: true });
     // Le texte de la notification du matin suit les dernières données.

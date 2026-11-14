@@ -90,7 +90,7 @@ export default function SettingsScreen() {
   function confirmErase() {
     Alert.alert(
       'Effacer toutes les données ?',
-      'Tes saisies (poids, ressenti) seront perdues définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
+      'Tes saisies (poids, ressenti, musculation) seront perdues définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -180,6 +180,16 @@ export default function SettingsScreen() {
             parse={(s) => parseNumber(s, 0, t.sessionsPerWeekMax)}
             format={asInt}
             onCommit={(v) => save('sessionsPerWeek', v ?? t.sessionsPerWeekDefault)}
+          />
+        </SettingRow>
+        <SettingRow label="Zone 2 par semaine">
+          <NumberField
+            label="Minutes de zone 2 par semaine"
+            value={user.zone2TargetMinutes}
+            unit="min"
+            parse={(s) => parseNumber(s, 0, t.zone2MinutesMax)}
+            format={asInt}
+            onCommit={(v) => save('zone2TargetMinutes', v ?? t.zone2MinutesDefault)}
           />
         </SettingRow>
       </SettingsGroup>

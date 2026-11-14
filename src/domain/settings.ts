@@ -333,6 +333,26 @@ export const SETTINGS = {
     daysAhead: 7,
   },
 
+  /** Coach IA local (lot 4) : modèle attendu, choisi au test de faisabilité (docs/RAPPORT_LOT_4_MODELE.md). */
+  coach: {
+    model: {
+      label: 'LFM2.5 1.2B Instruct (Q4_K_M)',
+      fileName: 'LFM2.5-1.2B-Instruct-Q4_K_M.gguf',
+      /** Taille exacte du fichier (octets) : premier contrôle, instantané. */
+      sizeBytes: 730_895_168,
+      /** Empreinte SHA-256 du fichier : second contrôle (fichier exact et intact). */
+      sha256: 'b1b3de114215d9507409a662a501a631095a479a419584e8a2ded6304b19b4f5',
+      /** Adresse figée (version précise), affichée pour le téléchargement depuis l'ordinateur. */
+      downloadUrl:
+        'https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-Q4_K_M.gguf',
+    },
+    /**
+     * Espace libre demandé avant l'import : le sélecteur copie d'abord le fichier,
+     * puis il est déplacé dans l'espace privé de l'app. Marge en plus de la taille du fichier (octets).
+     */
+    freeSpaceMarginBytes: 300 * 1024 * 1024,
+  },
+
   /** Synchronisation Health Connect. */
   sync: {
     /** Synchro en arrière-plan : au plus une fois par N minutes (Android impose 15 minimum). */

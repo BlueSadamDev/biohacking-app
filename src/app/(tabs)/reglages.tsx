@@ -264,6 +264,10 @@ export default function SettingsScreen() {
         </SettingRow>
       </SettingsGroup>
 
+      <SettingsGroup title="Coach">
+        <SettingLink label="Modèle du coach" onPress={() => router.push('/coach-modele')} />
+      </SettingsGroup>
+
       <SettingsGroup title="Données" footer={message ?? undefined}>
         <SettingLink label="Sources de données" onPress={() => router.push('/sources')} />
         <SettingLink

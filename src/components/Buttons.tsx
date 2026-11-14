@@ -30,14 +30,19 @@ export function PrimaryButton({ title, onPress, disabled, busy, done }: ButtonPr
   );
 }
 
-export function SecondaryButton({ title, onPress, disabled, busy }: ButtonProps) {
+/** Bouton secondaire. `color` : texte d'action sensible (ex. `low` pour une suppression). */
+export function SecondaryButton({ title, onPress, disabled, busy, color }: ButtonProps & { color?: string }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || busy}
       style={({ pressed }) => [styles.secondary, (pressed || disabled) && { opacity: 0.7 }]}>
-      {busy ? <ActivityIndicator color={colors.text} /> : <AppText style={styles.secondaryText}>{title}</AppText>}
+      {busy ? (
+        <ActivityIndicator color={color ?? colors.text} />
+      ) : (
+        <AppText style={[styles.secondaryText, color ? { color } : null]}>{title}</AppText>
+      )}
     </Pressable>
   );
 }

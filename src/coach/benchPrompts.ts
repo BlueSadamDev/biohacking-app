@@ -1,4 +1,4 @@
-// Banc d'essai du coach (lot 4, étape C0) : TEMPORAIRE, retiré après le choix du modèle.
+// Banc d'essai du coach (lot 4) : TEMPORAIRE, retiré à la fin du lot.
 // Contient les 3 demandes types et un résumé chiffré FICTIF (aucune vraie donnée de santé),
 // plus de petits calculs pour mesurer la vitesse et repérer les nombres inventés.
 

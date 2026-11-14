@@ -98,6 +98,16 @@ export function BellIcon(props: IconProps) {
   );
 }
 
+/** Coach (lot 4) : cadenas, « tout reste sur ton téléphone ». */
+export function LockIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M6 11h12v9H6z" />
+      <Path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+    </Icon>
+  );
+}
+
 /** Chevron vers la droite. */
 export function ChevronIcon(props: IconProps) {
   return (

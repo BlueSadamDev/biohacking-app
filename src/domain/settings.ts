@@ -79,6 +79,46 @@ export const SETTINGS = {
   /** Saisie du matin : poids accepté (kg). */
   entry: { weightMinKg: 30, weightMaxKg: 250 },
 
+  /** Cibles personnelles (écran Réglages) : valeurs par défaut et valeurs acceptées. */
+  targets: {
+    /** Protéines par kg de poids et par jour. */
+    proteinGPerKgDefault: 1.8,
+    proteinGPerKgMin: 0.5,
+    proteinGPerKgMax: 4,
+    /** Calories par jour : pas de valeur par défaut (« à définir »). */
+    caloriesMin: 800,
+    caloriesMax: 6000,
+    sessionsPerWeekDefault: 4,
+    sessionsPerWeekMax: 14,
+    /** Poids moyen utilisé pour la cible de protéines : moyenne sur N jours. */
+    weightAverageDays: 7,
+  },
+
+  /** Profil cardiaque (calcul de la charge). */
+  profile: {
+    /** FC max estimée = intercept − slope × âge (formule de Tanaka). */
+    hrMaxIntercept: 208,
+    hrMaxSlope: 0.7,
+    hrMaxMin: 120,
+    hrMaxMax: 230,
+    /** Âge accepté pour l'année de naissance. */
+    ageMin: 10,
+    ageMax: 100,
+    /** Coefficient du TRIMP de Banister selon le sexe. */
+    trimpCoefficient: { male: 1.92, female: 1.67 },
+  },
+
+  /** Plage silencieuse par défaut : aucune notification d'alerte entre ces heures. */
+  quietHours: {
+    defaultStart: { hour: 22, minute: 0 },
+    defaultEnd: { hour: 7, minute: 0 },
+    /** Pas de réglage des heures de la plage (minutes). */
+    stepMinutes: 30,
+  },
+
+  /** Export CSV : séparateur adapté à Excel en français. */
+  csv: { separator: ';', decimalComma: true },
+
   /** Notification du récap du matin. */
   notification: {
     /** Heure par défaut (modifiable dans Réglages). */

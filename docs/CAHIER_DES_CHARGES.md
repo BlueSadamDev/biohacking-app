@@ -18,7 +18,7 @@ L'application transforme les données de mes capteurs en trois choses : un réca
 3. **Insights sport** : répondre à « est-ce que je progresse ? » et « qu'est-ce que je pourrais ajouter comme autre sport ? ».
 4. **Recommandations actionnables** : chaque constat débouche sur une action concrète, pas seulement sur un chiffre.
 
-**Hors périmètre pour l'instant** : coach IA conversationnel (prévu dans un lot ultérieur), multi-utilisateurs, publication sur le Play Store, synchronisation cloud.
+**Hors périmètre pour l'instant** : multi-utilisateurs, publication sur le Play Store, synchronisation cloud, tout traitement par une IA hors du téléphone (API en ligne, cloud), plan d'entraînement de la semaine généré par le coach (reporté).
 
 ## 2. Sources de données
 
@@ -61,7 +61,7 @@ Pour la HRV et la FC au repos, sans sommeil principal enregistré la nuit concer
 
 ## 4. Fonctionnalités
 
-Quatre écrans et un moteur de règles couvrent le besoin : récap du matin, alertes, progression sportive, tendances.
+Cinq écrans et un moteur de règles couvrent le besoin : récap du matin, alertes, progression sportive, tendances, coach.
 
 ### F1 – Récap du matin
 
@@ -97,6 +97,19 @@ Quatre écrans et un moteur de règles couvrent le besoin : récap du matin, ale
 - Export complet en CSV (sauvegarde) et effacement des données.
 - Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données.
 
+### F6 – Coach
+
+Un coach qui explique mes chiffres en langage naturel, en français, sans que rien ne quitte le téléphone.
+
+- **100 % local** : aucune donnée ne quitte le téléphone et l'APK de production reste sans permission Internet. Le Samsung Galaxy S21 n'a pas Gemini Nano : le coach utilise un petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié, fichier d'environ 1 Go).
+- **Installation** : une seule fois, par import manuel du fichier du modèle (téléchargé depuis l'ordinateur, copié sur le téléphone, choisi dans l'app). L'app ne télécharge rien. Le modèle peut être supprimé depuis l'app.
+- **Usages** :
+  - **Bilan de la semaine** : synthèse, ce qui a marché, ce qui coince et 2 actions pour la semaine suivante, avec la liste des chiffres utilisés.
+  - **Bouton « Pourquoi ? »** sur les alertes et les liens observés : explication du constat en quelques phrases.
+  - **Questions libres encadrées**, avec des questions suggérées.
+  - Le plan d'entraînement de la semaine est reporté à plus tard.
+- **Règle de sécurité** : le coach ne calcule rien. Il reformule et explique uniquement les chiffres déjà calculés par l'app (sections 3 et 5), ne pose jamais de diagnostic médical, et dit « je ne sais pas » quand l'information manque. Chaque nombre d'une réponse est vérifié : s'il n'existe pas dans les données fournies au coach, la réponse est refaite, puis remplacée par un message de repli.
+
 ## 5. Indicateurs et règles de calcul
 
 Tous les indicateurs se comparent à ma propre norme : une valeur n'est « mauvaise » que si elle sort de ma plage habituelle. Il faut donc environ 3 à 4 semaines de données avant d'activer les alertes (phase de calibration). Les seuils ci-dessous sont des valeurs de départ, tous réglables.
@@ -128,6 +141,7 @@ Application Expo (React Native, TypeScript), 100 % locale, développée avec Cla
 - Aucune donnée ne quitte le téléphone : l'APK de production n'a pas la permission Internet, ce qui le garantit techniquement (le build de développement en a besoin pour se recharger depuis l'ordinateur).
 - Base de données locale chiffrée. Accès à l'app protégé par empreinte ou code (option).
 - Sauvegarde uniquement par export manuel d'un fichier.
+- Coach IA : le modèle tourne sur le téléphone, aucune donnée n'est envoyée à un service en ligne. Le fichier du modèle n'est jamais mis dans le dépôt.
 
 **Stack technique proposée**
 
@@ -138,10 +152,12 @@ Application Expo (React Native, TypeScript), 100 % locale, développée avec Cla
 | Stockage | expo-sqlite | Données fusionnées, normes, alertes |
 | Tâches de fond | expo-background-task (WorkManager, 15 min minimum) | Synchro horaire, calculs de nuit, récap du matin |
 | Notifications | expo-notifications | Récap du matin, alertes |
+| Coach IA | Moteur local à choisir au test de faisabilité du lot 4 (llama.rn ou react-native-executorch) | Faire tourner le petit modèle ouvert sur le téléphone |
+| Import de fichier | expo-document-picker | Importer le fichier du modèle (une fois) |
 | Tests des calculs | Jest (jest-expo) sur données fictives | Vérifier les règles sans lire le code |
 | Architecture | Dossiers séparés : sources, domain (calculs), db, écrans | Ajouter une source sans casser le reste |
 
-**Appareil cible** : Android 14 ou plus récent (Health Connect y est intégré au système).
+**Appareil cible** : Samsung Galaxy S21 5G (8 Go de RAM), Android 14 ou plus récent (Health Connect y est intégré au système).
 
 **Méthode de développement**
 
@@ -149,7 +165,7 @@ Application Expo (React Native, TypeScript), 100 % locale, développée avec Cla
 - Un lot = une branche git, livré sous forme d'APK que j'installe et teste sur mon téléphone.
 - Les règles de calcul (section 5) sont couvertes par des tests automatiques sur des données fictives, pour vérifier les calculs sans avoir à lire le code.
 
-**Performance et batterie** : synchro au plus une fois par heure, calculs lourds la nuit pendant la recharge, ouverture de l'app en moins de 2 secondes.
+**Performance et batterie** : synchro au plus une fois par heure, calculs lourds la nuit pendant la recharge, ouverture de l'app en moins de 2 secondes. Le modèle du coach n'est chargé en mémoire que sur l'onglet Coach ou pour un « Pourquoi ? », puis libéré ; aucune génération en arrière-plan.
 
 ## 7. Découpage en lots
 
@@ -159,7 +175,7 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 2. **Lot 1 – MVP : récap du matin** : normes personnelles, score de récupération, notification du matin avec une recommandation, saisie du poids et du ressenti. *Condition de passage : 4 semaines d'usage quotidien, calibration des normes terminée.*
 3. **Lot 2 – Alertes, charge et nutrition** : moteur de règles, alertes proactives, charge aiguë / chronique, nutrition lue via Health Connect (Suivi macro), suivi des protéines. *Condition de passage : alertes jugées pertinentes, moins de 2 fausses alertes par semaine.*
 4. **Lot 3 – Progression et corrélations** : zones cardiaques (temps en zone 2), saisie de la meilleure série des 3 exercices clés, 1RM estimé, composition corporelle, corrélations, suggestions d'autres sports faciles à pratiquer à Paris. Sans la Suunto (hors périmètre). *Condition de passage : lots 1 à 3 stables et utilisés au quotidien.*
-5. **Lot 4 – Coach IA (plus tard)** : questions en langage naturel sur mes données, modèle embarqué sur le téléphone de préférence.
+5. **Lot 4 – Coach IA local** (F6) : d'abord un test de faisabilité (comparaison de 2 moteurs et de 2 ou 3 petits modèles sur le S21 : mémoire, vitesse, qualité en français, licence), résultat dans `docs/RAPPORT_LOT_4_MODELE.md` et choix du modèle ; puis installation du modèle par import manuel, résumé chiffré des données (seule source de chiffres du coach), garde-fous, bilan de la semaine, « Pourquoi ? » sur les alertes et les liens observés, questions libres. *Condition de passage : réponses jugées justes et utiles, aucun chiffre inventé, aucune formulation de diagnostic.*
 
 Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie.
 
@@ -177,6 +193,10 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 | Pas de charges ni de répétitions dans les données de musculation | Progression en force invisible | Saisie rapide des exercices clés (F3) |
 | Seuils mal calibrés | Trop d'alertes, que je finis par ignorer | Calibration de 3 à 4 semaines, plafond de 2 alertes par jour, seuils réglables |
 | Repas absents de Health Connect (Suivi macro non synchronisé, permission retirée) | Protéines et calories sous-estimées, fausses alertes | Jour sans repas affiché « aucune donnée » au lieu de 0, pas d'alerte protéines ce jour-là |
+| Modèle du coach trop lent ou trop gourmand en mémoire sur le S21 | Coach inutilisable, app qui ferme | Test de faisabilité avant tout développement (lot 4) ; modèle chargé seulement à l'usage puis libéré |
+| Le coach invente un chiffre | Conseil faux, perte de confiance | Le coach ne calcule rien : chaque nombre de la réponse est vérifié dans les données fournies, sinon nouvelle génération puis message de repli |
+| Une réponse ressemble à un avis médical | Fausse réassurance ou inquiétude | Consignes du coach (aucun diagnostic) et mention permanente « Ce n'est pas un avis médical » |
+| Fichier du modèle corrompu ou erroné | Coach qui plante ou répond mal | Vérification de la taille et de l'empreinte SHA-256 à l'import |
 
 **Points ouverts**
 
@@ -201,6 +221,7 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - Poids : la saisie manuelle dans l'app fait foi ; une valeur Zepp (Health Connect) n'est retenue que les jours sans saisie.
 - HRV : une valeur par nuit, moyenne (sur le logarithme) des mesures du sommeil principal. FC au repos : moyenne des 5 valeurs les plus basses du sommeil principal. Sans sommeil enregistré : « non calculable ».
 - Design : style sombre inspiré de Whoop, maquettes du lot 1 validées.
+- Coach IA (lot 4) : 100 % local, sur le Galaxy S21 (pas de Gemini Nano) avec un petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié), installé par import manuel du fichier. L'APK de production reste sans permission Internet. Le coach ne calcule rien, ne pose aucun diagnostic et dit quand il ne sait pas. Usages : bilan de la semaine, « Pourquoi ? », questions libres encadrées ; plan de semaine reporté.
 
 **Prochaines étapes**
 
@@ -208,4 +229,4 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 2. ~~Lot 1 : récap du matin.~~ Fait (PR #5).
 3. ~~Lot 2 : alertes, charge et nutrition.~~ Fait (PR #8).
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
-5. Lot 4 (coach IA) : à cadrer plus tard.
+5. Lot 4 (coach IA local) : cadré (F6). Première étape : test de faisabilité du modèle sur le S21, rapport `docs/RAPPORT_LOT_4_MODELE.md`, puis choix du modèle.

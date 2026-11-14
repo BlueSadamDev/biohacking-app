@@ -117,6 +117,25 @@ const MIGRATIONS: string[] = [
   -- on relit tout l'historique de FC à la prochaine synchro.
   DELETE FROM sync_state WHERE record_type = 'HeartRate';
   `,
+  // 3 – Lot 2 : historique des alertes.
+  `
+  CREATE TABLE alert (
+    id TEXT PRIMARY KEY NOT NULL,
+    rule TEXT NOT NULL,
+    date TEXT NOT NULL,
+    level TEXT NOT NULL,
+    theme TEXT NOT NULL,
+    title TEXT NOT NULL,
+    finding TEXT NOT NULL,
+    cause TEXT NOT NULL,
+    action TEXT NOT NULL,
+    delivery TEXT NOT NULL,
+    persistent INTEGER NOT NULL,
+    created_ms INTEGER NOT NULL,
+    read INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX alert_date ON alert (date);
+  `,
 ];
 
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {

@@ -6,11 +6,11 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AccessBanner } from '@/components/AccessBanner';
 import { AppText } from '@/components/AppText';
-import { PrimaryButton, RoundButton } from '@/components/Buttons';
+import { AlertsButton, TodayAlertCard } from '@/components/AlertViews';
+import { PrimaryButton } from '@/components/Buttons';
 import { Card, Pill } from '@/components/Card';
 import { formatLongDate } from '@/components/format';
 import { LoadCard } from '@/components/LoadCard';
-import { PulseIcon } from '@/components/Icons';
 import { MetricTile } from '@/components/MetricTile';
 import { metricView } from '@/components/metricView';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -34,7 +34,7 @@ function ringOf(recap: MorningRecap | null): ComponentProps<typeof RecoveryRing>
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { loading, syncing, access, recap, nights, load, error, sync, reload } = useHealthData();
+  const { loading, syncing, access, recap, nights, load, alerts, error, sync, reload } = useHealthData();
 
   // En revenant sur l'accueil (après une saisie par exemple), on relit la base.
   useFocusEffect(
@@ -58,9 +58,11 @@ export default function HomeScreen() {
           </View>
           <AppText variant="title">Ton récap du matin</AppText>
         </View>
-        <RoundButton label="Diagnostic des données" onPress={() => router.push('/diagnostic')}>
-          <PulseIcon />
-        </RoundButton>
+        <AlertsButton
+          unread={alerts?.unread ?? 0}
+          level={alerts?.unreadLevel ?? null}
+          onPress={() => router.push('/alertes')}
+        />
       </View>
 
       <AccessBanner access={access} />
@@ -93,6 +95,11 @@ export default function HomeScreen() {
           </View>
 
           {recommendation && <RecommendationCard recommendation={recommendation} />}
+
+          {/* Alerte du jour : seulement s'il y en a une, jamais pendant la calibration. */}
+          {alerts?.today && recap?.calibration.done && (
+            <TodayAlertCard alert={alerts.today} onPress={() => router.push('/alertes')} />
+          )}
 
           <View style={styles.tiles}>
             {METRICS.map((m) => {

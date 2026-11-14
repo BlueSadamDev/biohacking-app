@@ -125,6 +125,10 @@ jauge de charge 7 j / 28 j (texte d'état coloré : `good` équilibrée,
 glucides, lipides et nombre de repas en petit ; mention « via Suivi
 macro » en haut à droite) → bouton « Saisir poids et ressenti » →
 navigation.
+Le bouton Alertes remplace le bouton rond du diagnostic du lot 1 : le
+diagnostic s'ouvre depuis l'écran Sources. La carte alerte du jour écrit
+aussi le niveau en toutes lettres après le thème (« Alerte · Charge ·
+Important »), pour que la couleur ne porte jamais seule le sens.
 
 ### Historique des alertes
 Retour + titre « Alertes », filtres Toutes / Récupération / Charge /

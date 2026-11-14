@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   switchKnob: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.text },
   knobOn: { alignSelf: 'flex-end' },
   knobOff: { alignSelf: 'flex-start' },
-  chips: { flexDirection: 'row', gap: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { height: 36, borderRadius: radius.pill, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   chipActive: { backgroundColor: colors.text },
   chipIdle: { borderWidth: 1, borderColor: colors.border },

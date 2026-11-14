@@ -20,6 +20,7 @@ const EXPORT_TABLES: { table: string; file: string }[] = [
   { table: 'morning_entry', file: 'ressenti' },
   { table: 'hc_exercise', file: 'seances' },
   { table: 'hc_nutrition', file: 'repas' },
+  { table: 'alert', file: 'alertes' },
   { table: 'app_setting', file: 'reglages' },
 ];
 
@@ -34,6 +35,7 @@ const ERASE_TABLES = [
   'morning_entry',
   'hc_exercise',
   'hc_nutrition',
+  'alert',
   'sync_state',
 ];
 

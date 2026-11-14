@@ -1,6 +1,15 @@
 # Rapport du lot 4 – Choix du moteur et du modèle du coach
 
-Statut : **mesures faites** le 15 novembre 2026 ; choix du modèle en attente de l'utilisateur.
+Statut : **terminé**. Choix de l'utilisateur (15 novembre 2026) : **LFM2.5 1.2B Instruct, quantification Q4_K_M, avec llama.rn**.
+
+| Fichier retenu | Valeur |
+| --- | --- |
+| Nom | `LFM2.5-1.2B-Instruct-Q4_K_M.gguf` |
+| Taille | 730 895 168 octets |
+| Empreinte SHA-256 | `b1b3de114215d9507409a662a501a631095a479a419584e8a2ded6304b19b4f5` |
+| Adresse de téléchargement (version figée) | https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-Q4_K_M.gguf |
+
+L'empreinte a été vérifiée : elle est identique à celle publiée par Hugging Face.
 
 Ce rapport ne contient que des informations techniques et des mesures faites sur des **données fictives**. Aucune donnée de santé réelle.
 

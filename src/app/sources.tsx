@@ -1,5 +1,5 @@
 // Sources de données (DESIGN.md, écran 4), ouvert depuis Réglages : calibration,
-// Helio Strap, Suunto (hors périmètre jusqu'au lot 3), poids et Suivi macro,
+// Helio Strap, Suunto (hors périmètre), poids et Suivi macro,
 // autorisations, synchronisation manuelle.
 
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -95,7 +95,7 @@ export default function SourcesScreen() {
 
       <Card style={styles.card}>
         <AppText variant="strong">Suunto 9 Peak Pro</AppText>
-        <AppText variant="small">Hors périmètre jusqu’au lot 3 (GPS, distance, allure).</AppText>
+        <AppText variant="small">Hors périmètre : la montre n’écrit pas dans Health Connect.</AppText>
       </Card>
 
       <Card style={styles.card}>

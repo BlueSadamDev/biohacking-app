@@ -1,6 +1,6 @@
 # Rapport du lot 4 – Choix du moteur et du modèle du coach
 
-Statut : **en cours** (recherche faite le 14 novembre 2026 ; mesures sur le téléphone à venir).
+Statut : **mesures faites** le 15 novembre 2026 ; choix du modèle en attente de l'utilisateur.
 
 Ce rapport ne contient que des informations techniques et des mesures faites sur des **données fictives**. Aucune donnée de santé réelle.
 
@@ -51,13 +51,51 @@ Les tailles et licences sont à reconfirmer sur la fiche officielle de chaque mo
 
 ## 4. Mesures sur le S21
 
-À venir : mémoire utilisée, temps de chargement, vitesse (mots / s) et qualité sur 3 demandes types en français (bilan de semaine, « Pourquoi ? » d'une alerte, question libre), avec des données fictives.
-
 Méthode : écran temporaire « Banc d'essai du coach » (ouvert depuis le diagnostic) dans l'APK de développement. Réglages communs : contexte de 4 096 jetons, 4 fils de calcul, processeur seul (le GPU Mali du S21 n'est pas pris en charge par l'accélération OpenCL de llama.rn), température 0,3, au plus 300 jetons par réponse. La mémoire est celle de toute l'app (PSS Android). Le banc signale aussi les nombres de la réponse absents du résumé fictif (indice de chiffre inventé).
+
+Connexion : par câble USB (`adb reverse tcp:8081 tcp:8081`), le Wi-Fi de l'ordinateur étant classé « Public » par Windows.
+
+### Vitesse
+
+| Mesure | Llama 3.2 1B | LFM2.5 1.2B |
+| --- | --- | --- |
+| Chargement du modèle | 5,5 s | 4,6 s |
+| Écriture (bilan / pourquoi / question) | 7,5 / 13,4 / 21,5 mots/s | 17,6 / 18,5 / 14,9 mots/s |
+| Écriture, en jetons | 11,5 à 21,5 jetons/s | 24 à 27 jetons/s |
+| Lecture du résumé, 1re demande | 12,8 s | 8,4 s |
+| Lecture du résumé, demandes suivantes | 0,7 à 1,0 s | 0,4 à 8,6 s |
+| Durée totale du bilan | 26,6 s | 13,1 s |
+
+Les réponses courtes de Llama (« Je ne sais pas. ») faussent sa vitesse sur les demandes 2 et 3 : la mesure utile est celle du bilan. La lecture des demandes suivantes est plus rapide quand llama.rn réutilise le début commun (consignes et résumé) gardé en mémoire.
+
+**Mémoire** : 579 Mo (Llama) et 587 Mo (LFM2.5), identiques avant et après le chargement. La mesure (PSS du processus) ne compte manifestement pas le fichier du modèle, lu directement sur le stockage (« mmap ») : **chiffre non fiable**, à ne pas utiliser. Aucun des deux modèles n'a fermé l'app.
+
+### Qualité (données fictives)
+
+Aucun nombre absent du résumé dans les 6 réponses.
+
+- **Llama 3.2 1B** :
+  - bilan structuré, mais il mélange les chiffres (« jours sous 40 » attribué au sommeil alors que c'est le score de récupération ; « écart de coucher inférieur à 95 » alors qu'il vaut 95) ;
+  - affirmation sans appui (« les séances de force ont été très efficaces ») et faute de français (« écartes ») ;
+  - « Pourquoi ? » et question libre : simple « Je ne sais pas », alors que l'information était dans le résumé.
+- **LFM2.5 1.2B** :
+  - français fluide, tutoiement respecté, réponses aux 3 demandes ;
+  - « Pourquoi ? » correct (charge en hausse, séance légère ou de mobilité demain) ;
+  - mais réponses vagues, sans aucun chiffre, et deux erreurs de sens : « progression en récupération » (le score baisse, 58 contre 66) et « bonne nutrition en protéines » (1,5 g/kg pour une cible de 1,8, sous la cible 4 jours sur 7) ;
+  - formules parasites (« Qu'dis-tu ? »).
+
+**Leçon pour la suite** : la vérification des nombres ne suffit pas. Un nombre peut exister dans le résumé et être mal utilisé. Le résumé (étape C2) devra être écrit pour un petit modèle : des phrases courtes avec le verdict déjà calculé par l'app (« Protéines : sous la cible, 4 jours sur 7 ») plutôt que des noms de champs (`ecart_coucher_min`). Les consignes (étape C3) devront demander de citer ces verdicts.
 
 ## 5. Recommandation
 
-À venir, après les mesures.
+**LFM2.5 1.2B avec llama.rn**, pour 3 raisons :
+1. **Deux fois plus rapide** : un bilan en 13 s au lieu de 27 s, environ 17 mots/s.
+2. **Utilisable sur les 3 usages** : Llama refuse 2 demandes sur 3.
+3. **Meilleur français**, et le fichier le plus léger (731 Mo).
+
+Ses erreurs de sens sont réelles. Elles se traitent par un résumé plus explicite (C2) et par les garde-fous (C3), et seront revérifiées sur le vrai résumé. Licence LFM Open License v1.0 : usage personnel autorisé.
+
+Si le français reste insuffisant après C2 et C3 : essayer Luth-LFM2-1.2B, la version de LFM2 entraînée en français, même moteur, sans changement de code.
 
 ## Sources
 

@@ -110,7 +110,7 @@ Tous les indicateurs se comparent à ma propre norme : une valeur n'est « mauva
 | Score de récupération | Combinaison pondérée HRV, FC au repos, sommeil et charge de la veille, sur 0 à 100 | Moins de 40 : recommandation de séance légère |
 | Poids | Moyenne glissante 7 j | Tendance hors de la fourchette cible fixée (prise ou perte trop rapide) sur 3 semaines |
 | Protéines | g/kg/jour depuis les repas Suivi macro (Health Connect) | Sous la cible plus de 3 jours sur 7 |
-| Zones cardiaques | Temps passé en zones 1 à 5 par séance et par semaine, à partir de la FC du Helio Strap et de la FC max des Réglages | Pas d'alerte : temps en zone 2 de la semaine comparé à une cible réglable (minutes par semaine), qui alimente les suggestions de sports |
+| Zones cardiaques | Temps passé en zones 1 à 5 par séance et par semaine, à partir de la FC du Helio Strap et de la FC max des Réglages (Z2 = 60 à 70 % de la FC max ; tout ce qui est sous 60 %, échauffement et repos entre les séries compris, compte en zone 1) | Pas d'alerte : temps en zone 2 de la semaine comparé à une cible réglable (minutes par semaine), qui alimente les suggestions de sports |
 | Force (musculation) | 1RM estimé par exercice clé (squat, développé couché, soulevé de terre) à partir de la meilleure série saisie : charge × (1 + répétitions / 30) (formule d'Epley) | Stagnation sur 6 semaines : suggestion de changer de programme |
 
 **Combinaisons** : les alertes les plus utiles croisent plusieurs signaux. Exemple : HRV basse + FC au repos haute + charge élevée = alerte « surcharge ». HRV basse + FC au repos haute avec une charge normale = alerte « possible début de maladie ou stress ».
@@ -196,7 +196,7 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - Suunto : pas de Health Connect, abandonnée pour l'instant, hors périmètre. L'import des fichiers FIT est abandonné. Si un jour une appli passerelle (Health Sync ou FitnessSyncer) écrit les séances Suunto dans Health Connect, elles seront lues comme une source de plus, sans autre changement que la table de fusion (section 3).
 - Course : suivie sans GPS, par la FC du Helio Strap (durée, zones cardiaques, temps en zone 2). L'allure à FC donnée et la VO2max sont retirées (aucune source).
 - Musculation : 3 exercices clés suivis (squat, développé couché, soulevé de terre). Après chaque séance de musculation, saisie de la meilleure série seulement (charge × répétitions). 1RM estimé par la formule d'Epley.
-- Suggestions d'autres sports : elles comblent mes manques (endurance douce, mobilité…) et sont faciles à pratiquer à Paris.
+- Suggestions d'autres sports : elles comblent mes manques (endurance douce, mobilité…) et sont faciles à pratiquer à Paris. Le manque d'endurance douce se juge sur la zone 2 des 7 derniers jours glissants (et non depuis le lundi), pour éviter une suggestion systématique en début de semaine.
 - Nutrition : lue dans Health Connect, app d'origine Suivi macro. L'import du fichier JSON est abandonné.
 - Poids : la saisie manuelle dans l'app fait foi ; une valeur Zepp (Health Connect) n'est retenue que les jours sans saisie.
 - HRV : une valeur par nuit, moyenne (sur le logarithme) des mesures du sommeil principal. FC au repos : moyenne des 5 valeurs les plus basses du sommeil principal. Sans sommeil enregistré : « non calculable ».
@@ -207,4 +207,5 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 1. ~~Rédiger DESIGN.md à partir des maquettes du lot 1.~~ Fait.
 2. ~~Lot 1 : récap du matin.~~ Fait (PR #5).
 3. ~~Lot 2 : alertes, charge et nutrition.~~ Fait (PR #8).
-4. Lot 3 à venir (branche `lot-3-progression-correlations`) : zones cardiaques, saisie musculation et 1RM, composition corporelle, corrélations, suggestions de sports.
+4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
+5. Lot 4 (coach IA) : à cadrer plus tard.

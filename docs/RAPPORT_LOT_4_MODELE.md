@@ -22,7 +22,9 @@ Ce rapport ne contient que des informations techniques et des mesures faites sur
 | Réseau | Aucun code de téléchargement | Contient du code de téléchargement, inutilisé si on donne un chemin local ; bloqué de toute façon en production (pas de permission Internet) |
 | Import manuel | 1 fichier à choisir | 3 fichiers à choisir |
 
-**Première lecture** : llama.rn colle mieux aux règles du projet (un seul fichier, aucune dépendance réseau, choix de modèles libre). ExecuTorch reste à mesurer : il peut être plus rapide sur certains téléphones.
+**Première lecture** : llama.rn colle mieux aux règles du projet (un seul fichier, aucune dépendance réseau, choix de modèles libre).
+
+**Décision (15 novembre 2026)** : pour alléger le test, ExecuTorch est écarté sur dossier, sans mesure sur le téléphone. En plus des points ci-dessus, son installation a montré que `react-native-blob-util` ajoute des permissions réseau (à bloquer) et que la bibliothèque contient une télémétrie, active par défaut lors des téléchargements de modèles (coupée dans le banc d'essai). Il sera retiré du code après le choix du modèle.
 
 ## 3. Modèles candidats
 
@@ -37,6 +39,12 @@ Ce rapport ne contient que des informations techniques et des mesures faites sur
 - **Gemma 4 E2B** et **Qwen 3.5 2B** : trop gros pour la cible (fichiers de 1,3 à 3 Go).
 - **Qwen 3.5 0.8B** : en dessous de la taille visée.
 
+**Retenus pour le test (15 novembre 2026)** : 2 modèles seulement, avec llama.rn, en quantification Q4_K_M :
+- Llama 3.2 1B Instruct (`Llama-3.2-1B-Instruct-Q4_K_M.gguf`, 808 Mo) : le seul candidat avec un résultat publié en français ;
+- LFM2.5 1.2B Instruct (`LFM2.5-1.2B-Instruct-Q4_K_M.gguf`, 731 Mo) : le plus léger, conçu pour les téléphones.
+
+Qwen 2.5 1.5B est mis de côté : c'est le plus gros fichier (1,1 Go), donc probablement le plus lent.
+
 Piste de secours si le français déçoit : **Luth-LFM2-1.2B**, une version de LFM2 spécialement entraînée en français (publiée à EACL 2026, licence LFM 1.0, disponible en GGUF pour llama.rn).
 
 Les tailles et licences sont à reconfirmer sur la fiche officielle de chaque modèle au moment du téléchargement.
@@ -44,6 +52,8 @@ Les tailles et licences sont à reconfirmer sur la fiche officielle de chaque mo
 ## 4. Mesures sur le S21
 
 À venir : mémoire utilisée, temps de chargement, vitesse (mots / s) et qualité sur 3 demandes types en français (bilan de semaine, « Pourquoi ? » d'une alerte, question libre), avec des données fictives.
+
+Méthode : écran temporaire « Banc d'essai du coach » (ouvert depuis le diagnostic) dans l'APK de développement. Réglages communs : contexte de 4 096 jetons, 4 fils de calcul, processeur seul (le GPU Mali du S21 n'est pas pris en charge par l'accélération OpenCL de llama.rn), température 0,3, au plus 300 jetons par réponse. La mémoire est celle de toute l'app (PSS Android). Le banc signale aussi les nombres de la réponse absents du résumé fictif (indice de chiffre inventé).
 
 ## 5. Recommandation
 

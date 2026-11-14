@@ -6,8 +6,14 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { scheduleMorningNotifications } from '@/background/morningNotification';
+import { runAlertEngine } from '@/background/alertEngine';
+import { loadAlertsOverview, type AlertsOverview } from '@/db/alerts';
 import { loadNights } from '@/db/healthData';
+import { loadLoadInputs } from '@/db/loadData';
+import { loadYesterdayNutrition } from '@/db/nutritionData';
+import type { NutritionDayView } from '@/domain/nutrition';
 import { dayKey } from '@/domain/dates';
+import { buildLoadSummary, type LoadSummary } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
 import { buildRecap, type MorningRecap } from '@/domain/recap';
 import { checkAccess, syncHealthConnect, type AccessState } from '@/sources/healthConnect';
@@ -18,6 +24,12 @@ export type HealthData = {
   access: AccessState | null;
   nights: NightValue[];
   recap: MorningRecap | null;
+  /** Charge d'entraînement du jour ; null tant qu'elle n'a pas été calculée. */
+  load: LoadSummary | null;
+  /** Alerte du jour et alertes non lues (bouton Alertes de l'accueil). */
+  alerts: AlertsOverview | null;
+  /** Nutrition d'hier par rapport aux cibles. */
+  nutrition: NutritionDayView | null;
   error: string | null;
   /** Première synchro du lancement terminée (l'écran Aube peut disparaître). */
   launched: boolean;
@@ -29,6 +41,9 @@ let state: HealthData = {
   access: null,
   nights: [],
   recap: null,
+  load: null,
+  alerts: null,
+  nutrition: null,
   error: null,
   launched: false,
 };
@@ -45,7 +60,16 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 export async function reloadFromDb(): Promise<void> {
   try {
     const nights = await loadNights();
-    setState({ nights, recap: buildRecap(nights, dayKey(new Date())), loading: false });
+    const now = new Date();
+    const today = dayKey(now);
+    const [load, alerts, nutrition] = await Promise.all([
+      loadLoadInputs(nights, today, now)
+        .then(buildLoadSummary)
+        .catch(() => null),
+      loadAlertsOverview(today).catch(() => null),
+      loadYesterdayNutrition(today, now).catch(() => null),
+    ]);
+    setState({ nights, recap: buildRecap(nights, today), load, alerts, nutrition, loading: false });
   } catch (e) {
     setState({ loading: false, error: message(e) });
   }
@@ -62,6 +86,8 @@ export async function syncNow(): Promise<void> {
   } catch (e) {
     setState({ error: message(e) });
   } finally {
+    // Alertes calculées sur les données fraîches (sans effet pendant la calibration).
+    await runAlertEngine().catch(() => undefined);
     await reloadFromDb();
     setState({ syncing: false, launched: true });
     // Le texte de la notification du matin suit les dernières données.

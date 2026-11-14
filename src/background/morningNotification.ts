@@ -8,10 +8,13 @@
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notifications';
 
+import { loadAlerts } from '@/db/alerts';
 import { getNotificationTime } from '@/db/appSettings';
 import { loadNights } from '@/db/healthData';
-import { dayKey } from '@/domain/dates';
+import { loadNutritionView } from '@/db/nutritionData';
+import { addDays, dayKey } from '@/domain/dates';
 import { nextOccurrences, notificationText } from '@/domain/notification';
+import { nutritionReminder } from '@/domain/nutrition';
 import { buildRecap } from '@/domain/recap';
 import { SETTINGS } from '@/domain/settings';
 
@@ -66,12 +69,29 @@ export function scheduleMorningNotifications(): Promise<void> {
 async function schedule(now: Date): Promise<void> {
   if ((await getNotificationPermission()) !== 'granted') return;
   await ensureChannel();
-  const [time, nights] = await Promise.all([getNotificationTime(), loadNights()]);
+  const today = dayKey(now);
+  const [time, nights, alerts] = await Promise.all([
+    getNotificationTime(),
+    loadNights(),
+    loadAlerts().catch(() => []),
+  ]);
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const date of nextOccurrences(now, time, SETTINGS.notification.daysAhead)) {
-    const recap = buildRecap(nights, dayKey(date));
+    const key = dayKey(date);
+    const recap = buildRecap(nights, key);
+    // Alertes non urgentes de la veille et de la nuit, regroupées dans ce récap.
+    const watchAlerts = alerts
+      .filter((a) => a.delivery === 'recap' && (a.date === key || a.date === addDays(key, -1)))
+      .map((a) => a.title);
+    // Rappel nutrition : seulement quand la veille de ce récap est aujourd'hui ou déjà passée.
+    const yesterday = addDays(key, -1);
+    const nutrition =
+      yesterday <= today ? await loadNutritionView(yesterday, today, now).catch(() => null) : null;
     await Notifications.scheduleNotificationAsync({
-      content: notificationText(recap),
+      content: notificationText(recap, {
+        watchAlerts,
+        nutritionReminder: nutrition ? nutritionReminder(nutrition) : null,
+      }),
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL_ID },
     });
   }

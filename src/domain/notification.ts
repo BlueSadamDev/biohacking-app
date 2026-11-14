@@ -32,17 +32,27 @@ export function nextOccurrences(now: Date, time: TimeOfDay, count: number): Date
 
 export type NotificationText = { title: string; body: string };
 
+/** Compléments du récap : rappel nutrition de la veille, titres des alertes non urgentes regroupées. */
+export type RecapExtras = { nutritionReminder?: string | null; watchAlerts?: string[] };
+
 /** Texte de la notification pour le récap d'un jour (null = nuit pas encore connue). */
-export function notificationText(recap: MorningRecap | null, settings: Settings = SETTINGS): NotificationText {
+export function notificationText(
+  recap: MorningRecap | null,
+  extras: RecapExtras = {},
+  settings: Settings = SETTINGS,
+): NotificationText {
   const title = 'Récap du matin';
+  let body: string;
   if (!recap || recap.recovery.score === null) {
-    return { title, body: 'Ouvre l’app pour synchroniser ta nuit et voir ta recommandation du jour.' };
+    body = 'Ouvre l’app pour synchroniser ta nuit et voir ta recommandation du jour.';
+  } else if (!recap.calibration.done) {
+    body = `${recap.calibration.label}. ${recap.recommendation.action}.`;
+  } else {
+    body = `Récupération ${recap.recovery.score} % · ${recap.recommendation.status}. ${recap.recommendation.action}.`;
   }
-  const { recommendation, calibration } = recap;
-  if (!calibration.done) {
-    return { title, body: `${calibration.label}. ${recommendation.action}.` };
-  }
-  return { title, body: `Récupération ${recap.recovery.score} % · ${recommendation.status}. ${recommendation.action}.` };
+  if (extras.watchAlerts?.length) body += ` À surveiller : ${extras.watchAlerts.join(', ')}.`;
+  if (extras.nutritionReminder) body += ` ${extras.nutritionReminder}`;
+  return { title, body };
 }
 
 export const DEFAULT_TIME: TimeOfDay = {

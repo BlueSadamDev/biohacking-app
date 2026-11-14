@@ -79,6 +79,109 @@ export const SETTINGS = {
   /** Saisie du matin : poids accepté (kg). */
   entry: { weightMinKg: 30, weightMaxKg: 250 },
 
+  /** Cibles personnelles (écran Réglages) : valeurs par défaut et valeurs acceptées. */
+  targets: {
+    /** Protéines par kg de poids et par jour. */
+    proteinGPerKgDefault: 1.8,
+    proteinGPerKgMin: 0.5,
+    proteinGPerKgMax: 4,
+    /** Calories par jour : pas de valeur par défaut (« à définir »). */
+    caloriesMin: 800,
+    caloriesMax: 6000,
+    sessionsPerWeekDefault: 4,
+    sessionsPerWeekMax: 14,
+    /** Poids moyen utilisé pour la cible de protéines : moyenne sur N jours. */
+    weightAverageDays: 7,
+  },
+
+  /** Profil cardiaque (calcul de la charge). */
+  profile: {
+    /** FC max estimée = intercept − slope × âge (formule de Tanaka). */
+    hrMaxIntercept: 208,
+    hrMaxSlope: 0.7,
+    hrMaxMin: 120,
+    hrMaxMax: 230,
+    /** Âge accepté pour l'année de naissance. */
+    ageMin: 10,
+    ageMax: 100,
+    /** Coefficient du TRIMP de Banister selon le sexe. */
+    trimpCoefficient: { male: 1.92, female: 1.67 },
+  },
+
+  /** Charge d'entraînement (cahier des charges, section 5) : TRIMP de Banister et ratio aigu / chronique. */
+  load: {
+    /** TRIMP = minutes × FCr × a × e^(k × FCr), FCr = (FC − FC repos) / (FC max − FC repos). */
+    trimpA: 0.64,
+    /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
+    maxSampleGapSeconds: 120,
+    /** Séance sans assez de FC : moins de N mesures ou moins de cette part de la durée couverte. */
+    minSamples: 5,
+    minCoverage: 0.5,
+    /** Charge aiguë et chronique : moyennes par jour sur N jours (aujourd'hui compris). */
+    acuteDays: 7,
+    chronicDays: 28,
+    /** Jours d'historique nécessaires avant d'afficher le ratio. */
+    calibrationDays: 28,
+    /** Seuils du ratio aigu / chronique. */
+    underMax: 0.8,
+    balancedMax: 1.3,
+    highMin: 1.5,
+  },
+
+  /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */
+  nutrition: {
+    reachedFraction: 0.9,
+    /** Rappel du matin : calories de la veille à plus de ±N (part de la cible) de la cible. */
+    caloriesToleranceFraction: 0.1,
+    /** Fenêtre du compteur « Sous la cible · n jours sur 7 ». */
+    weekDays: 7,
+  },
+
+  /** Alertes (cahier des charges, sections 4 F2 et 5). */
+  alerts: {
+    /** Au plus N alertes par jour. */
+    maxPerDay: 2,
+    /** Une même alerte n'est pas répétée pendant N jours, sauf si elle s'aggrave (niveau supérieur). */
+    repeatDays: 3,
+    /** Alerte « qui persiste » : N fois sur les M derniers jours → rappel « avis médical ». */
+    persistentCount: 3,
+    persistentWindowDays: 14,
+    /** HRV : N nuits d'affilée sous la plage normale. */
+    hrvConsecutiveNights: 3,
+    /** FC au repos : plus de N bpm au-dessus de la moyenne 30 j, pendant M jours d'affilée. */
+    restingHrDeltaBpm: 5,
+    restingHrDays: 2,
+    /** Sommeil court : moins de N minutes, au moins `shortNights` nuits sur les `windowNights` dernières. */
+    sleepShortMinutes: 6 * 60,
+    sleepShortNights: 3,
+    sleepWindowNights: 4,
+    /** Heure de coucher : écart entre le plus tôt et le plus tard sur N nuits (au moins `bedtimeMinNights`). */
+    bedtimeWindowNights: 7,
+    bedtimeMinNights: 5,
+    bedtimeSpreadMinutes: 90,
+    /** Charge : sous-charge pendant N jours d'affilée. Combinaison « surcharge » au-dessus de `overloadRatio`. */
+    underloadDays: 14,
+    overloadRatio: 1.3,
+    /** Poids : tendance de la moyenne 7 j sur N semaines, en kg par semaine. */
+    weightWeeks: 3,
+    weightGainMaxKgPerWeek: 0.35,
+    weightLossMaxKgPerWeek: 0.75,
+    /** Protéines : sous la cible plus de N jours sur les M derniers jours complets (avec repas). */
+    proteinWindowDays: 7,
+    proteinMaxDaysBelow: 3,
+  },
+
+  /** Plage silencieuse par défaut : aucune notification d'alerte entre ces heures. */
+  quietHours: {
+    defaultStart: { hour: 22, minute: 0 },
+    defaultEnd: { hour: 7, minute: 0 },
+    /** Pas de réglage des heures de la plage (minutes). */
+    stepMinutes: 30,
+  },
+
+  /** Export CSV : séparateur adapté à Excel en français. */
+  csv: { separator: ';', decimalComma: true },
+
   /** Notification du récap du matin. */
   notification: {
     /** Heure par défaut (modifiable dans Réglages). */

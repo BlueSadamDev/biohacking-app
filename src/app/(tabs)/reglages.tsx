@@ -1,207 +1,271 @@
-// Sources de données (DESIGN.md, écran 4) : calibration, Helio Strap, Suunto,
-// poids et Suivi macro, synchronisation manuelle.
-// Import FIT Suunto : lot 3 (pas de bouton) ; Suivi macro : lot 2.
+// Réglages (DESIGN.md, « Écrans du lot 2 ») : Mes cibles, Profil cardiaque,
+// Notifications, Données. Les valeurs sont enregistrées dans la base locale.
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
 
-import {
-  getNotificationPermission,
-  requestNotificationPermission,
-  scheduleMorningNotifications,
-  type NotificationPermission,
-} from '@/background/morningNotification';
-import { getNotificationTime, setNotificationTime } from '@/db/appSettings';
-import { DEFAULT_TIME, formatTime, shiftTime, type TimeOfDay } from '@/domain/notification';
-import { askReadPermissions, hasBackgroundAccess } from '@/sources/healthConnect';
-
-import { AccessBanner } from '@/components/AccessBanner';
+import { scheduleMorningNotifications } from '@/background/morningNotification';
 import { AppText } from '@/components/AppText';
-import { PrimaryButton, SecondaryButton } from '@/components/Buttons';
-import { Card, Pill } from '@/components/Card';
-import { Gauge } from '@/components/Controls';
-import { formatDateTime } from '@/components/format';
+import { formatDecimal } from '@/components/format';
 import { Screen } from '@/components/Screen';
+import {
+  ChoiceChips,
+  NumberField,
+  SettingLink,
+  SettingRow,
+  SettingsGroup,
+  Switch,
+  TimeStepper,
+} from '@/components/SettingsControls';
 import { colors } from '@/components/theme';
-import { useHealthData } from '@/components/useHealthData';
-import { loadSourcesStatus, type SourcesStatus } from '@/db/healthData';
+import { reloadFromDb } from '@/components/useHealthData';
+import { getUserSettings, setUserSetting } from '@/db/appSettings';
+import { eraseAllData, exportAllToCsv } from '@/db/dataAdmin';
+import { loadWeights } from '@/db/healthData';
+import { weightByDay } from '@/domain/daily';
+import { dayKey } from '@/domain/dates';
+import { formatTime, shiftTime, type TimeOfDay } from '@/domain/notification';
+import {
+  averageWeight,
+  effectiveHrMax,
+  estimateHrMax,
+  parseBirthYear,
+  parseNumber,
+  proteinTargetGrams,
+  type Sex,
+  type UserSettings,
+} from '@/domain/profile';
 import { SETTINGS } from '@/domain/settings';
 
-/** Types lus pour le Helio Strap et la table où ils sont rangés. */
-const HELIO_TYPES: { label: string; table: string }[] = [
-  { label: 'Sommeil', table: 'hc_sleep' },
-  { label: 'HRV', table: 'hc_hrv' },
-  { label: 'FC au repos', table: 'hc_resting_hr' },
-  { label: 'FC pendant le sommeil', table: 'hc_heart_rate' },
-  { label: 'Pas', table: 'hc_steps' },
-  { label: 'Poids', table: 'weight' },
-];
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SEX_OPTIONS = [
+  { value: 'male', label: 'Homme' },
+  { value: 'female', label: 'Femme' },
+] as const;
 
-export default function SourcesScreen() {
+const asInt = (v: number) => String(v);
+const asDecimal = (v: number) => formatDecimal(v, 1);
+
+export default function SettingsScreen() {
   const router = useRouter();
-  const { recap, access, syncing, sync } = useHealthData();
-  const [status, setStatus] = useState<SourcesStatus | null>(null);
+  const [user, setUser] = useState<UserSettings | null>(null);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [busy, setBusy] = useState<'export' | 'erase' | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    loadSourcesStatus().then(setStatus).catch(() => setStatus(null));
+    getUserSettings().then(setUser).catch(() => setUser(null));
+    loadWeights(Date.now() - (SETTINGS.targets.weightAverageDays + 1) * DAY_MS)
+      .then((w) => setWeight(averageWeight(weightByDay(w), dayKey(new Date()))))
+      .catch(() => setWeight(null));
   }, []);
   useFocusEffect(refresh);
 
-  const syncAndRefresh = useCallback(async () => {
-    await sync();
-    refresh();
-  }, [sync, refresh]);
+  async function save<K extends keyof UserSettings>(key: K, value: UserSettings[K]) {
+    setUser((u) => (u ? { ...u, [key]: value } : u));
+    await setUserSetting(key, value);
+    if (key === 'notificationTime') await scheduleMorningNotifications().catch(() => undefined);
+  }
 
-  const required = SETTINGS.calibration.requiredNights;
-  const calibrated = Math.min(recap?.calibration.nights ?? 0, required);
-  const remaining = required - calibrated;
+  function shift(key: 'notificationTime' | 'quietStart' | 'quietEnd', delta: number) {
+    if (!user) return;
+    const step = key === 'notificationTime' ? SETTINGS.notification.stepMinutes : SETTINGS.quietHours.stepMinutes;
+    save(key, shiftTime(user[key] as TimeOfDay, delta * step));
+  }
+
+  async function exportCsv() {
+    setBusy('export');
+    setMessage(null);
+    try {
+      const n = await exportAllToCsv();
+      setMessage(n === null ? 'Export annulé.' : `${n} fichiers CSV enregistrés dans le dossier choisi.`);
+    } catch {
+      setMessage("L'export a échoué : choisis un autre dossier et réessaie.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function confirmErase() {
+    Alert.alert(
+      'Effacer toutes les données ?',
+      'Tes saisies (poids, ressenti) seront perdues définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Effacer',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy('erase');
+            try {
+              await eraseAllData();
+              await reloadFromDb();
+              setMessage('Données effacées.');
+              refresh();
+            } catch {
+              setMessage("L'effacement a échoué.");
+            } finally {
+              setBusy(null);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  if (!user) {
+    return (
+      <Screen>
+        <AppText variant="title">Réglages</AppText>
+      </Screen>
+    );
+  }
+
+  const now = new Date();
+  const t = SETTINGS.targets;
+  const p = SETTINGS.profile;
+  const proteinGrams = proteinTargetGrams(user.proteinGPerKg, weight);
+  const estimated = estimateHrMax(user.birthYear, now);
+  const hrMax = effectiveHrMax(user, now);
 
   return (
-    <Screen refreshing={syncing} onRefresh={syncAndRefresh}>
-      <AppText variant="title">Sources de données</AppText>
-      <AccessBanner access={access} />
+    <Screen>
+      <AppText variant="title">Réglages</AppText>
 
-      <Card style={styles.card}>
-        <AppText variant="label">Calibration des normes</AppText>
-        <AppText variant="strong">
-          {calibrated} / {required} jours
-        </AppText>
-        <Gauge value={calibrated} max={required} minLabel="0" maxLabel={`${required} jours`} />
-        <AppText variant="small">
-          {remaining > 0
-            ? `Encore ${remaining} nuit(s) complète(s) (HRV et FC au repos) avant le score coloré.`
-            : 'Terminée : ton score se compare à ta propre norme.'}
-        </AppText>
-      </Card>
+      <SettingsGroup
+        title="Mes cibles"
+        footer={
+          proteinGrams === null
+            ? 'Ajoute une pesée pour calculer ta cible de protéines en grammes.'
+            : `Soit ${proteinGrams} g de protéines par jour avec ton poids actuel (moyenne 7 j).`
+        }>
+        <SettingRow label="Poids visé">
+          <NumberField
+            label="Poids visé en kilos"
+            value={user.targetWeightKg}
+            placeholder="à définir"
+            unit="kg"
+            parse={(s) => parseNumber(s, SETTINGS.entry.weightMinKg, SETTINGS.entry.weightMaxKg, 1)}
+            format={asDecimal}
+            onCommit={(v) => save('targetWeightKg', v)}
+          />
+        </SettingRow>
+        <SettingRow label="Protéines">
+          <NumberField
+            label="Protéines en grammes par kilo"
+            value={user.proteinGPerKg}
+            unit="g/kg"
+            parse={(s) => parseNumber(s, t.proteinGPerKgMin, t.proteinGPerKgMax, 1)}
+            format={asDecimal}
+            onCommit={(v) => save('proteinGPerKg', v ?? t.proteinGPerKgDefault)}
+          />
+        </SettingRow>
+        <SettingRow label="Calories par jour">
+          <NumberField
+            label="Calories par jour"
+            value={user.caloriesKcal}
+            placeholder="à définir"
+            unit="kcal"
+            parse={(s) => parseNumber(s, t.caloriesMin, t.caloriesMax)}
+            format={asInt}
+            onCommit={(v) => save('caloriesKcal', v)}
+          />
+        </SettingRow>
+        <SettingRow label="Séances par semaine">
+          <NumberField
+            label="Séances par semaine"
+            value={user.sessionsPerWeek}
+            unit="/ sem."
+            parse={(s) => parseNumber(s, 0, t.sessionsPerWeekMax)}
+            format={asInt}
+            onCommit={(v) => save('sessionsPerWeek', v ?? t.sessionsPerWeekDefault)}
+          />
+        </SettingRow>
+      </SettingsGroup>
 
-      <Card style={styles.card}>
-        <AppText variant="strong">Amazfit Helio Strap</AppText>
-        <AppText variant="small">
-          Via Health Connect (app Zepp) · Dernière synchro :{' '}
-          {status?.lastSync ? formatDateTime(status.lastSync) : 'jamais'}
-        </AppText>
-        {HELIO_TYPES.map((t) => {
-          const received = (status?.rows[t.table] ?? 0) > 0;
-          return (
-            <View key={t.table} style={styles.row}>
-              <AppText variant="bodySmall" style={styles.rowLabel}>
-                {t.label}
-              </AppText>
-              <Pill text={received ? 'reçue' : 'absente'} color={received ? colors.good : colors.low} />
-            </View>
-          );
-        })}
-      </Card>
+      <SettingsGroup
+        title="Profil cardiaque"
+        footer="Sert au calcul de la charge. Laisse la valeur estimée si tu ne connais pas la tienne.">
+        <SettingRow label="Année de naissance">
+          <NumberField
+            label="Année de naissance"
+            value={user.birthYear}
+            placeholder="à définir"
+            unit=""
+            parse={(s) => parseBirthYear(s, now)}
+            format={asInt}
+            onCommit={(v) => save('birthYear', v)}
+          />
+        </SettingRow>
+        <SettingRow label="Sexe" hint={user.sex === null ? 'à définir' : undefined}>
+          <ChoiceChips<Sex> label="Sexe" options={SEX_OPTIONS} value={user.sex} onChange={(v) => save('sex', v)} />
+        </SettingRow>
+        <SettingRow
+          label="FC max"
+          hint={
+            hrMax === null
+              ? 'Renseigne ton année de naissance pour l’estimer.'
+              : hrMax.source === 'estimated'
+                ? 'estimée'
+                : estimated !== null
+                  ? `saisie (estimation : ${estimated} bpm)`
+                  : 'saisie'
+          }>
+          <NumberField
+            label="Fréquence cardiaque maximale"
+            value={user.hrMaxBpm}
+            placeholder={estimated === null ? 'à définir' : String(estimated)}
+            unit="bpm"
+            parse={(s) => parseNumber(s, p.hrMaxMin, p.hrMaxMax)}
+            format={asInt}
+            onCommit={(v) => save('hrMaxBpm', v)}
+          />
+        </SettingRow>
+      </SettingsGroup>
 
-      <Card style={styles.card}>
-        <AppText variant="strong">Suunto 9 Peak Pro</AppText>
-        <AppText variant="small">
-          Import mensuel des fichiers FIT (GPS, distance, allure) : prévu dans une prochaine version.
-        </AppText>
-      </Card>
+      <SettingsGroup title="Notifications">
+        <SettingRow label="Heure du récap">
+          <TimeStepper
+            label="Heure du récap"
+            text={formatTime(user.notificationTime)}
+            onMinus={() => shift('notificationTime', -1)}
+            onPlus={() => shift('notificationTime', 1)}
+          />
+        </SettingRow>
+        <SettingRow label="Silence à partir de">
+          <TimeStepper
+            label="Début de la plage silencieuse"
+            text={formatTime(user.quietStart)}
+            onMinus={() => shift('quietStart', -1)}
+            onPlus={() => shift('quietStart', 1)}
+          />
+        </SettingRow>
+        <SettingRow label="Silence jusqu’à">
+          <TimeStepper
+            label="Fin de la plage silencieuse"
+            text={formatTime(user.quietEnd)}
+            onMinus={() => shift('quietEnd', -1)}
+            onPlus={() => shift('quietEnd', 1)}
+          />
+        </SettingRow>
+        <SettingRow label="Alertes">
+          <Switch label="Alertes" value={user.alertsEnabled} onChange={(v) => save('alertsEnabled', v)} />
+        </SettingRow>
+      </SettingsGroup>
 
-      <Card style={styles.card}>
-        <AppText variant="strong">Poids et nutrition</AppText>
-        <AppText variant="small">
-          Poids : ta saisie fait foi, Zepp sert les jours sans saisie.{'\n'}
-          Dernière pesée :{' '}
-          {status?.lastWeight
-            ? `${formatDateTime(status.lastWeight.time)} (${status.lastWeight.source === 'manual' ? 'saisie' : 'Zepp'})`
-            : 'aucune'}
-        </AppText>
-        <AppText variant="small">Suivi macro (calories, protéines) : import prévu dans une prochaine version.</AppText>
-      </Card>
-
-      <NotificationCard />
-
-      <PrimaryButton title="Synchroniser maintenant" busy={syncing} onPress={syncAndRefresh} />
-      <SecondaryButton title="Diagnostic des données" onPress={() => router.push('/diagnostic')} />
+      <SettingsGroup title="Données" footer={message ?? undefined}>
+        <SettingLink label="Sources de données" onPress={() => router.push('/sources')} />
+        <SettingLink
+          label={busy === 'export' ? 'Export en cours…' : 'Exporter mes données (CSV)'}
+          onPress={busy ? () => undefined : exportCsv}
+        />
+        <SettingLink
+          label={busy === 'erase' ? 'Effacement en cours…' : 'Effacer toutes les données'}
+          color={colors.low}
+          onPress={busy ? () => undefined : confirmErase}
+        />
+      </SettingsGroup>
     </Screen>
   );
 }
-
-/** Heure de la notification du matin, autorisations notifications et arrière-plan. */
-function NotificationCard() {
-  const [time, setTime] = useState<TimeOfDay | null>(null);
-  const [permission, setPermission] = useState<NotificationPermission | null>(null);
-  const [background, setBackground] = useState<boolean | null>(null);
-
-  const refresh = useCallback(() => {
-    getNotificationTime().then(setTime).catch(() => setTime(DEFAULT_TIME));
-    getNotificationPermission().then(setPermission).catch(() => setPermission(null));
-    hasBackgroundAccess().then(setBackground).catch(() => setBackground(null));
-  }, []);
-  useFocusEffect(refresh);
-
-  async function shift(delta: number) {
-    if (!time) return;
-    const next = shiftTime(time, delta);
-    setTime(next);
-    await setNotificationTime(next);
-    await scheduleMorningNotifications().catch(() => undefined);
-  }
-
-  async function allowNotifications() {
-    // Après un refus, Android ne redemande plus : on ouvre les réglages de l'app.
-    const result = permission === 'denied' ? 'denied' : await requestNotificationPermission();
-    if (result === 'denied') await Linking.openSettings();
-    else await scheduleMorningNotifications().catch(() => undefined);
-    refresh();
-  }
-
-  async function allowBackground() {
-    await askReadPermissions();
-    refresh();
-  }
-
-  const step = SETTINGS.notification.stepMinutes;
-  return (
-    <Card style={styles.card}>
-      <AppText variant="label">Notification du matin</AppText>
-      <View style={styles.timeRow}>
-        <View style={styles.timeButton}>
-          <SecondaryButton title={`− ${step} min`} onPress={() => shift(-step)} disabled={!time} />
-        </View>
-        <AppText variant="tileValue" style={styles.time} accessibilityLiveRegion="polite">
-          {time ? formatTime(time) : '…'}
-        </AppText>
-        <View style={styles.timeButton}>
-          <SecondaryButton title={`+ ${step} min`} onPress={() => shift(step)} disabled={!time} />
-        </View>
-      </View>
-      <View style={styles.row}>
-        <AppText variant="bodySmall" style={styles.rowLabel}>
-          Notifications
-        </AppText>
-        <Pill
-          text={permission === 'granted' ? 'autorisées' : 'non autorisées'}
-          color={permission === 'granted' ? colors.good : colors.low}
-        />
-      </View>
-      {permission !== null && permission !== 'granted' && (
-        <SecondaryButton title="Autoriser les notifications" onPress={allowNotifications} />
-      )}
-      <View style={styles.row}>
-        <AppText variant="bodySmall" style={styles.rowLabel}>
-          Synchro en arrière-plan
-        </AppText>
-        <Pill text={background ? 'autorisée' : 'non autorisée'} color={background ? colors.good : colors.low} />
-      </View>
-      {background === false && <SecondaryButton title="Autoriser la lecture en arrière-plan" onPress={allowBackground} />}
-      <AppText variant="small">
-        Sans lecture en arrière-plan, la nuit se synchronise seulement quand tu ouvres l’app : la notification
-        t’invite alors à l’ouvrir.
-      </AppText>
-    </Card>
-  );
-}
-
-const styles = StyleSheet.create({
-  card: { gap: 10 },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  timeButton: { flex: 1 },
-  time: { minWidth: 84, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  rowLabel: { flex: 1 },
-});

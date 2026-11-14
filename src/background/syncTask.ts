@@ -1,4 +1,4 @@
-// Tâche de fond : synchro Health Connect puis mise à jour de la notification du matin.
+// Tâche de fond : synchro Health Connect, alertes, puis mise à jour de la notification du matin.
 // Android décide du moment exact (WorkManager) : au plus une fois par heure ici,
 // souvent moins quand le téléphone est en veille profonde.
 //
@@ -11,6 +11,7 @@ import * as TaskManager from 'expo-task-manager';
 import { SETTINGS } from '@/domain/settings';
 import { getStatus, syncHealthConnect } from '@/sources/healthConnect';
 
+import { runAlertEngine } from './alertEngine';
 import {
   getNotificationPermission,
   requestNotificationPermission,
@@ -22,6 +23,7 @@ export const SYNC_TASK = 'biohacking-sync';
 TaskManager.defineTask(SYNC_TASK, async () => {
   try {
     if ((await getStatus()) === 'available') await syncHealthConnect();
+    await runAlertEngine().catch(() => undefined);
     await scheduleMorningNotifications();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {

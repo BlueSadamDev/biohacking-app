@@ -48,4 +48,16 @@ describe('texte de la notification', () => {
     expect(notificationText(buildRecap(history, TODAY)).body).toMatch(/^Ouvre l’app/);
     expect(notificationText(null).body).toMatch(/^Ouvre l’app/);
   });
+  it('regroupe les alertes « À surveiller » et ajoute le rappel nutrition', () => {
+    const recap = buildRecap(series(TODAY, 10), TODAY);
+    expect(
+      notificationText(recap, { watchAlerts: ['HRV basse', 'Sommeil court'], nutritionReminder: 'Hier : protéines 100 g sur 144 g.' }).body,
+    ).toBe(
+      'Calibration : 10 / 28 jours. Écoute tes sensations aujourd’hui. À surveiller : HRV basse, Sommeil court. Hier : protéines 100 g sur 144 g.',
+    );
+  });
+  it('sans alerte ni rappel : texte inchangé', () => {
+    const recap = buildRecap(series(TODAY, 10), TODAY);
+    expect(notificationText(recap, { watchAlerts: [], nutritionReminder: null })).toEqual(notificationText(recap));
+  });
 });

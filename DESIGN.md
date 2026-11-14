@@ -125,6 +125,10 @@ jauge de charge 7 j / 28 j (texte d'état coloré : `good` équilibrée,
 glucides, lipides et nombre de repas en petit ; mention « via Suivi
 macro » en haut à droite) → bouton « Saisir poids et ressenti » →
 navigation.
+Le bouton Alertes remplace le bouton rond du diagnostic du lot 1 : le
+diagnostic s'ouvre depuis l'écran Sources. La carte alerte du jour écrit
+aussi le niveau en toutes lettres après le thème (« Alerte · Charge ·
+Important »), pour que la couleur ne porte jamais seule le sens.
 
 ### Historique des alertes
 Retour + titre « Alertes », filtres Toutes / Récupération / Charge /
@@ -140,11 +144,18 @@ Accessible par l'onglet Réglages. Groupes, dans l'ordre :
    (g/kg, défaut 1,8), calories par jour (kcal), séances par semaine.
    Sous le groupe : « Soit <n> g de protéines par jour avec ton poids
    actuel (moyenne 7 j). »
-2. **Profil cardiaque** : FC max (bpm), estimée par défaut. Sous le
+2. **Profil cardiaque** : année de naissance (sert à estimer la FC max),
+   sexe (pastilles Homme / Femme, « à définir » par défaut ; choisit le
+   coefficient du calcul de charge), FC max (bpm), estimée par défaut
+   (l'estimation s'affiche en indication dans le champ vide). Sous le
    groupe : « Sert au calcul de la charge. Laisse la valeur estimée si tu
    ne connais pas la tienne. »
 3. **Notifications** : heure du récap (défaut 7:30), plage silencieuse
-   (défaut 22:00 – 7:00), interrupteur « Alertes ».
+   (défaut 22:00 – 7:00), interrupteur « Alertes ». Les heures se règlent
+   avec des boutons − et + de 44 px de part et d'autre de la valeur
+   (pas de 15 min pour le récap, 30 min pour la plage silencieuse).
+   Les autorisations (notifications, lecture en arrière-plan) restent
+   sur l'écran Sources.
 4. **Données** : « Sources de données » (ouvre l'écran Sources),
    « Exporter mes données (CSV) », « Effacer toutes les données » en
    `low` avec une confirmation obligatoire.

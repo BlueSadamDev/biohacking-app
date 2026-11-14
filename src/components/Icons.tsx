@@ -65,3 +65,22 @@ export function PulseIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** Alertes : cloche. */
+export function BellIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9" />
+      <Path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" />
+    </Icon>
+  );
+}
+
+/** Chevron vers la droite. */
+export function ChevronIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M9 6l6 6-6 6" />
+    </Icon>
+  );
+}

@@ -3,6 +3,8 @@
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
+import type { ExerciseSession } from '@/domain/load';
+import type { Meal } from '@/domain/nutrition';
 
 import { getDb } from './database';
 
@@ -94,10 +96,48 @@ export async function loadSteps(sinceMs: number): Promise<StepsRecord[]> {
   );
 }
 
+/** Mesures de FC prises pendant une séance terminée après `sinceMs`. */
+export async function loadExerciseHeartRate(sinceMs: number): Promise<Sample[]> {
+  const db = await getDb();
+  return db.getAllAsync<Sample>(
+    `SELECT DISTINCT h.time_ms AS time, h.bpm AS value, h.origin AS origin
+     FROM hc_heart_rate h JOIN hc_exercise e ON h.time_ms BETWEEN e.start_ms AND e.end_ms
+     WHERE e.end_ms >= ? ORDER BY h.time_ms`,
+    sinceMs,
+  );
+}
+
+export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]> {
+  const db = await getDb();
+  return db.getAllAsync<ExerciseSession>(
+    'SELECT id, start_ms AS start, end_ms AS "end", exercise_type AS exerciseType, origin FROM hc_exercise WHERE end_ms >= ? ORDER BY start_ms',
+    sinceMs,
+  );
+}
+
+export async function loadMeals(sinceMs: number): Promise<Meal[]> {
+  const db = await getDb();
+  return db.getAllAsync<Meal>(
+    `SELECT start_ms AS start, energy_kcal AS energyKcal, protein_g AS proteinG,
+            carbs_g AS carbsG, fat_g AS fatG, origin
+     FROM hc_nutrition WHERE start_ms >= ? ORDER BY start_ms`,
+    sinceMs,
+  );
+}
+
 /** Nombre de lignes par table (écran de diagnostic : des comptages, jamais de valeurs). */
 export async function countRows(): Promise<Record<string, number>> {
   const db = await getDb();
-  const tables = ['hc_sleep', 'hc_hrv', 'hc_resting_hr', 'hc_heart_rate', 'hc_steps', 'weight'];
+  const tables = [
+    'hc_sleep',
+    'hc_hrv',
+    'hc_resting_hr',
+    'hc_heart_rate',
+    'hc_steps',
+    'weight',
+    'hc_exercise',
+    'hc_nutrition',
+  ];
   const result: Record<string, number> = {};
   for (const table of tables) {
     const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`);

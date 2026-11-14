@@ -72,7 +72,7 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 - **Sélecteur 1 à 5** : 5 boutons égaux de 44 px ; sélectionné = fond `text` / texte `bg` ; sinon contour `border`.
 - **Onglets de période (7 j / 30 j / 90 j)** : groupe sur fond `surface`, onglet actif fond `track`.
 - **Graphique de tendance** : barres arrondies en haut, `#5C6B7E` par défaut, `mid` pour les valeurs sous la plage, dernière barre (aujourd'hui) en `good` ; plage normale en bande `info` à 10 % avec bords pointillés.
-- **Barre de navigation** : 72 px, 4 onglets (Aujourd'hui, Tendances, Sport, Réglages), icône + libellé 11 px, actif en `text`, inactifs en `#8B97A6`.
+- **Barre de navigation** : 72 px, 4 onglets (Aujourd'hui, Tendances, Sport, Réglages ; 5 à partir du lot 4, voir « Écrans du lot 4 »), icône + libellé 11 px, actif en `text`, inactifs en `#8B97A6`.
 
 ## Écrans du lot 1
 0. **Démarrage** : voir « Identité ».
@@ -221,6 +221,55 @@ plus faible (3 au plus). En bas, centré (12, `textMuted`) : « Un lien
 observé n'est pas une preuve de cause. » et « Seuls les liens assez
 réguliers sur au moins 20 jours sont affichés. » S'il n'y en a aucun :
 « Pas encore assez de données pour repérer des liens fiables. »
+
+## Écrans du lot 4
+
+### Navigation
+La barre de navigation passe à 5 onglets : Aujourd'hui, Tendances, Sport,
+Coach, Réglages. Icône Coach : bulle de dialogue en trait avec deux lignes.
+
+### Nouveaux composants
+- **Badge « 100 % sur ton téléphone »** : pilule de 32 px, fond `surface`,
+  icône cadenas 14 px + texte 12 `textSoft`. Il ouvre l'écran Modèle.
+- **Carte bilan de la semaine** : fond `surface`, rayon 16. Libellé
+  « Bilan de la semaine » (12/600, `#7DB8FF`, majuscules) et dates à
+  droite ; phrase de synthèse (15/600) ; « Ce qui a marché · … » (libellé
+  `good`) et « Ce qui coince · … » (libellé `mid`), texte 13 `textSoft` ;
+  séparateur, « Tes 2 actions pour la semaine » (12 `textMuted`) puis
+  2 actions numérotées en 14/600 ; en bas, « D'après : … » (11,
+  `#8B97A6`) qui liste les chiffres utilisés.
+- **Bulles de conversation** : question à droite, fond `track`, rayon
+  16 16 4 16 ; réponse à gauche, fond `surface`, rayon 16 16 16 4, texte
+  14, l'action conseillée en 14/600, puis « Chiffres utilisés : … » (11,
+  `#8B97A6`). Largeur maximale 80 % (question) et 88 % (réponse).
+- **Questions suggérées** : mêmes pastilles que les filtres (contour
+  `border`, texte `textSoft`).
+- **Champ de question** : champ de 48 px (contour `border`, fond
+  `surface`, rayon 14) + bouton carré 48 × 48 fond `text`, flèche `bg`,
+  aria-label « Envoyer ». Pendant la génération, le bouton devient
+  « Arrêter ». Mention dessous (11, `#8B97A6`, centrée) : « Le coach
+  explique tes chiffres, il n'en invente pas. Ce n'est pas un avis
+  médical. »
+- **Lien « Pourquoi ? »** : sur les cartes alerte et lien observé, texte
+  13/600 `#7DB8FF` en bas de carte. Il ouvre un panneau du bas avec
+  l'explication du coach (même style que la bulle de réponse). Masqué si
+  le modèle n'est pas installé.
+
+### Coach (onglet Coach)
+En-tête « Ton coach Aube » + titre « Coach » + badge à droite. Carte bilan
+de la semaine (la plus récente) → questions suggérées → conversation →
+champ de question en bas → navigation. Si le modèle n'est pas installé :
+une carte unique qui explique le coach et renvoie vers l'écran Modèle.
+
+### Modèle du coach
+Retour + titre « Modèle du coach ». Carte « Tout reste sur ton téléphone »
+(cadenas `good`). Sans modèle : « Installer en 3 étapes » (télécharger le
+fichier depuis l'ordinateur, le copier dans Téléchargements, le choisir
+dans Aube), taille et espace nécessaires, bouton « Choisir le fichier du
+modèle ». Avec modèle : lignes de réglage État (« Installé · prêt » en
+`good`), Fichier (nom + taille), Vitesse mesurée (mots / s), Bilan de la
+semaine (« dimanche, à l'ouverture »), puis bouton secondaire « Supprimer
+le modèle » en `low` avec confirmation.
 
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.

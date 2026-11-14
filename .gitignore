@@ -60,3 +60,10 @@ node_modules_old/
 # Exports de données de santé (jamais dans le dépôt)
 exports/
 *.csv
+
+# Fichiers de modèle IA du coach (jamais dans le dépôt)
+*.gguf
+*.pte
+*.bin
+*.safetensors
+*.onnx

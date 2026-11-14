@@ -42,6 +42,17 @@
 - **Lot 1** (terminé, fusionné via la PR #5) : récap du matin, à partir du Helio Strap seul, et identité « Aube » (nom affiché, icône, écran de démarrage ; paquet Android inchangé). Points bloquants tranchés : une valeur par nuit (HRV, FC au repos) et poids (saisie manuelle prioritaire, Zepp en secours).
 - **Lot 2** (terminé, fusionné via la PR #8) : nutrition (repas Suivi macro via Health Connect), charge d'entraînement (TRIMP, ratio 7 j / 28 j), écran Réglages, export CSV (`expo-file-system`), moteur d'alertes et historique. Le sexe (coefficient du TRIMP) et l'année de naissance (FC max) se saisissent dans l'app, jamais dans le dépôt.
 - **Lot 3** (terminé, fusionné via la PR #11) : zones cardiaques (cible de zone 2 dans Réglages), saisie de la meilleure série des 3 exercices clés et 1RM (Epley), alerte de stagnation, rappel de saisie, composition corporelle, liens observés (onglet Tendances), suggestions de sports à Paris (catalogue local). Aucune nouvelle dépendance ni permission. Suunto abandonnée (hors périmètre).
+- **Lot 4** (en cours) : coach IA local (voir la section « Coach IA »). Première étape : test de faisabilité du modèle sur le S21, résultat dans `docs/RAPPORT_LOT_4_MODELE.md`, puis choix du modèle par l'utilisateur avant tout développement.
+
+## Coach IA
+- **100 % local** : le modèle tourne sur le téléphone. Aucun appel réseau dans le code du coach (ni API en ligne, ni téléchargement du modèle depuis l'app). L'APK de production reste sans permission Internet.
+- Téléphone : Samsung Galaxy S21 5G (8 Go de RAM), sans Gemini Nano. Modèle : petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié, fichier d'environ 1 Go), installé une fois par **import manuel du fichier** (`expo-document-picker`), vérifié (taille et empreinte SHA-256) puis copié dans l'espace privé de l'app. Supprimable depuis l'app.
+- Usages : bilan de la semaine, bouton « Pourquoi ? » sur les alertes et les liens observés, questions libres encadrées. Le plan de semaine est reporté.
+- **Le coach ne calcule rien** : il reformule et explique uniquement les chiffres déjà calculés par l'app. Sa seule source de chiffres est le résumé produit par `src/domain/`. Chaque nombre d'une réponse doit exister dans ce résumé, sinon nouvelle génération, puis message de repli.
+- Jamais de diagnostic médical ; le coach dit « je ne sais pas » quand l'information manque.
+- Le modèle n'est chargé que sur l'onglet Coach ou pour un « Pourquoi ? », puis libéré. Aucune génération en arrière-plan.
+- Les fichiers de modèle (`*.gguf`, `*.pte`, `*.bin`, `*.safetensors`, `*.onnx`…) ne vont **jamais** dans le dépôt (bloqués par `.gitignore`).
+- Les tests du coach utilisent un modèle simulé et des données fictives.
 
 ## Design
 Lire [DESIGN.md](DESIGN.md) avant toute modification d'interface et le respecter. Tant que DESIGN.md n'existe pas (lot 0), garder une interface minimale et lisible, sans travail graphique.
@@ -58,7 +69,7 @@ Quand une modification change ce que décrit DESIGN.md (couleur, bouton, écran)
 
 ## Dépendances
 - Pour ajouter un module Expo (SQLite, notifications, tâches de fond, etc.) : utiliser `npx expo install <nom>`, jamais `npm install`, afin de garantir la compatibilité avec le SDK.
-- Modules prévus (à ajouter seulement quand le lot en a besoin, avec validation) : `react-native-health-connect`, `expo-build-properties`, `expo-dev-client`, `expo-sqlite`, `expo-notifications`, `expo-background-task` + `expo-task-manager`, `jest-expo`.
+- Modules prévus (à ajouter seulement quand le lot en a besoin, avec validation) : `react-native-health-connect`, `expo-build-properties`, `expo-dev-client`, `expo-sqlite`, `expo-notifications`, `expo-background-task` + `expo-task-manager`, `jest-expo`, `expo-document-picker` (import du fichier du modèle du coach), et le moteur IA local choisi au test de faisabilité du lot 4 (`llama.rn` ou `react-native-executorch`).
 - Tâches de fond : `expo-background-task` (minimum 15 minutes entre deux exécutions sur Android). Synchro au plus une fois par heure.
 - Ne jamais ajouter manuellement `expo-modules-core` ni `expo-modules-autolinking` dans `package.json` : ce sont des dépendances internes gérées par Expo. Lancer `npx expo install --fix` si nécessaire.
 - **Dependabot** : ne jamais fusionner une PR Dependabot qui touche les dépendances npm (Dependabot ne connaît pas les versions attendues par le SDK Expo). À la place : `npx expo install --check`, puis `npx expo install --fix` sur une branche dédiée, et fermer la PR Dependabot avec une explication. Les PR Dependabot sur les actions GitHub (`.github/workflows`) peuvent être fusionnées après un build réussi.

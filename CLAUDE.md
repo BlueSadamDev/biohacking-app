@@ -41,6 +41,7 @@
 - **Lot 0** (terminé) : inventaire des données Health Connect. Résultat dans `docs/RAPPORT_LOT_0.md` : l'app Zepp écrit tous les types lus sauf la VO2max (HRV et poids compris) ; la Suunto n'écrit rien.
 - **Lot 1** (terminé, fusionné via la PR #5) : récap du matin, à partir du Helio Strap seul, et identité « Aube » (nom affiché, icône, écran de démarrage ; paquet Android inchangé). Points bloquants tranchés : une valeur par nuit (HRV, FC au repos) et poids (saisie manuelle prioritaire, Zepp en secours).
 - **Lot 2** (terminé, fusionné via la PR #8) : nutrition (repas Suivi macro via Health Connect), charge d'entraînement (TRIMP, ratio 7 j / 28 j), écran Réglages, export CSV (`expo-file-system`), moteur d'alertes et historique. Le sexe (coefficient du TRIMP) et l'année de naissance (FC max) se saisissent dans l'app, jamais dans le dépôt.
+- **Lot 3** (terminé, fusionné via la PR #11) : zones cardiaques (cible de zone 2 dans Réglages), saisie de la meilleure série des 3 exercices clés et 1RM (Epley), alerte de stagnation, rappel de saisie, composition corporelle, liens observés (onglet Tendances), suggestions de sports à Paris (catalogue local). Aucune nouvelle dépendance ni permission. Suunto abandonnée (hors périmètre).
 
 ## Design
 Lire [DESIGN.md](DESIGN.md) avant toute modification d'interface et le respecter. Tant que DESIGN.md n'existe pas (lot 0), garder une interface minimale et lisible, sans travail graphique.

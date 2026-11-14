@@ -48,6 +48,16 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+/** Onglet « Tendances » : courbe montante sur un axe. */
+export function TrendsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M4 4v16h16" />
+      <Path d="M7 15l4-4 3 3 5-6" />
+    </Icon>
+  );
+}
+
 /** Onglet « Sport » : haltère. */
 export function SportIcon(props: IconProps) {
   return (

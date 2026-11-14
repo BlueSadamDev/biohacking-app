@@ -243,6 +243,28 @@ export const SETTINGS = {
     gapPriority: ['endurance', 'mobility'] as readonly ('endurance' | 'mobility')[],
   },
 
+  /**
+   * Liens observés (lot 3, onglet Tendances) : pour chaque paire, on compare deux groupes de jours
+   * (situation étudiée / situation de référence) sur le résultat qui suit.
+   * Force du lien = écart des moyennes ÷ écart-type commun (« d de Cohen »).
+   */
+  correlations: {
+    windowDays: 90,
+    /** Jours comparables nécessaires (tous groupes confondus), et minimum par groupe. */
+    minDays: 20,
+    minPerGroup: 5,
+    /** Régularité : même sens dans la 1re et la 2e moitié de la période, avec au moins N jours par groupe dans chaque moitié. */
+    minPerGroupPerHalf: 2,
+    /** Seuils de force (valeur absolue du d de Cohen). Sous `weak`, le lien n'est pas affiché. */
+    weak: 0.3,
+    moderate: 0.5,
+    strong: 0.8,
+    /** Au plus N liens affichés, du plus fort au plus faible. */
+    maxShown: 3,
+    /** Séance « du soir » : commencée à partir de cette heure. */
+    lateSessionHour: 20,
+  },
+
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */
   nutrition: {
     reachedFraction: 0.9,

@@ -131,7 +131,7 @@ function ratioOn(input: AlertInputs, date: string, settings: Settings): number |
 }
 
 /** Minutes depuis 18 h la veille : rend comparables les couchers avant et après minuit. */
-function bedtimeMinutes(start: number): number {
+export function bedtimeMinutes(start: number): number {
   const d = new Date(start);
   return (((d.getHours() - 18) * 60 + d.getMinutes()) % 1440 + 1440) % 1440;
 }

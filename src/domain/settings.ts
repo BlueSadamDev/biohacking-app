@@ -108,6 +108,26 @@ export const SETTINGS = {
     trimpCoefficient: { male: 1.92, female: 1.67 },
   },
 
+  /** Charge d'entraînement (cahier des charges, section 5) : TRIMP de Banister et ratio aigu / chronique. */
+  load: {
+    /** TRIMP = minutes × FCr × a × e^(k × FCr), FCr = (FC − FC repos) / (FC max − FC repos). */
+    trimpA: 0.64,
+    /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
+    maxSampleGapSeconds: 120,
+    /** Séance sans assez de FC : moins de N mesures ou moins de cette part de la durée couverte. */
+    minSamples: 5,
+    minCoverage: 0.5,
+    /** Charge aiguë et chronique : moyennes par jour sur N jours (aujourd'hui compris). */
+    acuteDays: 7,
+    chronicDays: 28,
+    /** Jours d'historique nécessaires avant d'afficher le ratio. */
+    calibrationDays: 28,
+    /** Seuils du ratio aigu / chronique. */
+    underMax: 0.8,
+    balancedMax: 1.3,
+    highMin: 1.5,
+  },
+
   /** Plage silencieuse par défaut : aucune notification d'alerte entre ces heures. */
   quietHours: {
     defaultStart: { hour: 22, minute: 0 },

@@ -1,5 +1,4 @@
-// Accueil – récap du matin (DESIGN.md, écran 1).
-// La jauge de charge 7 j / 28 j arrivera au lot 2.
+// Accueil – récap du matin (DESIGN.md, écran 1 et accueil du lot 2).
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, type ComponentProps } from 'react';
@@ -10,6 +9,7 @@ import { AppText } from '@/components/AppText';
 import { PrimaryButton, RoundButton } from '@/components/Buttons';
 import { Card, Pill } from '@/components/Card';
 import { formatLongDate } from '@/components/format';
+import { LoadCard } from '@/components/LoadCard';
 import { PulseIcon } from '@/components/Icons';
 import { MetricTile } from '@/components/MetricTile';
 import { metricView } from '@/components/metricView';
@@ -34,7 +34,7 @@ function ringOf(recap: MorningRecap | null): ComponentProps<typeof RecoveryRing>
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { loading, syncing, access, recap, nights, error, sync, reload } = useHealthData();
+  const { loading, syncing, access, recap, nights, load, error, sync, reload } = useHealthData();
 
   // En revenant sur l'accueil (après une saisie par exemple), on relit la base.
   useFocusEffect(
@@ -111,6 +111,8 @@ export default function HomeScreen() {
               );
             })}
           </View>
+
+          <LoadCard load={load} />
         </>
       )}
 

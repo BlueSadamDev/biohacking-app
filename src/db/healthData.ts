@@ -3,6 +3,7 @@
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
+import type { ExerciseSession } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
 
 import { getDb } from './database';
@@ -95,7 +96,16 @@ export async function loadSteps(sinceMs: number): Promise<StepsRecord[]> {
   );
 }
 
-export type ExerciseSession = { id: string; start: number; end: number; exerciseType: number; origin: string };
+/** Mesures de FC prises pendant une séance terminée après `sinceMs`. */
+export async function loadExerciseHeartRate(sinceMs: number): Promise<Sample[]> {
+  const db = await getDb();
+  return db.getAllAsync<Sample>(
+    `SELECT DISTINCT h.time_ms AS time, h.bpm AS value, h.origin AS origin
+     FROM hc_heart_rate h JOIN hc_exercise e ON h.time_ms BETWEEN e.start_ms AND e.end_ms
+     WHERE e.end_ms >= ? ORDER BY h.time_ms`,
+    sinceMs,
+  );
+}
 
 export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]> {
   const db = await getDb();

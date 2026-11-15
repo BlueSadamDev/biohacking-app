@@ -38,7 +38,7 @@ Le Helio Strap, lu via Health Connect, est la source principale et automatique. 
 
 **Prérequis technique** : lire l'historique et lire en arrière-plan demandent des permissions Health Connect spécifiques ([doc Android](https://developer.android.com/health-and-fitness/health-connect/data-types)). En usage personnel, sans publication sur le Play Store, aucune déclaration n'est à faire auprès de Google.
 
-## 3. Fusion des deux capteurs
+## 3. Fusion des sources
 
 La règle : pas de moyenne, une source prioritaire par métrique et une source de secours. Moyenner deux capteurs qui mesurent différemment brouille les tendances. Pour les insights, la constance d'une même source compte plus que la précision absolue.
 
@@ -61,7 +61,7 @@ Pour la HRV et la FC au repos, sans sommeil principal enregistré la nuit concer
 
 ## 4. Fonctionnalités
 
-Cinq écrans et un moteur de règles couvrent le besoin : récap du matin, alertes, progression sportive, tendances, coach.
+Cinq onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages), des écrans secondaires (détail d'un indicateur, saisies du matin et de séance, alertes, sources de données, diagnostic, modèle du coach, bilans de la semaine) et un moteur de règles couvrent le besoin : récap du matin, alertes, progression sportive, tendances, coach.
 
 ### F1 – Récap du matin
 
@@ -148,7 +148,7 @@ Application Expo (React Native, TypeScript), 100 % locale, développée avec Cla
 
 | Brique | Choix | Rôle |
 | --- | --- | --- |
-| Langage et interface | Expo (React Native, TypeScript), Expo Router | Écrans, thème clair et sombre |
+| Langage et interface | Expo (React Native, TypeScript), Expo Router | Écrans, thème sombre uniquement (voir DESIGN.md) |
 | Données de santé | react-native-health-connect (plugin Expo intégré) | Lecture des capteurs, historique compris |
 | Stockage | expo-sqlite | Données fusionnées, normes, alertes |
 | Tâches de fond | expo-background-task (WorkManager, 15 min minimum) | Synchro horaire, calculs de nuit, récap du matin |
@@ -177,8 +177,18 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 3. **Lot 2 – Alertes, charge et nutrition** : moteur de règles, alertes proactives, charge aiguë / chronique, nutrition lue via Health Connect (Suivi macro), suivi des protéines. *Condition de passage : alertes jugées pertinentes, moins de 2 fausses alertes par semaine.*
 4. **Lot 3 – Progression et corrélations** : zones cardiaques (temps en zone 2), saisie de la meilleure série des 3 exercices clés, 1RM estimé, composition corporelle, corrélations, suggestions d'autres sports faciles à pratiquer à Paris. Sans la Suunto (hors périmètre). *Condition de passage : lots 1 à 3 stables et utilisés au quotidien.*
 5. **Lot 4 – Coach IA local** (F6) : d'abord un test de faisabilité (comparaison de 2 moteurs et de 2 ou 3 petits modèles sur le S21 : mémoire, vitesse, qualité en français, licence), résultat dans `docs/RAPPORT_LOT_4_MODELE.md` et choix du modèle ; puis installation du modèle par import manuel, résumé chiffré des données (seule source de chiffres du coach), garde-fous, bilan de la semaine, « Pourquoi ? » sur les alertes et les liens observés, questions libres. *Condition de passage : réponses jugées justes et utiles, aucun chiffre inventé, aucune formulation de diagnostic.*
+6. **Lot 4.1 – Fiabilité** : stabiliser l'app pendant la calibration des normes, sans nouvelle fonctionnalité de calcul. Base de données qui attend quelques secondes au lieu d'échouer (« database is locked » quand la synchro du lancement et la tâche de fond tournent en même temps) et écritures qui ne se chevauchent jamais ; bouton « Ouvrir Zepp » sur l'onglet Aujourd'hui quand la nuit n'est pas encore arrivée dans Health Connect (il ouvre seulement l'app Zepp, sans appel réseau ; Aube relance sa synchro au retour ; absent si Zepp n'est pas installée) ; chiffres utilisés repliables sur la carte « Bilan de la semaine », comme dans les réponses du coach.
+7. **Lot 5a – Collecter** : étiquettes de période (malade, blessure, voyage, vacances) : les jours étiquetés sont exclus des normes et les alertes sont en pause ; journal de comportements du matin.
+8. **Pause d'usage de 3 à 4 semaines** : aucun développement. Objectifs : calibration des normes terminée, et vérification des conditions de passage des lots 2 et 3.
+9. **Lot 5b – Exploiter** : expériences personnelles (tests « avec / sans » tirés au sort) et cible d'effort du jour.
+10. **Lot 6 – Nutrition et nuit** : répartition des protéines dans la journée ; préparation de la nuit (dette de sommeil, heure de coucher conseillée).
+11. **Lot 7 – Cycles et bilans** : plan de semaine fondé sur des règles, semaine allégée proposée au bon moment, rapport mensuel en PDF.
 
-Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie.
+**Plus tard** (non planifié, à cadrer avant tout développement) : score de récupération qui s'ajuste à mon ressenti, heure d'entraînement idéale.
+
+**Écartés** : widget d'écran d'accueil, âge biologique, réveil intelligent, météo et pollution (demandent Internet, or l'APK de production n'a pas cette permission).
+
+Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie. Les lots 5a à 7 seront détaillés (fonctionnalités, règles de calcul, permissions) dans ce cahier avant leur développement.
 
 **Révision après le lot 0** : faite. Ce cahier intègre les constats du lot 0 (sections 2, 3 et 8). Les deux points bloquants pour le lot 1 (valeur par nuit, source du poids) sont tranchés.
 
@@ -207,7 +217,7 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - [x] HRV et FC au repos : règle « une valeur par nuit » validée (voir section 3 et décisions)
 - [x] Poids : saisie manuelle prioritaire, Zepp en secours (voir section 3 et décisions)
 - [x] VO2max (aucune source) : retirée du cahier des charges, comme l'allure à FC donnée (voir décisions)
-- [ ] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine
+- [x] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine : saisies dans l'app (Réglages > Mes cibles), volontairement absentes du dépôt public
 - [x] Exercices de musculation clés à suivre : squat, développé couché, soulevé de terre (voir décisions)
 - [x] Nutrition : Suivi macro écrit les repas dans Health Connect (vérifié), plus besoin d'export JSON
 
@@ -233,9 +243,5 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 3. ~~Lot 2 : alertes, charge et nutrition.~~ Fait (PR #8).
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
 5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).
-
-**Idées pour plus tard** (notées à la fin du lot 4, non planifiées : à cadrer avant tout développement)
-
-- Bouton « Ouvrir Zepp » sur l'onglet Aujourd'hui quand la nuit n'est pas encore synchronisée (Zepp n'envoie pas toujours ses données à Health Connect) ; Aube relance sa synchro au retour. Aucun appel réseau : il ouvre seulement l'app Zepp.
-- Lenteurs d'accès à la base de données vues dans les journaux de l'APK de production (synchro du lancement et tâche de fond en même temps, erreur « database is locked » déjà vue en développement) : faire attendre la base quelques secondes au lieu d'échouer.
-- Carte « Bilan de la semaine » : chiffres utilisés repliables, comme dans les réponses du coach.
+6. ~~Lot 4.1 : fiabilité.~~ Fait (PR #16). Les trois « idées pour plus tard » notées à la fin du lot 4 y sont intégrées (section 7).
+7. Lot 5a : collecter, puis pause d'usage de 3 à 4 semaines (section 7).

@@ -3,7 +3,7 @@
 
 import type { WeeklyReview } from '@/domain/weeklyReview';
 
-import { getDb } from './database';
+import { getDb, writeSql } from './database';
 
 type Row = {
   week_start: string;
@@ -42,8 +42,7 @@ function fromRow(r: Row): WeeklyReview {
 
 /** Enregistre (ou remplace) le bilan d'une semaine. */
 export async function saveWeeklyReview(r: WeeklyReview): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
+  await writeSql(
     `INSERT OR REPLACE INTO coach_weekly
       (week_start, week_end, synthesis, actions_json, worked_json, stuck_json, facts_json, source, created_ms)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -61,8 +60,7 @@ export async function saveWeeklyReview(r: WeeklyReview): Promise<void> {
 
 /** Supprime le bilan d'une semaine (banc d'essai : pour le faire rédiger de nouveau). */
 export async function deleteWeeklyReview(weekStart: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM coach_weekly WHERE week_start = ?', weekStart);
+  await writeSql('DELETE FROM coach_weekly WHERE week_start = ?', weekStart);
 }
 
 /** Bilans, du plus récent au plus ancien. */

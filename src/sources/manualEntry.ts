@@ -2,7 +2,7 @@
 // Le poids saisi est rangé avec les pesées Zepp (table `weight`, source 'manual') :
 // la règle « la saisie fait foi » est appliquée par src/domain/daily.ts.
 
-import { getDb } from '@/db/database';
+import { getDb, writeSql } from '@/db/database';
 import { upsertRows } from '@/db/healthData';
 import { dayKey } from '@/domain/dates';
 
@@ -46,8 +46,7 @@ export async function saveMorningEntry(entry: MorningEntry): Promise<void> {
   );
   if (entry.weightKg === null) {
     // Champ vidé : on retire la saisie, la pesée Zepp du jour (s'il y en a une) reprend la main.
-    const db = await getDb();
-    await db.runAsync('DELETE FROM weight WHERE id = ?', weightId(entry.date));
+    await writeSql('DELETE FROM weight WHERE id = ?', weightId(entry.date));
   } else {
     await upsertRows(
       'weight',

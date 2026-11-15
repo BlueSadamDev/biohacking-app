@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    Depuis Android 11, une app ne voit pas les autres apps installées.
+    Cette déclaration rend visible la seule app Zepp (Helio Strap), pour savoir
+    si elle est installée et l'ouvrir. Ce n'est pas une permission : Aube ne lit
+    rien dans Zepp et ne lui envoie rien.
+  -->
+  <queries>
+    <package android:name="com.huami.watch.hmwatchmanager" />
+  </queries>
+</manifest>

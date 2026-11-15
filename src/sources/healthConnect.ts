@@ -372,13 +372,29 @@ async function syncType(type: SyncType, since: number, until: number): Promise<n
   }
 }
 
+/** Synchro en cours (une seule à la fois), ou null. */
+let runningSync: Promise<SyncTypeReport[]> | null = null;
+
 /**
  * Synchronise les types lus depuis Health Connect vers la base locale.
  * Première fois : `firstSyncDays` jours d'historique. Ensuite : depuis la dernière
  * synchro réussie, moins `overlapDays` jours (données arrivées en retard).
  * Le sommeil et les séances passent en premier : la FC continue est filtrée sur eux.
+ *
+ * Une seule synchro à la fois : si une synchro est déjà en cours (lancement, tâche de
+ * fond, bouton du diagnostic), la nouvelle demande attend la fin de celle-ci et reçoit
+ * son résultat, au lieu d'en lancer une seconde en parallèle.
  */
-export async function syncHealthConnect(now: number = Date.now()): Promise<SyncTypeReport[]> {
+export function syncHealthConnect(now: number = Date.now()): Promise<SyncTypeReport[]> {
+  if (!runningSync) {
+    runningSync = runSync(now).finally(() => {
+      runningSync = null;
+    });
+  }
+  return runningSync;
+}
+
+async function runSync(now: number): Promise<SyncTypeReport[]> {
   const granted = await getGrantedReadTypes();
   const reports: SyncTypeReport[] = [];
   for (const { type, label } of SYNC_TYPES) {

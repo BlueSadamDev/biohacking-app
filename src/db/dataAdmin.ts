@@ -7,7 +7,7 @@ import { Directory } from 'expo-file-system';
 import { toCsv, type Row } from '@/domain/csv';
 import { dayKey } from '@/domain/dates';
 
-import { getDb } from './database';
+import { getDb, writeTransaction } from './database';
 
 /** Tables exportées, avec le nom du fichier CSV. */
 const EXPORT_TABLES: { table: string; file: string }[] = [
@@ -76,8 +76,7 @@ export async function exportAllToCsv(now: Date = new Date()): Promise<number | n
 
 /** Efface toutes les données (pas les réglages). Health Connect sera relu à la prochaine synchro. */
 export async function eraseAllData(): Promise<void> {
-  const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await writeTransaction(async (tx) => {
     for (const table of ERASE_TABLES) await tx.execAsync(`DELETE FROM ${table}`);
   });
 }

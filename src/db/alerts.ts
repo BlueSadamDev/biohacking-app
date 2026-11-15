@@ -2,7 +2,7 @@
 
 import type { AlertLevel, AlertRule, AlertTheme, PastAlert, SelectedAlert } from '@/domain/alerts';
 
-import { getDb } from './database';
+import { getDb, writeSql } from './database';
 import { upsertRows } from './healthData';
 
 export type StoredAlert = SelectedAlert & { createdMs: number; read: boolean };
@@ -96,6 +96,5 @@ export async function loadAlertsOverview(today: string): Promise<AlertsOverview>
 }
 
 export async function markAllAlertsRead(): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('UPDATE alert SET read = 1 WHERE read = 0');
+  await writeSql('UPDATE alert SET read = 1 WHERE read = 0');
 }

@@ -19,7 +19,7 @@ Référence visuelle : les maquettes du lot 1 et la rangée « Aube · identité
 - **Une information principale par écran** (sur l'accueil : le score de récupération), le reste en cartes secondaires.
 - **La couleur porte un sens, jamais seule** : chaque couleur d'état est accompagnée d'un libellé texte (« Bonne récupération », « reçue », « absente »…).
 - **Pas d'emoji, pas de dégradés décoratifs, pas d'ombres.** Icônes en trait fin (2 px), couleur du texte.
-- Thème sombre uniquement pour le lot 1 (un thème clair pourra venir plus tard).
+- Thème sombre uniquement.
 
 ## Couleurs (tokens)
 
@@ -236,8 +236,9 @@ Coach, Réglages. Icône Coach : bulle de dialogue en trait avec deux lignes.
   droite ; phrase de synthèse (15/600) ; « Ce qui a marché · … » (libellé
   `good`) et « Ce qui coince · … » (libellé `mid`), texte 13 `textSoft` ;
   séparateur, « Tes 2 actions pour la semaine » (12 `textMuted`) puis
-  2 actions numérotées en 14/600 ; en bas, « D'après : … » (11,
-  `#8B97A6`) qui liste les chiffres utilisés.
+  2 actions numérotées en 14/600 ; en bas, le lien « Voir les chiffres
+  utilisés » (comme dans les bulles de réponse, ci-dessous) : les chiffres
+  (11, `#8B97A6`) sont repliés par défaut (depuis le lot 4.1).
 - **Bulles de conversation** : question à droite, fond `track`, rayon
   16 16 4 16 ; réponse à gauche, fond `surface`, rayon 16 16 16 4, texte
   14, l'action conseillée en 14/600, puis un lien « Voir les chiffres
@@ -281,6 +282,16 @@ modèle ». Avec modèle : lignes de réglage État (« Installé · prêt » en
 `good`), Fichier (nom + taille), Vitesse mesurée (mots / s), Bilan de la
 semaine (« dimanche, à l'ouverture du coach »), puis bouton secondaire « Supprimer
 le modèle » en `low` avec confirmation.
+
+## Écrans du lot 4.1
+
+### Accueil : carte « Ouvrir Zepp »
+Sous l'en-tête (et le bandeau d'accès s'il y en a un), seulement quand la
+nuit du jour n'est pas encore arrivée dans Health Connect, que l'accès à
+Health Connect est accordé et que l'app Zepp est installée. Carte `surface`
+(rayon 16) : « Ta nuit n'est pas encore arrivée » (texte important), une
+phrase d'explication (13, `textSoft`), puis un bouton secondaire « Ouvrir
+Zepp ». Il ouvre Zepp ; au retour dans Aube, la synchro se relance.
 
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.

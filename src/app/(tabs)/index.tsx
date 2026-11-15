@@ -12,6 +12,7 @@ import { Card, Pill } from '@/components/Card';
 import { formatLongDate } from '@/components/format';
 import { LoadCard } from '@/components/LoadCard';
 import { NutritionCard } from '@/components/NutritionCard';
+import { OpenZeppCard } from '@/components/OpenZeppCard';
 import { MetricTile } from '@/components/MetricTile';
 import { metricView } from '@/components/metricView';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -72,6 +73,9 @@ export default function HomeScreen() {
           Erreur : {error}
         </AppText>
       )}
+
+      {/* Nuit d'aujourd'hui absente de Health Connect : proposer d'ouvrir Zepp (si installée). */}
+      {!loading && (access === 'ok' || access === 'partial') && !recap?.night && <OpenZeppCard onReturn={sync} />}
 
       {loading ? (
         <ActivityIndicator color={colors.text} style={styles.loading} />

@@ -282,6 +282,16 @@ modèle ». Avec modèle : lignes de réglage État (« Installé · prêt » en
 semaine (« dimanche, à l'ouverture du coach »), puis bouton secondaire « Supprimer
 le modèle » en `low` avec confirmation.
 
+## Écrans du lot 4.1
+
+### Accueil : carte « Ouvrir Zepp »
+Sous l'en-tête (et le bandeau d'accès s'il y en a un), seulement quand la
+nuit du jour n'est pas encore arrivée dans Health Connect, que l'accès à
+Health Connect est accordé et que l'app Zepp est installée. Carte `surface`
+(rayon 16) : « Ta nuit n'est pas encore arrivée » (texte important), une
+phrase d'explication (13, `textSoft`), puis un bouton secondaire « Ouvrir
+Zepp ». Il ouvre Zepp ; au retour dans Aube, la synchro se relance.
+
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.
 - **Donnée manquante** (nuit non synchronisée, Health Connect absent, permission refusée) : message clair et action proposée, jamais une valeur inventée.

@@ -1,47 +1,13 @@
 // Banc d'essai du coach (lot 4) : TEMPORAIRE, retiré à la fin du lot.
-// Contient les 3 demandes types et un résumé chiffré FICTIF (aucune vraie donnée de santé),
-// plus de petits calculs pour mesurer la vitesse et repérer les nombres inventés.
+// Les 3 demandes types, posées sur le résumé chiffré du coach (étape C2) construit à partir
+// de données FICTIVES (src/domain/__fixtures__/coach.ts) : aucune vraie donnée de santé.
 
-/** Résumé chiffré fictif, au format que produira le vrai contexte du coach (étape C2). */
-export const BENCH_CONTEXT = {
-  periode: { debut: '2026-11-02', fin: '2026-11-08' },
-  recuperation: { score_moyen_7j: 58, score_moyen_30j: 66, jours_sous_40: 2 },
-  sommeil: { duree_moyenne_7j_h: 6.4, duree_moyenne_30j_h: 7.1, nuits_sous_6h: 3, ecart_coucher_min: 95 },
-  hrv: { moyenne_7j_ms: 41, plage_normale_ms: [44, 58], tendance: 'en baisse' },
-  fc_repos: { moyenne_7j_bpm: 56, moyenne_30j_bpm: 53 },
-  charge: { ratio_7j_28j: 1.42, seances_semaine: 5, cible_seances: 4 },
-  zone2: { minutes_semaine: 45, cible_minutes: 120 },
-  nutrition: {
-    proteines_g_kg_moyenne_7j: 1.5,
-    cible_proteines_g_kg: 1.8,
-    jours_sous_cible: 4,
-    calories_moyenne_7j: 2350,
-    cible_calories: 2600,
-  },
-  force: {
-    squat_1rm_kg: 112,
-    developpe_couche_1rm_kg: 84,
-    souleve_de_terre_1rm_kg: 138,
-    developpe_couche_stagnation_semaines: 6,
-  },
-  alertes: [
-    {
-      theme: 'Charge',
-      niveau: 'À surveiller',
-      titre: 'Charge en hausse',
-      constat: 'Ratio de charge 7 j / 28 j à 1.42, au-dessus de 1.3',
-      cause_probable: '5 séances cette semaine pour 4 visées',
-      action: 'Une séance légère ou de mobilité demain',
-    },
-  ],
-  liens_observes: [
-    {
-      force: 'modéré',
-      jours_compares: 34,
-      phrase: 'Les soirs de séance après 20 h, ta HRV de la nuit est inférieure de 12 % en moyenne',
-    },
-  ],
-};
+import { coachInputs } from '@/domain/__fixtures__/coach';
+import { buildCoachContext, type CoachContext } from '@/domain/coachContext';
+import { unknownNumbers as unknownIn } from '@/domain/coachNumbers';
+
+/** Résumé fictif utilisé par le banc d'essai. */
+export const BENCH_CONTEXT: CoachContext = buildCoachContext(coachInputs());
 
 /** Consignes système (version de départ, affinée à l'étape C3). */
 export const BENCH_SYSTEM_PROMPT = [
@@ -75,8 +41,8 @@ export const BENCH_PROMPTS: BenchPrompt[] = [
 ];
 
 /** Message utilisateur envoyé au modèle : le résumé chiffré puis la demande. */
-export function buildUserMessage(question: string, context: object = BENCH_CONTEXT): string {
-  return `Résumé de mes données (JSON) :\n${JSON.stringify(context)}\n\nDemande : ${question}`;
+export function buildUserMessage(question: string, context: CoachContext = BENCH_CONTEXT): string {
+  return `${context.text}\n\nDemande : ${question}`;
 }
 
 /** Nombre de mots d'un texte (suite de caractères sans espace). */
@@ -91,17 +57,7 @@ export function wordsPerSecond(text: string, durationMs: number): number | null 
   return countWords(text) / (durationMs / 1000);
 }
 
-/** Tous les nombres d'un texte, virgule décimale convertie en point (« 6,4 » → 6.4). */
-export function extractNumbers(text: string): number[] {
-  return (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((n) => Number(n.replace(',', '.')));
-}
-
-/**
- * Nombres de la réponse absents du résumé (indice de chiffre inventé).
- * Les numéros de liste en début de ligne (« 1. », « 2) ») sont ignorés.
- */
-export function unknownNumbers(answer: string, context: object = BENCH_CONTEXT): number[] {
-  const known = new Set(extractNumbers(JSON.stringify(context)));
-  const withoutListMarkers = answer.replace(/^\s*\d+[.)]\s/gm, ' ');
-  return [...new Set(extractNumbers(withoutListMarkers))].filter((n) => !known.has(n));
+/** Nombres de la réponse absents du résumé (indice de chiffre inventé). */
+export function unknownNumbers(answer: string, context: CoachContext = BENCH_CONTEXT): number[] {
+  return unknownIn(answer, context.numbers);
 }

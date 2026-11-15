@@ -95,6 +95,12 @@ Aucun nombre absent du résumé dans les 6 réponses.
 
 **Leçon pour la suite** : la vérification des nombres ne suffit pas. Un nombre peut exister dans le résumé et être mal utilisé. Le résumé (étape C2) devra être écrit pour un petit modèle : des phrases courtes avec le verdict déjà calculé par l'app (« Protéines : sous la cible, 4 jours sur 7 ») plutôt que des noms de champs (`ecart_coucher_min`). Les consignes (étape C3) devront demander de citer ces verdicts.
 
+### Point de départ avant l'étape C2 (15 novembre 2026)
+
+Même banc d'essai, avec le modèle installé par l'écran « Modèle du coach » et l'ancien résumé fictif (noms de champs JSON). Chargement 5,4 s ; bilan 10,9 mots/s (16,6 s), « Pourquoi ? » 15,1 mots/s, question libre 12,6 mots/s : plus lent qu'au premier test (téléphone chaud ou mode économie d'énergie possibles, à surveiller).
+
+Qualité : aucun nombre inventé, mais aucun chiffre cité ; erreurs de sens (« bonne gestion du sommeil » malgré 3 nuits sous 6 h ; protéines non signalées sous la cible) ; formules creuses et « consulte un professionnel » répété. Ce constat a guidé l'étape C2 : un résumé en phrases, avec le verdict déjà calculé par l'app.
+
 ## 5. Recommandation
 
 **LFM2.5 1.2B avec llama.rn**, pour 3 raisons :

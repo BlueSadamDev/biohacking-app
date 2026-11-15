@@ -351,6 +351,22 @@ export const SETTINGS = {
      * puis il est déplacé dans l'espace privé de l'app. Marge en plus de la taille du fichier (octets).
      */
     freeSpaceMarginBytes: 300 * 1024 * 1024,
+    /**
+     * Résumé chiffré donné au coach (étape C2) : seule source de chiffres du coach.
+     * Fenêtres courte et longue (jours, aujourd'hui compris) et nuits minimum pour une moyenne.
+     */
+    context: {
+      shortDays: 7,
+      longDays: 30,
+      minNights: 3,
+      /** Alertes reprises dans le résumé : celles des N derniers jours. */
+      alertDays: 7,
+      /** Tendance 7 j / 30 j : « en hausse » ou « en baisse » au-delà de cet écart, sinon « stable ». */
+      recoveryTrendPoints: 3,
+      sleepTrendMinutes: 20,
+      /** FC au repos « comme d'habitude » si l'écart à la moyenne 30 j est sous N bpm. */
+      restingHrUsualBpm: 1,
+    },
   },
 
   /** Synchronisation Health Connect. */

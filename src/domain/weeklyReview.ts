@@ -1,6 +1,6 @@
 // Coach IA (lot 4, étape C4) : bilan de la semaine.
 // L'app décide ce qui a marché et ce qui coince (règles `coach.weekly` de settings.ts) et écrit les
-// chiffres utilisés (« Chiffres utilisés », repliés sur la carte) ; le modèle écrit la phrase de synthèse et 2 actions ciblées
+// chiffres utilisés (repliés sur la carte) ; le modèle écrit la phrase de synthèse et 2 actions ciblées
 // sur ce qui coince, contrôlées comme tout conseil. En cas d'échec : synthèse et actions de l'app.
 
 import { fr, type CoachContext, type CoachSection } from './coachContext';
@@ -19,7 +19,7 @@ export type WeeklyReview = {
   actions: string[];
   worked: string[];
   stuck: string[];
-  /** Chiffres utilisés, écrits par l'app (« Chiffres utilisés », repliés sur la carte). */
+  /** Chiffres utilisés, écrits par l'app (repliés sur la carte). */
   facts: string[];
   /** 'model' : synthèse et actions écrites par le modèle (contrôlées) ; 'app' : repli de l'app. */
   source: 'model' | 'app';

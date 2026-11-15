@@ -2,7 +2,7 @@
 // carte « Bilan de la semaine », lien « Pourquoi ? », bulle de réponse et panneau du bas.
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { explain, type ExplainJob } from '@/coach/explainService';
@@ -13,7 +13,7 @@ import type { WeeklyReview } from '@/domain/weeklyReview';
 import { AppText } from './AppText';
 import { SecondaryButton } from './Buttons';
 import { formatShortDate } from './format';
-import { LockIcon } from './Icons';
+import { LockIcon, SendIcon, StopIcon } from './Icons';
 import { colors, fonts, radius, TOUCH } from './theme';
 
 /** Lien « Pourquoi ? » en bas d'une carte alerte ou lien observé (masqué sans modèle : à l'appelant). */
@@ -41,6 +41,78 @@ export function CoachAnswer({ text, facts }: { text: string; facts: string[] }) 
         </AppText>
       ))}
       {facts.length > 0 && <AppText style={styles.facts}>Chiffres utilisés : {facts.join(' ')}</AppText>}
+    </View>
+  );
+}
+
+/** Bulle de question (à droite) : fond track, rayon 16 16 4 16, largeur maximale 80 %. */
+export function QuestionBubble({ text }: { text: string }) {
+  return (
+    <View style={styles.question}>
+      <AppText style={styles.answer}>{text}</AppText>
+    </View>
+  );
+}
+
+/** Questions suggérées : mêmes pastilles que les filtres (contour border, texte textSoft). */
+export function SuggestedQuestions({ questions, onAsk, disabled }: { questions: string[]; onAsk: (q: string) => void; disabled?: boolean }) {
+  return (
+    <View style={styles.chips}>
+      {questions.map((q) => (
+        <Pressable
+          key={q}
+          accessibilityRole="button"
+          accessibilityHint="Pose cette question au coach"
+          disabled={disabled}
+          onPress={() => onAsk(q)}
+          style={({ pressed }) => [styles.chip, (pressed || disabled) && { opacity: 0.6 }]}>
+          <AppText style={styles.chipText}>{q}</AppText>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Champ de question : champ de 48 px + bouton carré 48 × 48 (fond text, flèche bg), « Envoyer » ;
+ * pendant la rédaction, le bouton devient « Arrêter ».
+ */
+export function QuestionInput({
+  value,
+  onChange,
+  onSend,
+  onStop,
+  running,
+  maxLength,
+}: {
+  value: string;
+  onChange: (t: string) => void;
+  onSend: () => void;
+  onStop: () => void;
+  running: boolean;
+  maxLength: number;
+}) {
+  return (
+    <View style={styles.inputRow}>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder="Pose ta question au coach"
+        placeholderTextColor={colors.tabInactive}
+        style={styles.input}
+        maxLength={maxLength}
+        returnKeyType="send"
+        onSubmitEditing={onSend}
+        editable={!running}
+        accessibilityLabel="Question au coach"
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={running ? 'Arrêter' : 'Envoyer'}
+        onPress={running ? onStop : onSend}
+        style={({ pressed }) => [styles.send, pressed && { opacity: 0.7 }]}>
+        {running ? <StopIcon color={colors.bg} /> : <SendIcon color={colors.bg} />}
+      </Pressable>
     </View>
   );
 }
@@ -185,6 +257,48 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 8,
     maxWidth: '88%',
+  },
+  question: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.track,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 4,
+    borderBottomLeftRadius: 16,
+    padding: 14,
+    maxWidth: '80%',
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    minHeight: 36,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+  },
+  chipText: { fontFamily: fonts.body500, fontSize: 13, color: colors.textSoft },
+  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  input: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    color: colors.text,
+    fontFamily: fonts.body400,
+    fontSize: 14,
+  },
+  send: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   answer: { fontFamily: fonts.body400, fontSize: 14, color: colors.text },
   answerAction: { fontFamily: fonts.body600, fontSize: 14, color: colors.text },

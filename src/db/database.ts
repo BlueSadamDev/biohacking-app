@@ -164,6 +164,18 @@ const MIGRATIONS: string[] = [
     created_ms INTEGER NOT NULL
   );
   `,
+  // 6 – Lot 4 : conversation avec le coach (questions libres), effaçable depuis les Réglages.
+  `
+  CREATE TABLE coach_message (
+    id TEXT PRIMARY KEY NOT NULL,
+    created_ms INTEGER NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    facts_json TEXT NOT NULL,
+    kind TEXT NOT NULL
+  );
+  CREATE INDEX coach_message_created ON coach_message (created_ms);
+  `,
 ];
 
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {

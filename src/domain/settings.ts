@@ -449,6 +449,30 @@ export const SETTINGS = {
       /** Points affichés au plus dans « Ce qui a marché » et « Ce qui coince ». */
       maxItems: 3,
     },
+    /**
+     * Questions libres (étape C6). Questions suggérées : une par rubrique qui coince (même règles que
+     * le bilan de la semaine), complétées par des questions générales, au plus `maxSuggestions`.
+     */
+    questions: {
+      maxLength: 200,
+      /** Échanges affichés dans la conversation (les plus récents). */
+      historyShown: 20,
+      maxSuggestions: 3,
+      bySection: {
+        load: 'Ma charge d’entraînement est-elle trop élevée ?',
+        sleep: 'Comment améliorer mon sommeil ?',
+        nutrition: 'Est-ce que je mange assez de protéines ?',
+        zone2: 'Comment ajouter de la zone 2 dans ma semaine ?',
+        hrv: 'Pourquoi ma HRV est-elle basse ?',
+        recovery: 'Pourquoi ma récupération baisse-t-elle ?',
+        strength: 'Comment relancer ma progression en force ?',
+      } as Readonly<Record<string, string>>,
+      general: [
+        'Est-ce que je récupère bien ?',
+        'Comment progresser en force ?',
+        'Est-ce que je dors assez ?',
+      ] as readonly string[],
+    },
     /** Rubriques liées au thème d'une alerte (« Pourquoi ? »). */
     alertFocus: {
       recovery: ['recovery', 'hrv', 'restingHr', 'sleep'],

@@ -109,6 +109,25 @@ export function CoachIcon(props: IconProps) {
   );
 }
 
+/** Coach (lot 4) : flèche « Envoyer ». */
+export function SendIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Line x1="12" y1="19" x2="12" y2="5" />
+      <Path d="M6 11l6-6 6 6" />
+    </Icon>
+  );
+}
+
+/** Coach (lot 4) : carré « Arrêter ». */
+export function StopIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M7 7h10v10H7z" />
+    </Icon>
+  );
+}
+
 /** Coach (lot 4) : cadenas, « tout reste sur ton téléphone ». */
 export function LockIcon(props: IconProps) {
   return (

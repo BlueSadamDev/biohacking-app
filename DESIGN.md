@@ -19,7 +19,7 @@ Référence visuelle : les maquettes du lot 1 et la rangée « Aube · identité
 - **Une information principale par écran** (sur l'accueil : le score de récupération), le reste en cartes secondaires.
 - **La couleur porte un sens, jamais seule** : chaque couleur d'état est accompagnée d'un libellé texte (« Bonne récupération », « reçue », « absente »…).
 - **Pas d'emoji, pas de dégradés décoratifs, pas d'ombres.** Icônes en trait fin (2 px), couleur du texte.
-- Thème sombre uniquement pour le lot 1 (un thème clair pourra venir plus tard).
+- Thème sombre uniquement.
 
 ## Couleurs (tokens)
 

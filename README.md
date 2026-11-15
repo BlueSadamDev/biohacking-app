@@ -6,7 +6,7 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition) 3 (progression et corrélations) et 4 (coach IA local) terminés.
+- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations) et 4 (coach IA local) terminés. Lot 4.1 (fiabilité) en cours. Ensuite : lot 5a (collecter), puis une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes (feuille de route complète dans le cahier des charges, section 7).
 
 ## Organisation du code
 
@@ -14,9 +14,10 @@
 - `src/coach/` : coach IA local (lot 4) : installation et vérification du fichier du modèle, moteur local, gardien de la mémoire, bilan de la semaine, « Pourquoi ? » et questions.
 - `src/sources/` : lecture de Health Connect (dont les repas de Suivi macro et les séances) et saisie manuelle.
 - `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation, charge d'entraînement, nutrition, alertes, zones cardiaques, musculation et 1RM, composition corporelle, liens observés, suggestions de sports et leur catalogue, export CSV). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
-- `src/db/` : base de données locale (SQLite), réglages de l'utilisateur, historique des alertes, saisies de musculation, export CSV et effacement.
+- `src/db/` : base de données locale (SQLite), réglages de l'utilisateur, historique des alertes, saisies de musculation, export CSV et effacement. Les écritures passent une par une (file d'attente) et attendent quelques secondes si la base est occupée.
 - `src/components/` : composants d'interface réutilisables.
 - `src/background/` : synchro en arrière-plan, moteur d'alertes, rappel de saisie de musculation et notification du récap du matin.
+- `modules/zepp-launcher/` : petit module Android maison (lot 4.1) qui détecte l'app Zepp et l'ouvre (bouton « Ouvrir Zepp » de l'accueil). Il contient la déclaration `<queries>` qui rend Zepp visible pour Aube (ce n'est pas une permission). Code natif : le modifier demande un nouvel APK de développement.
 - `assets/brand/` : logos SVG d'Aube, source de l'icône et de l'écran de démarrage.
 
 ## Installer le projet sur l'ordinateur

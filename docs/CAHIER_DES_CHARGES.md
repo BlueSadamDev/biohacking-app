@@ -233,3 +233,9 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 3. ~~Lot 2 : alertes, charge et nutrition.~~ Fait (PR #8).
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
 5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).
+
+**Idées pour plus tard** (notées à la fin du lot 4, non planifiées : à cadrer avant tout développement)
+
+- Bouton « Ouvrir Zepp » sur l'onglet Aujourd'hui quand la nuit n'est pas encore synchronisée (Zepp n'envoie pas toujours ses données à Health Connect) ; Aube relance sa synchro au retour. Aucun appel réseau : il ouvre seulement l'app Zepp.
+- Lenteurs d'accès à la base de données vues dans les journaux de l'APK de production (synchro du lancement et tâche de fond en même temps, erreur « database is locked » déjà vue en développement) : faire attendre la base quelques secondes au lieu d'échouer.
+- Carte « Bilan de la semaine » : chiffres utilisés repliables, comme dans les réponses du coach.

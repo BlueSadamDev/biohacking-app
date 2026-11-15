@@ -236,8 +236,9 @@ Coach, Réglages. Icône Coach : bulle de dialogue en trait avec deux lignes.
   droite ; phrase de synthèse (15/600) ; « Ce qui a marché · … » (libellé
   `good`) et « Ce qui coince · … » (libellé `mid`), texte 13 `textSoft` ;
   séparateur, « Tes 2 actions pour la semaine » (12 `textMuted`) puis
-  2 actions numérotées en 14/600 ; en bas, « D'après : … » (11,
-  `#8B97A6`) qui liste les chiffres utilisés.
+  2 actions numérotées en 14/600 ; en bas, le lien « Voir les chiffres
+  utilisés » (comme dans les bulles de réponse, ci-dessous) : les chiffres
+  (11, `#8B97A6`) sont repliés par défaut (depuis le lot 4.1).
 - **Bulles de conversation** : question à droite, fond `track`, rayon
   16 16 4 16 ; réponse à gauche, fond `surface`, rayon 16 16 16 4, texte
   14, l'action conseillée en 14/600, puis un lien « Voir les chiffres

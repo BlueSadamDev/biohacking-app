@@ -33,8 +33,6 @@ export function WhyLink({ onPress }: { onPress: () => void }) {
 /** Bulle de réponse du coach : explication (14), lignes « Action : » (14/600), chiffres utilisés (11). */
 export function CoachAnswer({ text, facts }: { text: string; facts: string[] }) {
   const lines = text.split('\n').filter((l) => l.trim());
-  // « Chiffres utilisés » repliés par défaut : un appui les affiche.
-  const [showFacts, setShowFacts] = useState(false);
   return (
     <View style={styles.bubble}>
       {lines.map((l, i) => (
@@ -42,22 +40,28 @@ export function CoachAnswer({ text, facts }: { text: string; facts: string[] }) 
           {l}
         </AppText>
       ))}
-      {facts.length > 0 && (
-        <>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: showFacts }}
-            hitSlop={10}
-            onPress={() => setShowFacts((v) => !v)}
-            style={({ pressed }) => [styles.factsToggle, pressed && { opacity: 0.7 }]}>
-            <AppText style={styles.factsToggleText}>
-              {showFacts ? 'Masquer les chiffres utilisés' : 'Voir les chiffres utilisés'}
-            </AppText>
-          </Pressable>
-          {showFacts && <AppText style={styles.facts}>{facts.join(' ')}</AppText>}
-        </>
-      )}
+      {facts.length > 0 && <FactsToggle text={facts.join(' ')} />}
     </View>
+  );
+}
+
+/** « Chiffres utilisés » repliés par défaut : un appui les affiche, un autre les masque. */
+function FactsToggle({ text }: { text: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: shown }}
+        hitSlop={10}
+        onPress={() => setShown((v) => !v)}
+        style={({ pressed }) => [styles.factsToggle, pressed && { opacity: 0.7 }]}>
+        <AppText style={styles.factsToggleText}>
+          {shown ? 'Masquer les chiffres utilisés' : 'Voir les chiffres utilisés'}
+        </AppText>
+      </Pressable>
+      {shown && <AppText style={styles.facts}>{text}</AppText>}
+    </>
   );
 }
 
@@ -244,7 +248,7 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
           {i + 1}. {a}
         </AppText>
       ))}
-      {review.facts.length > 0 && <AppText style={styles.facts}>D’après : {review.facts.join(' · ')}</AppText>}
+      {review.facts.length > 0 && <FactsToggle text={review.facts.join(' · ')} />}
       {review.source === 'app' && (
         <AppText style={styles.facts}>Rédigé par l’app : le coach n’a pas pu formuler de conseil sûr cette fois.</AppText>
       )}

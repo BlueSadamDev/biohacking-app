@@ -114,6 +114,21 @@ Si le français reste insuffisant après C2 et C3 : essayer Luth-LFM2-1.2B, la v
 
 **Suite (15 novembre 2026, étape C6)** : Luth-LFM2-1.2B (quantification Q4_K_M de mradermacher, 731 Mo, empreinte dans le README) a été essayé sur les questions libres et jugé meilleur à l'usage par l'utilisateur. Décision : **les deux modèles restent acceptés**, un seul installé à la fois, pour pouvoir comparer leurs performances dans le temps (bouton « Changer de modèle »). Toute modification des consignes du coach se vérifie avec les deux.
 
+## 6. Mémoire et libération du modèle (étape C8, 15 novembre 2026)
+
+Mesure sur le S21 avec l'APK de développement et le modèle Luth-LFM2 1.2B, relevé toutes les 2 secondes depuis l'ordinateur (câble USB). Deux indicateurs : le fichier `.gguf` est-il ouvert en mémoire par l'app (carte mémoire du processus, `/proc/<pid>/maps`), et la mémoire totale de l'app (PSS, `dumpsys meminfo`). Cette fois, le PSS compte bien le modèle (contrairement à la mesure du test de faisabilité).
+
+| Moment | Fichier du modèle en mémoire | Mémoire de l'app |
+|---|---|---|
+| Onglet Aujourd'hui, avant le coach | non | environ 0,4 Go |
+| Question dans l'onglet Coach | oui | environ 1,9 Go |
+| Onglet Coach quitté | non, en 10 s au plus | environ 0,4 Go |
+| « Pourquoi ? » ouvert (Tendances) | oui | environ 1,9 Go |
+| « Pourquoi ? » fermé | non, en 6 s au plus | environ 0,4 Go |
+| Question, puis bouton d'accueil pendant la réponse | oui, puis non en 3 s au plus | environ 1,9 Go, puis 0,4 Go |
+
+Conclusion : le modèle n'est chargé que sur l'onglet Coach ou pour un « Pourquoi ? », un seul à la fois, et il est libéré dans les trois cas de sortie, y compris quand l'app passe en arrière-plan. Pendant l'usage, l'app occupe environ 1,9 Go sur les 8 Go du téléphone (le fichier de 0,7 Go, la mémoire de travail du modèle pour 4 096 jetons de contexte et l'app elle-même) ; l'app ne s'est pas fermée. La version de production, sans les outils de développement, utilise un peu moins.
+
 ## Sources
 
 - npm : `llama.rn`, `react-native-executorch`, `react-native-executorch-expo-resource-fetcher` (versions et dépendances déclarées, consultées le 14 novembre 2026)

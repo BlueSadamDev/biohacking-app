@@ -12,7 +12,8 @@
   - `src/domain/` : fusion des capteurs, normes personnelles, scores, règles d'alerte (calculs purs, sans interface) ;
   - `src/db/` : base de données locale ;
   - `src/components/` : composants d'interface réutilisables ;
-  - `src/background/` : tâche de fond (synchro horaire) et notification du récap du matin.
+  - `src/background/` : tâche de fond (synchro horaire) et notification du récap du matin ;
+  - `src/coach/` : coach IA local (lot 4) : fichier du modèle, moteur, gardien de la mémoire, services (bilan, « Pourquoi ? », questions).
 
 ## Données de santé et confidentialité
 - Toutes les données restent sur le téléphone. Aucun appel réseau dans le code de l'application, aucun SDK d'analytics, de suivi des plantages ou de publicité.
@@ -46,11 +47,11 @@
 
 ## Coach IA
 - **100 % local** : le modèle tourne sur le téléphone. Aucun appel réseau dans le code du coach (ni API en ligne, ni téléchargement du modèle depuis l'app). L'APK de production reste sans permission Internet.
-- Téléphone : Samsung Galaxy S21 5G (8 Go de RAM), sans Gemini Nano. Modèle : petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié, fichier d'environ 1 Go), installé une fois par **import manuel du fichier** (`expo-document-picker`), vérifié (taille et empreinte SHA-256) puis copié dans l'espace privé de l'app. Supprimable depuis l'app.
+- Téléphone : Samsung Galaxy S21 5G (8 Go de RAM), sans Gemini Nano. Modèle : petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié, fichier d'environ 1 Go), installé une fois par **import manuel du fichier** (`expo-document-picker`), vérifié (taille et empreinte SHA-256) puis copié dans l'espace privé de l'app. Supprimable depuis l'app. Deux modèles acceptés (LFM2.5 1.2B et Luth-LFM2 1.2B, voir `docs/RAPPORT_LOT_4_MODELE.md`), un seul installé à la fois, interchangeables depuis l'écran Modèle du coach : vérifier toute modification des consignes du coach avec les deux.
 - Usages : bilan de la semaine, bouton « Pourquoi ? » sur les alertes et les liens observés, questions libres encadrées. Le plan de semaine est reporté.
-- **Le coach ne calcule rien** : il reformule et explique uniquement les chiffres déjà calculés par l'app. Sa seule source de chiffres est le résumé produit par `src/domain/`. Chaque nombre d'une réponse doit exister dans ce résumé, sinon nouvelle génération, puis message de repli.
+- **Le coach ne calcule rien** : il reformule et explique uniquement les chiffres déjà calculés par l'app. Sa seule source de chiffres est le résumé produit par `src/domain/` (`coachContext.ts`). Partage des rôles (décidé au lot 4, étape C3) : **l'app écrit le constat chiffré** (« Chiffres utilisés »), toujours juste ; **le modèle n'écrit que l'explication et l'action, sans aucun chiffre**. Chaque conseil est contrôlé phrase par phrase : un verdict contredit fait refuser la réponse (nouvelle génération, puis conseil de repli) ; une phrase avec un chiffre, un diagnostic, un jugement non mesuré ou une maladresse est seulement retirée ; le style (vouvoiement, sujet voisin) est toléré. Une réponse qui perd son explication ou son action est refusée. Règles du contrôle dans `settings.ts`.
 - Jamais de diagnostic médical ; le coach dit « je ne sais pas » quand l'information manque.
-- Le modèle n'est chargé que sur l'onglet Coach ou pour un « Pourquoi ? », puis libéré. Aucune génération en arrière-plan.
+- Le modèle n'est chargé que sur l'onglet Coach ou pour un « Pourquoi ? », puis libéré. Aucune génération en arrière-plan. Le bilan de la semaine est donc généré à la première ouverture de l'onglet Coach à partir du dimanche.
 - Les fichiers de modèle (`*.gguf`, `*.pte`, `*.bin`, `*.safetensors`, `*.onnx`…) ne vont **jamais** dans le dépôt (bloqués par `.gitignore`).
 - Les tests du coach utilisent un modèle simulé et des données fictives.
 

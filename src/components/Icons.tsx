@@ -98,6 +98,46 @@ export function BellIcon(props: IconProps) {
   );
 }
 
+/** Onglet « Coach » (lot 4) : bulle de dialogue avec deux lignes. */
+export function CoachIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M4 5h16v11H9l-5 4z" />
+      <Line x1="8" y1="9" x2="16" y2="9" />
+      <Line x1="8" y1="12.5" x2="13" y2="12.5" />
+    </Icon>
+  );
+}
+
+/** Coach (lot 4) : flèche « Envoyer ». */
+export function SendIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Line x1="12" y1="19" x2="12" y2="5" />
+      <Path d="M6 11l6-6 6 6" />
+    </Icon>
+  );
+}
+
+/** Coach (lot 4) : carré « Arrêter ». */
+export function StopIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M7 7h10v10H7z" />
+    </Icon>
+  );
+}
+
+/** Coach (lot 4) : cadenas, « tout reste sur ton téléphone ». */
+export function LockIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Path d="M6 11h12v9H6z" />
+      <Path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+    </Icon>
+  );
+}
+
 /** Chevron vers la droite. */
 export function ChevronIcon(props: IconProps) {
   return (

@@ -23,6 +23,7 @@ const KEYS: Record<keyof UserSettings, string> = {
   quietStart: 'quiet_start',
   quietEnd: 'quiet_end',
   alertsEnabled: 'alerts_enabled',
+  coachEnabled: 'coach_enabled',
 };
 
 function parseTime(value: string | undefined): TimeOfDay | null {
@@ -63,6 +64,7 @@ export async function getUserSettings(): Promise<UserSettings> {
     quietStart: parseTime(raw.get(KEYS.quietStart)) ?? d.quietStart,
     quietEnd: parseTime(raw.get(KEYS.quietEnd)) ?? d.quietEnd,
     alertsEnabled: raw.has(KEYS.alertsEnabled) ? raw.get(KEYS.alertsEnabled) === '1' : d.alertsEnabled,
+    coachEnabled: raw.has(KEYS.coachEnabled) ? raw.get(KEYS.coachEnabled) === '1' : d.coachEnabled,
   };
 }
 

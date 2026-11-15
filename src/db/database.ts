@@ -150,6 +150,32 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX strength_set_date ON strength_set (date);
   `,
+  // 5 – Lot 4 : bilans de la semaine du coach (un par semaine, du lundi au dimanche).
+  `
+  CREATE TABLE coach_weekly (
+    week_start TEXT PRIMARY KEY NOT NULL,
+    week_end TEXT NOT NULL,
+    synthesis TEXT NOT NULL,
+    actions_json TEXT NOT NULL,
+    worked_json TEXT NOT NULL,
+    stuck_json TEXT NOT NULL,
+    facts_json TEXT NOT NULL,
+    source TEXT NOT NULL,
+    created_ms INTEGER NOT NULL
+  );
+  `,
+  // 6 – Lot 4 : conversation avec le coach (questions libres), effaçable depuis les Réglages.
+  `
+  CREATE TABLE coach_message (
+    id TEXT PRIMARY KEY NOT NULL,
+    created_ms INTEGER NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    facts_json TEXT NOT NULL,
+    kind TEXT NOT NULL
+  );
+  CREATE INDEX coach_message_created ON coach_message (created_ms);
+  `,
 ];
 
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {

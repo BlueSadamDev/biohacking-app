@@ -8,7 +8,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { WhySheet, type WhyRequest } from '@/components/CoachViews';
 import { LinkCard } from '@/components/LinkCard';
+import { isCoachAvailable } from '@/coach/availability';
 import { Screen } from '@/components/Screen';
 import { colors, fonts, radius } from '@/components/theme';
 import { useHealthData } from '@/components/useHealthData';
@@ -28,6 +30,17 @@ export default function TrendsScreen() {
   const { nights, syncing, sync } = useHealthData();
   const [report, setReport] = useState<CorrelationReport | null>(null);
   const [error, setError] = useState(false);
+  const [coach, setCoach] = useState(false);
+  const [why, setWhy] = useState<WhyRequest | null>(null);
+
+  // Coach activé et modèle installé ? (lien « Pourquoi ? » sur les cartes)
+  useFocusEffect(
+    useCallback(() => {
+      isCoachAvailable()
+        .then(setCoach)
+        .catch(() => setCoach(false));
+    }, []),
+  );
 
   const refresh = useCallback(() => {
     loadCorrelations()
@@ -74,7 +87,18 @@ export default function TrendsScreen() {
           Pas encore assez de données pour repérer des liens fiables.
         </AppText>
       ) : (
-        report.links.map((link) => <LinkCard key={link.id} link={link} />)
+        report.links.map((link) => (
+          <LinkCard
+            key={link.id}
+            link={link}
+            // « Pourquoi ? » seulement si le modèle du coach est installé.
+            onWhy={
+              coach
+                ? () => setWhy({ task: { kind: 'why-link', sentence: link.sentence }, date: null, title: link.sentence })
+                : undefined
+            }
+          />
+        ))
       )}
 
       <View style={styles.footer}>
@@ -85,6 +109,7 @@ export default function TrendsScreen() {
           Seuls les liens assez réguliers sur au moins {c.minDays} jours sont affichés.
         </AppText>
       </View>
+      <WhySheet request={why} onClose={() => setWhy(null)} />
     </Screen>
   );
 }

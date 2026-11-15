@@ -13,6 +13,15 @@ import { SETTINGS, type Settings } from './settings';
 
 export type ExerciseSession = { id: string; start: number; end: number; exerciseType: number; origin: string };
 
+/**
+ * Séances qui comptent dans les calculs : au moins `load.minSessionMinutes` minutes, ou musculation
+ * (quelle que soit sa durée). Écarte les courtes activités détectées automatiquement par le bracelet.
+ */
+export function countedSessions(sessions: ExerciseSession[], settings: Settings = SETTINGS): ExerciseSession[] {
+  const minMs = settings.load.minSessionMinutes * 60_000;
+  return sessions.filter((s) => s.end - s.start >= minMs || settings.strength.sessionTypes.includes(s.exerciseType));
+}
+
 export type SessionLoad = {
   id: string;
   date: string;

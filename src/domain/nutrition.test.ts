@@ -74,6 +74,8 @@ describe('nutrition par rapport aux cibles', () => {
     expect(view.protein).toMatchObject({ value: 100, reached: false });
     expect(view.calories).toMatchObject({ value: 2500, reached: true });
     expect(view.proteinDaysBelow).toBe(3);
+    // 4 jours avec repas sur les 7 : seuls ceux-là sont comparés à la cible.
+    expect(view.proteinDaysKnown).toBe(4);
   });
   it('jour sans repas : pas de totaux, rien d’inventé', () => {
     const view = nutritionDayView(new Map(), '2026-01-10', 144, 2500);

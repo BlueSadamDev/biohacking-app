@@ -6,11 +6,12 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lots 1 (récap du matin) et 2 (alertes, charge, nutrition) terminés ; lot 3 (progression et corrélations) en test.
+- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition) et 3 (progression et corrélations) terminés ; lot 4 (coach IA local) en cours.
 
 ## Organisation du code
 
-- `src/app/` : les écrans. Onglets : Aujourd'hui, Tendances, Sport, Réglages. Autres écrans : Détail (HRV, FC au repos, Sommeil, Poids), Saisie du matin, Saisie de séance de musculation, Sources de données, Alertes, Diagnostic.
+- `src/app/` : les écrans. Onglets : Aujourd'hui, Tendances, Sport, Coach (lot 4), Réglages. Autres écrans : Détail (HRV, FC au repos, Sommeil, Poids), Saisie du matin, Saisie de séance de musculation, Sources de données, Alertes, Diagnostic, Modèle du coach, Bilans de la semaine.
+- `src/coach/` : coach IA local (lot 4) : installation et vérification du fichier du modèle, moteur local, gardien de la mémoire, bilan de la semaine, « Pourquoi ? » et questions.
 - `src/sources/` : lecture de Health Connect (dont les repas de Suivi macro et les séances) et saisie manuelle.
 - `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation, charge d'entraînement, nutrition, alertes, zones cardiaques, musculation et 1RM, composition corporelle, liens observés, suggestions de sports et leur catalogue, export CSV). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
 - `src/db/` : base de données locale (SQLite), réglages de l'utilisateur, historique des alertes, saisies de musculation, export CSV et effacement.
@@ -52,6 +53,40 @@ npx expo start
 ```
 
 et ouvrir le projet depuis l'app installée sur le téléphone (même réseau Wi-Fi).
+
+**Si le téléphone ne trouve pas l'ordinateur** (écran noir ; Windows bloque souvent les connexions quand le Wi-Fi est classé « Public »), passer par le câble USB avec l'outil Android `adb` (dossier « platform-tools » de Google, rangé ici dans `C:\dev\android-platform-tools`). Activer une fois le débogage USB sur le téléphone (Paramètres > Options de développement), brancher le câble, accepter « Autoriser le débogage USB », puis :
+
+```powershell
+C:\dev\android-platform-tools\platform-tools\adb.exe reverse tcp:8081 tcp:8081
+```
+
+et choisir `http://localhost:8081` dans l'app de développement. À refaire à chaque branchement du câble.
+
+## Installer le modèle du coach (lot 4)
+
+Le coach utilise un petit modèle d'IA ouvert qui tourne **sur le téléphone**, sans Internet. L'app ne télécharge rien : le fichier s'installe une fois, à la main. Il ne doit **jamais** être mis dans le dépôt (le `.gitignore` bloque les `*.gguf`).
+
+| | |
+|---|---|
+| Modèle | LFM2.5 1.2B Instruct, quantification Q4_K_M (licence LFM Open License v1.0, usage personnel autorisé) |
+| Fichier | `LFM2.5-1.2B-Instruct-Q4_K_M.gguf` (731 Mo) |
+| Téléchargement | [lien figé sur Hugging Face](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-Q4_K_M.gguf) |
+| Empreinte SHA-256 | `b1b3de114215d9507409a662a501a631095a479a419584e8a2ded6304b19b4f5` |
+
+1. Sur l'ordinateur, télécharger le fichier avec le lien ci-dessus (le ranger hors du dossier du projet, par exemple dans `C:\dev\modeles-coach`).
+2. Le copier dans le dossier **Téléchargements** du téléphone : câble USB, mode « Transfert de fichiers », puis glisser le fichier dans `Download` ; ou en ligne de commande : `adb push <fichier> /sdcard/Download/`.
+3. Dans Aube : **Réglages > Coach > Modèle du coach > Choisir le fichier du modèle**. L'app vérifie la taille et l'empreinte (environ une minute), puis le range dans son espace privé. Le fichier de Téléchargements peut ensuite être supprimé.
+
+Le choix de ce modèle est expliqué dans [docs/RAPPORT_LOT_4_MODELE.md](docs/RAPPORT_LOT_4_MODELE.md).
+
+**Second modèle accepté** : l'app accepte aussi Luth-LFM2 1.2B, une version de LFM2 entraînée en français (souvent meilleure en français à l'usage). Un seul modèle est installé à la fois : dans **Modèle du coach > Changer de modèle**, le fichier choisi remplace l'autre. Garder les deux fichiers sur l'ordinateur pour pouvoir passer de l'un à l'autre.
+
+| | |
+|---|---|
+| Modèle | Luth-LFM2 1.2B, quantification Q4_K_M de mradermacher (licence LFM 1.0, usage personnel autorisé) |
+| Fichier | `Luth-LFM2-1.2B.Q4_K_M.gguf` (731 Mo) |
+| Téléchargement | [lien figé sur Hugging Face](https://huggingface.co/mradermacher/Luth-LFM2-1.2B-GGUF/resolve/5f91c560983cf8874def628fd4a3fb5ef7333a16/Luth-LFM2-1.2B.Q4_K_M.gguf) |
+| Empreinte SHA-256 | `9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d` |
 
 ## Construire les APK
 

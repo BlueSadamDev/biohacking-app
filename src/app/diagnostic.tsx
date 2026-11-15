@@ -126,7 +126,6 @@ export default function InventoryScreen() {
     <Screen bottomInset>
       <BackHeader title="Diagnostic" onBack={() => router.back()} />
       <Text style={styles.subtitle}>Données reçues sur les {DAYS} derniers jours</Text>
-
       {state.kind === 'loading' && <ActivityIndicator size="large" color={colors.text} style={styles.block} />}
 
       {state.kind === 'unavailable' && (

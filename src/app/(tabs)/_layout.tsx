@@ -1,9 +1,9 @@
-// Barre de navigation : 72 px, 4 onglets (Aujourd'hui, Tendances, Sport, Réglages).
+// Barre de navigation : 72 px, 5 onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages).
 
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SettingsIcon, SportIcon, TodayIcon, TrendsIcon } from '@/components/Icons';
+import { CoachIcon, SettingsIcon, SportIcon, TodayIcon, TrendsIcon } from '@/components/Icons';
 import { colors, fonts } from '@/components/theme';
 
 export default function TabsLayout() {
@@ -34,6 +34,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="sport"
         options={{ title: 'Sport', tabBarIcon: ({ color }) => <SportIcon color={color} /> }}
+      />
+      <Tabs.Screen
+        name="coach"
+        // Barre d'onglets masquée pendant la saisie : le champ de question reste visible au-dessus du clavier.
+        options={{ title: 'Coach', tabBarHideOnKeyboard: true, tabBarIcon: ({ color }) => <CoachIcon color={color} /> }}
       />
       <Tabs.Screen
         name="reglages"

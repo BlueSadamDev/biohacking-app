@@ -13,7 +13,7 @@ import {
 const NOW = new Date(2026, 0, 15);
 
 describe('valeurs par défaut des réglages', () => {
-  it('protéines 1,8 g/kg, 4 séances, récap 7:30, silence 22:00 – 7:00, alertes activées', () => {
+  it('protéines 1,8 g/kg, 4 séances, récap 7:30, silence 22:00 – 7:00, alertes et coach activés', () => {
     expect(defaultUserSettings()).toMatchObject({
       targetWeightKg: null,
       proteinGPerKg: 1.8,
@@ -25,6 +25,7 @@ describe('valeurs par défaut des réglages', () => {
       quietStart: { hour: 22, minute: 0 },
       quietEnd: { hour: 7, minute: 0 },
       alertsEnabled: true,
+      coachEnabled: true,
     });
   });
 });

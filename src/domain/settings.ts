@@ -11,6 +11,36 @@ export type BodyRule = {
   text: string;
 };
 
+/** Règle du bilan de la semaine (voir `coach.weekly.rules`). */
+export type WeeklyRule = {
+  section: string;
+  field: string;
+  op: 'eq' | 'in' | 'gt' | 'lte';
+  value: string | number | boolean | readonly (string | number | boolean)[];
+  kind: 'worked' | 'stuck';
+  text: string;
+  /** Action proposée par l'app si le conseil du modèle est refusé (vide pour « ce qui a marché »). */
+  action: string;
+};
+
+/**
+ * Que faire d'un problème trouvé dans la réponse du coach (voir `coach.guard.policy`) :
+ * 'reject' = réponse refusée (nouvel essai puis repli), 'drop' = seule la phrase fautive est retirée,
+ * 'accept' = laissé tel quel.
+ */
+export type GuardPolicy = 'reject' | 'drop' | 'accept';
+export type GuardRule =
+  | 'number'
+  | 'contradiction'
+  | 'diagnosis'
+  | 'referral'
+  | 'formal'
+  | 'first-person'
+  | 'off-topic'
+  | 'unsure'
+  | 'meta'
+  | 'unmeasured';
+
 export const SETTINGS = {
   /** Règle « une valeur par nuit » (cahier des charges, section 3). */
   night: {
@@ -122,6 +152,13 @@ export const SETTINGS = {
 
   /** Charge d'entraînement (cahier des charges, section 5) : TRIMP de Banister et ratio aigu / chronique. */
   load: {
+    /**
+     * Durée minimale d'une séance pour qu'elle compte (minutes) : les courtes activités détectées
+     * automatiquement par le bracelet (marche rapide de 5 min…) sont ignorées dans tous les calculs
+     * (séances de la semaine, charge, zones, liens observés, suggestions). La musculation compte
+     * toujours (types de `strength.sessionTypes`). Les séances restent enregistrées (écran Diagnostic).
+     */
+    minSessionMinutes: 20,
     /** TRIMP = minutes × FCr × a × e^(k × FCr), FCr = (FC − FC repos) / (FC max − FC repos). */
     trimpA: 0.64,
     /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
@@ -331,6 +368,338 @@ export const SETTINGS = {
      * pendant quelques jours, le rappel arrive quand même (avec un texte générique).
      */
     daysAhead: 7,
+  },
+
+  /** Coach IA local (lot 4) : modèle attendu, choisi au test de faisabilité (docs/RAPPORT_LOT_4_MODELE.md). */
+  coach: {
+    model: {
+      label: 'LFM2.5 1.2B Instruct (Q4_K_M)',
+      fileName: 'LFM2.5-1.2B-Instruct-Q4_K_M.gguf',
+      /** Taille exacte du fichier (octets) : premier contrôle, instantané. */
+      sizeBytes: 730_895_168,
+      /** Empreinte SHA-256 du fichier : second contrôle (fichier exact et intact). */
+      sha256: 'b1b3de114215d9507409a662a501a631095a479a419584e8a2ded6304b19b4f5',
+      /** Adresse figée (version précise), affichée pour le téléchargement depuis l'ordinateur. */
+      downloadUrl:
+        'https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-Q4_K_M.gguf',
+    },
+    /**
+     * Autres modèles acceptés à l'import (un seul installé à la fois ; on change depuis l'écran Modèle du coach).
+     * Luth-LFM2 1.2B : version de LFM2 entraînée en français (quantification Q4_K_M de mradermacher).
+     */
+    alternativeModels: [
+      {
+        label: 'Luth-LFM2 1.2B (Q4_K_M)',
+        fileName: 'Luth-LFM2-1.2B.Q4_K_M.gguf',
+        sizeBytes: 730_895_296,
+        sha256: '9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d',
+        downloadUrl:
+          'https://huggingface.co/mradermacher/Luth-LFM2-1.2B-GGUF/resolve/5f91c560983cf8874def628fd4a3fb5ef7333a16/Luth-LFM2-1.2B.Q4_K_M.gguf',
+      },
+    ] as readonly { label: string; fileName: string; sizeBytes: number; sha256: string; downloadUrl: string }[],
+    /**
+     * Espace libre demandé avant l'import : le sélecteur copie d'abord le fichier,
+     * puis il est déplacé dans l'espace privé de l'app. Marge en plus de la taille du fichier (octets).
+     */
+    freeSpaceMarginBytes: 300 * 1024 * 1024,
+    /**
+     * Résumé chiffré donné au coach (étape C2) : seule source de chiffres du coach.
+     * Fenêtres courte et longue (jours, aujourd'hui compris) et nuits minimum pour une moyenne.
+     */
+    context: {
+      shortDays: 7,
+      longDays: 30,
+      minNights: 3,
+      /** Alertes reprises dans le résumé : celles des N derniers jours. */
+      alertDays: 7,
+      /** Tendance 7 j / 30 j : « en hausse » ou « en baisse » au-delà de cet écart, sinon « stable ». */
+      recoveryTrendPoints: 3,
+      sleepTrendMinutes: 20,
+      /** FC au repos « comme d'habitude » si l'écart à la moyenne 30 j est sous N bpm. */
+      restingHrUsualBpm: 1,
+      /** Protéines : verdict sur 7 jours seulement avec au moins N jours de repas enregistrés. */
+      minNutritionDays: 4,
+    },
+    /**
+     * Génération (étape C3). Partage des rôles : l'app écrit le constat chiffré (« Chiffres utilisés »),
+     * le modèle n'écrit que l'explication et l'action, SANS aucun chiffre. Longueur limitée,
+     * une seconde chance, puis un conseil de repli.
+     */
+    generation: {
+      maxTokens: 200,
+      maxAttempts: 2,
+      /** Rubriques du constat pour une question ou un « Pourquoi ? » (au plus N). */
+      factSections: 3,
+      /** Rubriques du constat du bilan de la semaine (celles qui sont disponibles). */
+      weeklySections: ['recovery', 'sleep', 'hrv', 'restingHr', 'load', 'zone2', 'nutrition', 'strength', 'weight'] as readonly string[],
+      /** Actions numérotées dans le bilan de la semaine (exactement). */
+      weeklyMaxActions: 2,
+      /** Bilan : essais du modèle avant le repli de l'app, et phrases gardées pour la synthèse. */
+      weeklyMaxAttempts: 3,
+      weeklySynthesisSentences: 2,
+    },
+    /**
+     * Sujets d'une question libre : mots-clés (expressions régulières, sans majuscules) → rubriques
+     * du résumé mises en tête. Sans mot-clé reconnu : tout le résumé, dans l'ordre habituel.
+     */
+    focus: [
+      { pattern: 'prot[ée]ine|manger|mange|nutrition|calorie|repas|alimentation', sections: ['nutrition', 'weight'] },
+      { pattern: 'sommeil|dormi|dormir|\\bdor[st]\\b|nuit|coucher|sieste|réveil|reveil', sections: ['sleep', 'recovery'] },
+      { pattern: 'hrv|variabilit', sections: ['hrv', 'recovery'] },
+      { pattern: 'fc au repos|fréquence cardiaque|pouls|bpm', sections: ['restingHr', 'recovery'] },
+      { pattern: 'charge|entra[iî]nement|séance|seance|surcharge', sections: ['load', 'zone2'] },
+      { pattern: 'zone 2|endurance|cardio|course|courir', sections: ['zone2', 'load'] },
+      { pattern: 'force|exercice|stagn|record|squat|développé|developpe|soulevé|souleve|1rm|muscu', sections: ['strength', 'nutrition'] },
+      { pattern: 'poids|gras|muscle|maigrir|grossir|kilo', sections: ['weight', 'nutrition', 'strength'] },
+      { pattern: 'récup|recup|forme|fatigu|énergie', sections: ['recovery', 'hrv', 'restingHr', 'sleep'] },
+    ] as readonly { pattern: string; sections: readonly string[] }[],
+    /**
+     * Bilan de la semaine (étape C4) : l'app décide elle-même ce qui a marché et ce qui coince,
+     * d'après les verdicts du résumé. Une règle s'applique si la valeur `field` de la rubrique
+     * `section` vérifie `op` / `value`. `action` : action proposée par l'app si le conseil du modèle est
+     * refusé (pour « ce qui coince » : corriger ; pour « ce qui a marché » : garder).
+     * Les règles d'une même rubrique sont testées dans l'ordre ; la première qui s'applique compte.
+     */
+    weekly: {
+      // Ordre = priorité d'affichage (au plus `maxItems`) : d'abord ce sur quoi on agit directement
+      // (charge, sommeil, protéines), puis leurs conséquences (HRV, récupération).
+      rules: [
+        { section: 'load', field: 'status', op: 'in', value: ['rising', 'high'], kind: 'stuck', text: 'Charge d’entraînement en hausse', action: 'Remplace une séance intense par une séance légère ou de mobilité.' },
+        { section: 'load', field: 'status', op: 'eq', value: 'under', kind: 'stuck', text: 'Charge d’entraînement en baisse (sous-charge)', action: 'Ajoute une séance modérée cette semaine.' },
+        { section: 'load', field: 'status', op: 'eq', value: 'balanced', kind: 'worked', text: 'Charge d’entraînement équilibrée', action: 'Garde le même volume d’entraînement la semaine prochaine.' },
+        { section: 'sleep', field: 'belowTarget', op: 'eq', value: true, kind: 'stuck', text: 'Sommeil sous la durée visée', action: 'Couche-toi 30 minutes plus tôt les soirs de semaine.' },
+        { section: 'sleep', field: 'belowTarget', op: 'eq', value: false, kind: 'worked', text: 'Sommeil à la durée visée', action: 'Garde tes horaires de coucher actuels.' },
+        // Seuil identique à l'alerte protéines (alerts.proteinMaxDaysBelow).
+        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'gt', value: 3, kind: 'stuck', text: 'Protéines souvent sous la cible', action: 'Ajoute une portion de protéines à un repas chaque jour.' },
+        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'lte', value: 3, kind: 'worked', text: 'Protéines le plus souvent dans la cible', action: 'Garde tes apports en protéines au même niveau.' },
+        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: false, kind: 'stuck', text: 'Zone 2 sous la cible', action: 'Ajoute une sortie d’endurance douce en zone 2.' },
+        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: true, kind: 'worked', text: 'Cible de zone 2 atteinte', action: 'Garde ta séance d’endurance douce en zone 2.' },
+        { section: 'hrv', field: 'position', op: 'eq', value: 'below', kind: 'stuck', text: 'HRV sous ta plage normale', action: 'Garde une journée légère ou de mobilité après chaque grosse séance.' },
+        { section: 'hrv', field: 'position', op: 'in', value: ['within', 'above'], kind: 'worked', text: 'HRV dans ta plage normale', action: 'Garde l’alternance entre séances intenses et journées plus légères.' },
+        { section: 'recovery', field: 'trend', op: 'eq', value: 'en baisse', kind: 'stuck', text: 'Récupération en baisse', action: 'Allège une séance cette semaine.' },
+        { section: 'recovery', field: 'trend', op: 'eq', value: 'en hausse', kind: 'worked', text: 'Récupération en hausse', action: 'Garde le même rythme de séances et de repos.' },
+        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Squat en hausse', action: 'Continue ton programme de squat tel quel.' },
+        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Développé couché en hausse', action: 'Continue ton programme de développé couché tel quel.' },
+        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Soulevé de terre en hausse', action: 'Continue ton programme de soulevé de terre tel quel.' },
+        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Squat qui stagne', action: 'Change de programme de squat (séries, répétitions ou variante).' },
+        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Développé couché qui stagne', action: 'Change de programme de développé couché (séries, répétitions ou variante).' },
+        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Soulevé de terre qui stagne', action: 'Change de programme de soulevé de terre (séries, répétitions ou variante).' },
+      ] as readonly WeeklyRule[],
+      /** Points affichés au plus dans « Ce qui a marché » et « Ce qui coince ». */
+      maxItems: 3,
+    },
+    /**
+     * Questions libres (étape C6). Questions suggérées : une par rubrique qui coince (même règles que
+     * le bilan de la semaine), complétées par des questions générales, au plus `maxSuggestions`.
+     */
+    questions: {
+      maxLength: 200,
+      /** Échanges affichés dans la conversation (les plus récents). */
+      historyShown: 20,
+      maxSuggestions: 3,
+      bySection: {
+        load: 'Ma charge d’entraînement est-elle trop élevée ?',
+        sleep: 'Comment améliorer mon sommeil ?',
+        nutrition: 'Est-ce que je mange assez de protéines ?',
+        zone2: 'Comment ajouter de la zone 2 dans ma semaine ?',
+        hrv: 'Pourquoi ma HRV est-elle basse ?',
+        recovery: 'Pourquoi ma récupération baisse-t-elle ?',
+        strength: 'Comment relancer ma progression en force ?',
+      } as Readonly<Record<string, string>>,
+      /**
+       * Questions générales sur la forme (sans sujet précis) : le modèle répond avec les chiffres
+       * principaux. Une question sans sujet reconnu ni mot de cette liste reçoit `outOfScope`.
+       */
+      generalPatterns: [
+        'semaine',
+        'demain',
+        "aujourd",
+        'bilan',
+        'global',
+        'en ce moment',
+        'comment (je|ça|ca|tu) (vais|va)',
+        'état',
+        'alerte',
+        'conseil',
+        'priorit',
+        'que (dois|faire|faut)',
+        'quoi faire',
+        'améliorer',
+        'progress',
+        'santé',
+        'sport',
+      ] as readonly string[],
+      outOfScope:
+        "Je ne peux pas répondre à cette question : je ne connais que les chiffres suivis par l'app (sommeil, récupération, HRV, fréquence cardiaque au repos, entraînement, nutrition, force, poids).",
+      /** Rubrique sans chiffres : ce qui manque, dit par l'app (« Je ne peux pas encore te répondre : … »). */
+      missing: {
+        recovery: 'pas encore assez de nuits enregistrées par le bracelet pour calculer ta récupération',
+        sleep: 'aucune nuit récente enregistrée par le bracelet',
+        hrv: 'pas encore assez de mesures de HRV',
+        restingHr: 'pas encore assez de mesures de fréquence cardiaque au repos',
+        load: 'pas encore assez de séances enregistrées pour calculer ta charge',
+        zone2: 'pas encore de séance avec fréquence cardiaque cette semaine',
+        nutrition: 'aucun repas récent enregistré dans Suivi macro',
+        strength: "aucune série enregistrée, saisis ta meilleure série dans l'onglet Sport",
+        weight: 'aucune pesée récente',
+      } as Readonly<Record<string, string>>,
+      general: [
+        'Est-ce que je récupère bien ?',
+        'Comment progresser en force ?',
+        'Est-ce que je dors assez ?',
+      ] as readonly string[],
+      /**
+       * Questions de relance, proposées après une réponse selon le sujet de la dernière question
+       * (rubriques mises en avant). Une question déjà posée n'est pas reproposée.
+       */
+      followUps: {
+        sleep: ['Comment mieux dormir les jours d’entraînement ?', 'Mon sommeil joue-t-il sur ma récupération ?'],
+        recovery: ['Comment mieux récupérer entre deux séances ?', 'Ma charge d’entraînement pèse-t-elle sur ma récupération ?'],
+        hrv: ['Qu’est-ce qui fait baisser ma HRV ?', 'Comment faire remonter ma HRV ?'],
+        restingHr: ['Que veut dire ma FC au repos cette semaine ?'],
+        load: ['Comment alléger ma semaine sans perdre en forme ?', 'Ma récupération suit-elle ma charge d’entraînement ?'],
+        zone2: ['Quelles activités comptent en zone 2 ?', 'Pourquoi la zone 2 est-elle utile pour moi ?'],
+        nutrition: ['Comment répartir mes protéines dans la journée ?', 'Mes protéines suffisent-elles pour progresser en force ?'],
+        strength: ['Comment relancer un exercice qui stagne ?', 'Mes protéines suffisent-elles pour progresser en force ?'],
+        weight: ['Est-ce que je prends du muscle ou du gras ?', 'Mon poids va-t-il dans le bon sens ?'],
+      } as Readonly<Record<string, readonly string[]>>,
+    },
+    /** Rubriques liées au thème d'une alerte (« Pourquoi ? »). */
+    alertFocus: {
+      recovery: ['recovery', 'hrv', 'restingHr', 'sleep'],
+      load: ['load', 'zone2', 'recovery'],
+      nutrition: ['nutrition', 'weight'],
+    } as Readonly<Record<string, readonly string[]>>,
+    /**
+     * Contrôle des réponses (expressions régulières, sans majuscules). Ce que fait chaque contrôle
+     * (refus, phrase retirée, accepté) est réglé dans `policy`, en bas de ce bloc.
+     */
+    guard: {
+      /**
+       * Mots de diagnostic médical, sauf si le mot figure déjà dans le résumé
+       * (le coach reprend alors un texte de l'app, par exemple une alerte « maladie ou stress »).
+       */
+      diagnosis: [
+        'maladi',
+        'malade',
+        'patholog',
+        'diagnosti',
+        'syndrome',
+        'infection',
+        'd[ée]pression',
+        'burn-?out',
+        'insomnie',
+        'apn[ée]e',
+        'trouble[s]? du sommeil',
+      ] as readonly string[],
+      /** Renvoi vers un professionnel : toujours accepté si une alerte revient souvent. */
+      referral: [
+        'consult\\w* (un|une|ton|ta|le) (professionnel|médecin|medecin|docteur|spécialiste|specialiste)',
+        'avis médical',
+        'voir un médecin',
+      ] as readonly string[],
+      /**
+       * Commentaires sur le résumé au lieu d'une réponse (« ce constat montre… », « le tableau semble… »).
+       */
+      meta: ['\\btableau\\b', '\\bconstat\\b', '\\bdonnées\\b', 'résumé'] as readonly string[],
+      /**
+       * Notions que l'app ne mesure pas (« la qualité reste bonne »), sauf si le mot
+       * figure déjà dans le résumé.
+       */
+      unmeasured: ['qualit', 'hydrat', '\\bstress'] as readonly string[],
+      /**
+       * Réponse écrite à la première personne (« je dors », « ma récupération »).
+       * « Je ne sais pas » et « Je ne peux pas encore le dire » ne sont pas concernés.
+       */
+      firstPerson: [
+        "\\bje (dors|mange|récup|recup|m'entra|m’entra|progress|suis|dois|cours)",
+        '\\b(ma|mon|mes) (récup|recup|sommeil|progr|forme|séance|seance|charge|prot|alimentation|nutrition|poids|nuit|heure|repas)',
+      ] as readonly string[],
+      /** Vouvoiement (l'app demande le tutoiement). */
+      formalYou: ['\\bvous\\b', '\\bvotre\\b', '\\bvos\\b'] as readonly string[],
+      /** Noms qui contiennent un chiffre sans en être un (« zone 2 », « 1RM ») : acceptés dans le conseil. */
+      numberNames: ['zone\\s*[1-5]', '\\b1\\s?rm\\b', 'n°\\s*\\d'] as readonly string[],
+      /** Négation juste avant une expression (« pas assez de protéines ») : ne contredit pas le verdict. */
+      negation: "\\b(pas|plus|jamais|manque|manques|ne|n')\\b[^.!?]{0,20}$",
+      /**
+       * Verdicts du résumé à ne pas contredire : si la valeur `field` de la rubrique `section`
+       * vaut l'une des valeurs `when`, aucune expression `forbidden` ne doit apparaître.
+       */
+      contradictions: [
+        {
+          section: 'nutrition',
+          field: 'proteinReached',
+          when: [false],
+          forbidden: [
+            '(assez|suffisamment) de prot[ée]ines',
+            'prot[ée]ines (sont |est )?(suffisante|bonne|solide)',
+            'bonne (base )?nutrition',
+            'apport (en prot[ée]ines )?(est )?(solide|suffisant|bon)',
+            "(cible|objectif) (de prot[ée]ines )?(est )?atteint",
+            'tu manges assez',
+            'proche de (ta |la )?cible',
+            'dans (ta |la )?cible',
+            'bonne base',
+          ],
+        },
+        {
+          section: 'sleep',
+          field: 'belowTarget',
+          when: [true],
+          forbidden: [
+            '(bien|assez) dormi',
+            'sommeil (est |a été |reste )?(bon|suffisant|correct|excellent)',
+            'bonne gestion du sommeil',
+            'bon sommeil',
+          ],
+        },
+        {
+          section: 'hrv',
+          field: 'position',
+          when: ['below'],
+          forbidden: ['hrv (est |reste )?(bonne|normale|stable|en hausse)', 'hrv dans (ta|la) (plage|norme)'],
+        },
+        {
+          section: 'load',
+          field: 'status',
+          when: ['rising', 'high'],
+          forbidden: [
+            'charge (est |reste )?(normale|équilibrée|equilibree|faible|légère|legere)',
+            'charge[^.!?]{0,60}(positi|bonne nouvelle|encourageant)',
+          ],
+        },
+        {
+          section: 'zone2',
+          field: 'zone2Reached',
+          when: [false],
+          forbidden: ['(cible de )?zone 2 (est )?(atteinte|suffisante)'],
+        },
+        {
+          section: 'recovery',
+          field: 'trend',
+          when: ['en baisse'],
+          forbidden: ['récupération (est |reste )?(bonne|excellente|en hausse|stable)', 'progression en récupération'],
+        },
+      ] as readonly { section: string; field: string; when: readonly (string | number | boolean)[]; forbidden: readonly string[] }[],
+      /**
+       * Sévérité de chaque contrôle. Refus seulement pour ce qui serait faux (verdict contredit) ;
+       * phrase retirée pour un chiffre, un diagnostic, un jugement inventé ou une maladresse ;
+       * style toléré. Une réponse réparée reste refusée s'il n'y reste plus d'explication ou plus
+       * d'action alors qu'il y en avait (et, pour le bilan, moins d'actions que demandé).
+       */
+      policy: {
+        contradiction: 'reject',
+        number: 'drop',
+        diagnosis: 'drop',
+        unmeasured: 'drop',
+        referral: 'drop',
+        'first-person': 'drop',
+        unsure: 'drop',
+        meta: 'drop',
+        formal: 'accept',
+        'off-topic': 'accept',
+      } as Readonly<Record<GuardRule, GuardPolicy>>,
+    },
   },
 
   /** Synchronisation Health Connect. */

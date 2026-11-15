@@ -9,6 +9,7 @@ import { StyleSheet, View } from 'react-native';
 import type { Link, ValueKind } from '@/domain/correlations';
 
 import { AppText } from './AppText';
+import { WhyLink } from './CoachViews';
 import { formatDuration } from './format';
 import { colors, fonts, radius } from './theme';
 
@@ -39,7 +40,7 @@ function Bar({ label, value, max, color, kind }: { label: string; value: number;
   );
 }
 
-export function LinkCard({ link }: { link: Link }) {
+export function LinkCard({ link, onWhy }: { link: Link; onWhy?: () => void }) {
   const color = linkColor(link);
   const max = Math.max(link.study.mean, link.reference.mean) || 1;
   const sense = link.strength === 'weak' ? '' : link.favorable ? ' · favorable' : ' · défavorable';
@@ -56,6 +57,7 @@ export function LinkCard({ link }: { link: Link }) {
       <Bar label={link.reference.label} value={link.reference.mean} max={max} color={colors.bar} kind={link.kind} />
       <Bar label={link.study.label} value={link.study.mean} max={max} color={color} kind={link.kind} />
       <AppText style={styles.action}>{link.action}</AppText>
+      {onWhy && <WhyLink onPress={onWhy} />}
     </View>
   );
 }

@@ -240,8 +240,11 @@ Coach, Réglages. Icône Coach : bulle de dialogue en trait avec deux lignes.
   `#8B97A6`) qui liste les chiffres utilisés.
 - **Bulles de conversation** : question à droite, fond `track`, rayon
   16 16 4 16 ; réponse à gauche, fond `surface`, rayon 16 16 16 4, texte
-  14, l'action conseillée en 14/600, puis « Chiffres utilisés : … » (11,
-  `#8B97A6`). Largeur maximale 80 % (question) et 88 % (réponse).
+  14, l'action conseillée en 14/600, puis un lien « Voir les chiffres
+  utilisés » (12/600, `#7DB8FF`) : les chiffres (11, `#8B97A6`) sont
+  repliés par défaut et s'affichent à l'appui (« Masquer les chiffres
+  utilisés » pour les replier). Largeur maximale 80 % (question) et 88 %
+  (réponse).
 - **Questions suggérées** : mêmes pastilles que les filtres (contour
   `border`, texte `textSoft`).
 - **Champ de question** : champ de 48 px (contour `border`, fond
@@ -253,13 +256,21 @@ Coach, Réglages. Icône Coach : bulle de dialogue en trait avec deux lignes.
 - **Lien « Pourquoi ? »** : sur les cartes alerte et lien observé, texte
   13/600 `#7DB8FF` en bas de carte. Il ouvre un panneau du bas avec
   l'explication du coach (même style que la bulle de réponse). Masqué si
-  le modèle n'est pas installé.
+  le modèle n'est pas installé ou si le coach est désactivé.
+
+### Réglages (groupe Coach)
+Interrupteur « Coach » en tête du groupe (activé par défaut), puis
+« Modèle du coach » et « Effacer la conversation ». Désactivé : ni bilan,
+ni question, ni « Pourquoi ? » ; le modèle reste installé et la
+conversation est gardée.
 
 ### Coach (onglet Coach)
 En-tête « Ton coach Aube » + titre « Coach » + badge à droite. Carte bilan
 de la semaine (la plus récente) → questions suggérées → conversation →
 champ de question en bas → navigation. Si le modèle n'est pas installé :
 une carte unique qui explique le coach et renvoie vers l'écran Modèle.
+Si le coach est désactivé : une carte unique « Le coach est désactivé »
+avec un bouton secondaire « Ouvrir les Réglages ».
 
 ### Modèle du coach
 Retour + titre « Modèle du coach ». Carte « Tout reste sur ton téléphone »
@@ -268,7 +279,7 @@ fichier depuis l'ordinateur, le copier dans Téléchargements, le choisir
 dans Aube), taille et espace nécessaires, bouton « Choisir le fichier du
 modèle ». Avec modèle : lignes de réglage État (« Installé · prêt » en
 `good`), Fichier (nom + taille), Vitesse mesurée (mots / s), Bilan de la
-semaine (« dimanche, à l'ouverture »), puis bouton secondaire « Supprimer
+semaine (« dimanche, à l'ouverture du coach »), puis bouton secondaire « Supprimer
 le modèle » en `low` avec confirmation.
 
 ## États à toujours prévoir

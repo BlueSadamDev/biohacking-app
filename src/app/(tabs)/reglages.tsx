@@ -21,6 +21,7 @@ import {
 import { colors } from '@/components/theme';
 import { reloadFromDb } from '@/components/useHealthData';
 import { getUserSettings, setUserSetting } from '@/db/appSettings';
+import { clearConversation } from '@/db/coachMessages';
 import { eraseAllData, exportAllToCsv } from '@/db/dataAdmin';
 import { loadWeights } from '@/db/healthData';
 import { weightByDay } from '@/domain/daily';
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
   const [weight, setWeight] = useState<number | null>(null);
   const [busy, setBusy] = useState<'export' | 'erase' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [coachMessage, setCoachMessage] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     getUserSettings().then(setUser).catch(() => setUser(null));
@@ -90,7 +92,7 @@ export default function SettingsScreen() {
   function confirmErase() {
     Alert.alert(
       'Effacer toutes les données ?',
-      'Tes saisies (poids, ressenti, musculation) seront perdues définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
+      'Tes saisies (poids, ressenti, musculation), les bilans et la conversation du coach seront perdus définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -108,6 +110,25 @@ export default function SettingsScreen() {
             } finally {
               setBusy(null);
             }
+          },
+        },
+      ],
+    );
+  }
+
+  function confirmClearConversation() {
+    Alert.alert(
+      'Effacer la conversation ?',
+      'Tes questions au coach et ses réponses seront effacées du téléphone. Les bilans de la semaine sont conservés.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Effacer',
+          style: 'destructive',
+          onPress: () => {
+            clearConversation()
+              .then(() => setCoachMessage('Conversation effacée.'))
+              .catch(() => setCoachMessage("L'effacement de la conversation a échoué."));
           },
         },
       ],
@@ -262,6 +283,14 @@ export default function SettingsScreen() {
         <SettingRow label="Alertes">
           <Switch label="Alertes" value={user.alertsEnabled} onChange={(v) => save('alertsEnabled', v)} />
         </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup title="Coach" footer={coachMessage ?? undefined}>
+        <SettingRow label="Coach">
+          <Switch label="Coach" value={user.coachEnabled} onChange={(v) => save('coachEnabled', v)} />
+        </SettingRow>
+        <SettingLink label="Modèle du coach" onPress={() => router.push('/coach-modele')} />
+        <SettingLink label="Effacer la conversation" color={colors.low} onPress={confirmClearConversation} />
       </SettingsGroup>
 
       <SettingsGroup title="Données" footer={message ?? undefined}>

@@ -46,7 +46,7 @@ La règle : pas de moyenne, une source prioritaire par métrique et une source d
 | --- | --- | --- | --- |
 | FC pendant les séances | Helio Strap | — | Le capteur optique au poignet décroche en musculation et en escalade (flexion du poignet, prise en main). Le strap est plus stable. Sert aussi aux zones cardiaques (section 5) |
 | GPS, distance, dénivelé, allure | Aucune source (Suunto hors périmètre) | — | Non suivis. La course est suivie par la FC du Helio Strap |
-| Séances | Helio Strap (immédiat) | — | Si une source passerelle s'ajoute un jour (séances Suunto), une séance qui chevauche une séance Helio à plus de 50 % la complète (type précis, GPS) au lieu de créer un doublon |
+| Séances | Helio Strap (immédiat) | — | Si une source passerelle s'ajoute un jour (séances Suunto), une séance qui chevauche une séance Helio à plus de 50 % la complète (type précis, GPS) au lieu de créer un doublon. Une séance ne compte dans les calculs que si elle dure au moins 20 minutes (musculation toujours comptée) : les courtes activités détectées automatiquement par le bracelet sont ignorées, mais restent enregistrées |
 | Sommeil | Helio Strap (porté en permanence) | — | Une seule source à vie, pour garder des tendances comparables |
 | HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment. Une valeur par nuit : moyenne des mesures prises pendant le sommeil principal, calculée sur le logarithme de la rMSSD (atténue les pics isolés) |
 | FC au repos | Helio Strap | — | Une valeur par nuit : moyenne des 5 valeurs les plus basses mesurées pendant le sommeil principal (moins sensible qu'un minimum unique à une mesure erronée) |
@@ -108,7 +108,8 @@ Un coach qui explique mes chiffres en langage naturel, en français, sans que ri
   - **Bouton « Pourquoi ? »** sur les alertes et les liens observés : explication du constat en quelques phrases.
   - **Questions libres encadrées**, avec des questions suggérées.
   - Le plan d'entraînement de la semaine est reporté à plus tard.
-- **Règle de sécurité** : le coach ne calcule rien. Il reformule et explique uniquement les chiffres déjà calculés par l'app (sections 3 et 5), ne pose jamais de diagnostic médical, et dit « je ne sais pas » quand l'information manque. Chaque nombre d'une réponse est vérifié : s'il n'existe pas dans les données fournies au coach, la réponse est refaite, puis remplacée par un message de repli.
+- **Règle de sécurité** : le coach ne calcule rien. Il reformule et explique uniquement les chiffres déjà calculés par l'app (sections 3 et 5), ne pose jamais de diagnostic médical, et dit « je ne sais pas » quand l'information manque. Partage des rôles : **l'app écrit le constat chiffré** (« Chiffres utilisés », repris du résumé calculé par l'app, donc toujours juste) et **le modèle n'écrit que l'explication et l'action, sans aucun chiffre**. Chaque conseil est contrôlé (chiffre, verdict contredit, vocabulaire médical, vouvoiement) : s'il est refusé, il est refait une fois, puis remplacé par un conseil de repli, le constat restant affiché.
+- **Bilan de la semaine** : l'app décide elle-même ce qui a marché et ce qui coince, d'après ses verdicts ; le modèle écrit la phrase de synthèse et 2 actions ciblées sur ce qui coince. Généré à la première ouverture de l'onglet Coach à partir du dimanche (le modèle n'est jamais chargé ailleurs), enregistré, historique consultable.
 
 ## 5. Indicateurs et règles de calcul
 
@@ -222,6 +223,8 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - HRV : une valeur par nuit, moyenne (sur le logarithme) des mesures du sommeil principal. FC au repos : moyenne des 5 valeurs les plus basses du sommeil principal. Sans sommeil enregistré : « non calculable ».
 - Design : style sombre inspiré de Whoop, maquettes du lot 1 validées.
 - Coach IA (lot 4) : 100 % local, sur le Galaxy S21 (pas de Gemini Nano) avec un petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié), installé par import manuel du fichier. L'APK de production reste sans permission Internet. Le coach ne calcule rien, ne pose aucun diagnostic et dit quand il ne sait pas. Usages : bilan de la semaine, « Pourquoi ? », questions libres encadrées ; plan de semaine reporté.
+- Coach IA, choix du modèle et partage des rôles (lot 4, 15 novembre 2026) : LFM2.5 1.2B avec llama.rn (voir [RAPPORT_LOT_4_MODELE.md](RAPPORT_LOT_4_MODELE.md)), et Luth-LFM2 1.2B (version française) accepté aussi ; un seul installé à la fois, interchangeables. Un modèle de cette taille déforme les verdicts même avec des consignes strictes : l'app écrit donc le constat chiffré et le modèle seulement l'explication et l'action, sans chiffre. Le bilan de la semaine est généré à l'ouverture de l'onglet Coach (et non de l'app), pour ne charger le modèle que là.
+- Séances courtes (15 novembre 2026) : le Helio Strap enregistre toutes les activités détectées (marche rapide de quelques minutes…). Seules les séances d'au moins 20 minutes comptent dans les calculs (séances de la semaine, charge, zones, liens observés, suggestions) ; la musculation compte toujours. Seuil réglable dans `settings.ts`.
 
 **Prochaines étapes**
 

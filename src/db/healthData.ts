@@ -3,7 +3,7 @@
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
-import type { ExerciseSession } from '@/domain/load';
+import { countedSessions, type ExerciseSession } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
 
 import { getDb } from './database';
@@ -113,6 +113,11 @@ export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]>
     'SELECT id, start_ms AS start, end_ms AS "end", exercise_type AS exerciseType, origin FROM hc_exercise WHERE end_ms >= ? ORDER BY start_ms',
     sinceMs,
   );
+}
+
+/** Séances qui comptent dans les calculs (sans les courtes activités détectées automatiquement). */
+export async function loadCountedExercises(sinceMs: number): Promise<ExerciseSession[]> {
+  return countedSessions(await loadExercises(sinceMs));
 }
 
 export async function loadMeals(sinceMs: number): Promise<Meal[]> {

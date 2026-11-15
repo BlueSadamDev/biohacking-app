@@ -7,7 +7,7 @@ import { effectiveHrMax, trimpCoefficient } from '@/domain/profile';
 import { SETTINGS } from '@/domain/settings';
 
 import { getUserSettings } from './appSettings';
-import { loadExerciseHeartRate, loadExercises } from './healthData';
+import { loadCountedExercises, loadExerciseHeartRate } from './healthData';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -15,7 +15,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export async function loadLoadInputs(nights: NightValue[], today: string, now: Date, extraDays = 0): Promise<LoadInputs> {
   const since = now.getTime() - (SETTINGS.load.chronicDays + extraDays + 1) * DAY_MS;
   const [sessions, samples, user] = await Promise.all([
-    loadExercises(since),
+    loadCountedExercises(since),
     loadExerciseHeartRate(since),
     getUserSettings(),
   ]);

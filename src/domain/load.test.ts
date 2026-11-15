@@ -3,6 +3,7 @@ import { at, night } from './__fixtures__/nights';
 import { addDays } from './dates';
 import {
   buildLoadSummary,
+  countedSessions,
   dailyLoads,
   loadRatio,
   loadStatus,
@@ -158,5 +159,20 @@ describe('résumé de la charge', () => {
   it('compte les séances de la semaine sans FC', () => {
     const summary = buildLoadSummary({ ...base, samples: samples.filter((s) => s.time < at(2026, 2, 10)) });
     expect(summary).toMatchObject({ sessions7d: 7, sessionsWithoutHr: 2 });
+  });
+});
+
+describe('séances qui comptent', () => {
+  // Types Health Connect fictifs : marche (79), course (56) ; musculation (70) dans strength.sessionTypes.
+  const walk = (id: string, minutes: number) => ({ ...session(id, at(2026, 1, 10, 10), minutes), exerciseType: 79 });
+  const run = (id: string, minutes: number) => ({ ...session(id, at(2026, 1, 10, 18), minutes), exerciseType: 56 });
+
+  it('ignore les courtes activités détectées automatiquement (moins de 20 minutes)', () => {
+    const kept = countedSessions([walk('marche-5', 5), walk('marche-19', 19), run('course-20', 20), run('course-45', 45)]);
+    expect(kept.map((s) => s.id)).toEqual(['course-20', 'course-45']);
+  });
+
+  it('garde toujours la musculation, même courte', () => {
+    expect(countedSessions([session('muscu-12', at(2026, 1, 10, 7), 12)]).map((s) => s.id)).toEqual(['muscu-12']);
   });
 });

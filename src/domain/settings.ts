@@ -152,6 +152,13 @@ export const SETTINGS = {
 
   /** Charge d'entraînement (cahier des charges, section 5) : TRIMP de Banister et ratio aigu / chronique. */
   load: {
+    /**
+     * Durée minimale d'une séance pour qu'elle compte (minutes) : les courtes activités détectées
+     * automatiquement par le bracelet (marche rapide de 5 min…) sont ignorées dans tous les calculs
+     * (séances de la semaine, charge, zones, liens observés, suggestions). La musculation compte
+     * toujours (types de `strength.sessionTypes`). Les séances restent enregistrées (écran Diagnostic).
+     */
+    minSessionMinutes: 20,
     /** TRIMP = minutes × FCr × a × e^(k × FCr), FCr = (FC − FC repos) / (FC max − FC repos). */
     trimpA: 0.64,
     /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */

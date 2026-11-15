@@ -12,7 +12,7 @@ import { weeklySuggestions, type WeeklySuggestions } from '@/domain/suggestions'
 import { weekActivity, type WeekActivity } from '@/domain/zones';
 
 import { getUserSettings } from './appSettings';
-import { loadExerciseHeartRate, loadExercises, loadMeals, loadWeights } from './healthData';
+import { loadCountedExercises, loadExerciseHeartRate, loadMeals, loadWeights } from './healthData';
 
 export type SportWeek = WeekActivity & {
   /** Séances visées par semaine (Réglages). */
@@ -46,7 +46,7 @@ export async function loadBodyComposition(strength: ExerciseProgress[], now: Dat
 export async function loadSuggestions(now: Date = new Date()): Promise<WeeklySuggestions> {
   const s = SETTINGS.suggestions;
   const [sessions, samples, user] = await Promise.all([
-    loadExercises(now.getTime() - (s.mobilityWindowDays + 1) * DAY_MS),
+    loadCountedExercises(now.getTime() - (s.mobilityWindowDays + 1) * DAY_MS),
     loadExerciseHeartRate(now.getTime() - (s.zone2WindowDays + 1) * DAY_MS),
     getUserSettings(),
   ]);
@@ -65,7 +65,7 @@ export async function loadSportWeek(now: Date = new Date()): Promise<SportWeek> 
   const [y, m, d] = startOfWeek(today).split('-').map(Number);
   const since = new Date(y, m - 1, d).getTime();
   const [sessions, samples, user] = await Promise.all([
-    loadExercises(since),
+    loadCountedExercises(since),
     loadExerciseHeartRate(since),
     getUserSettings(),
   ]);

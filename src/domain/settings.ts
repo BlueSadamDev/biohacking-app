@@ -23,6 +23,24 @@ export type WeeklyRule = {
   action: string;
 };
 
+/**
+ * Que faire d'un problème trouvé dans la réponse du coach (voir `coach.guard.policy`) :
+ * 'reject' = réponse refusée (nouvel essai puis repli), 'drop' = seule la phrase fautive est retirée,
+ * 'accept' = laissé tel quel.
+ */
+export type GuardPolicy = 'reject' | 'drop' | 'accept';
+export type GuardRule =
+  | 'number'
+  | 'contradiction'
+  | 'diagnosis'
+  | 'referral'
+  | 'formal'
+  | 'first-person'
+  | 'off-topic'
+  | 'unsure'
+  | 'meta'
+  | 'unmeasured';
+
 export const SETTINGS = {
   /** Règle « une valeur par nuit » (cahier des charges, section 3). */
   night: {
@@ -545,10 +563,13 @@ export const SETTINGS = {
       load: ['load', 'zone2', 'recovery'],
       nutrition: ['nutrition', 'weight'],
     } as Readonly<Record<string, readonly string[]>>,
-    /** Contrôle des réponses (expressions régulières, sans majuscules). */
+    /**
+     * Contrôle des réponses (expressions régulières, sans majuscules). Ce que fait chaque contrôle
+     * (refus, phrase retirée, accepté) est réglé dans `policy`, en bas de ce bloc.
+     */
     guard: {
       /**
-       * Mots de diagnostic médical : réponse refusée, sauf si le mot figure déjà dans le résumé
+       * Mots de diagnostic médical, sauf si le mot figure déjà dans le résumé
        * (le coach reprend alors un texte de l'app, par exemple une alerte « maladie ou stress »).
        */
       diagnosis: [
@@ -564,31 +585,30 @@ export const SETTINGS = {
         'apn[ée]e',
         'trouble[s]? du sommeil',
       ] as readonly string[],
-      /** Renvoi vers un professionnel : accepté seulement si une alerte revient souvent. */
+      /** Renvoi vers un professionnel : toujours accepté si une alerte revient souvent. */
       referral: [
         'consult\\w* (un|une|ton|ta|le) (professionnel|médecin|medecin|docteur|spécialiste|specialiste)',
         'avis médical',
         'voir un médecin',
       ] as readonly string[],
       /**
-       * Commentaires sur le résumé au lieu d'une réponse (« ce constat montre… », « le tableau semble… ») :
-       * la phrase est retirée ; la réponse n'est refusée que s'il ne reste rien.
+       * Commentaires sur le résumé au lieu d'une réponse (« ce constat montre… », « le tableau semble… »).
        */
       meta: ['\\btableau\\b', '\\bconstat\\b', '\\bdonnées\\b', 'résumé'] as readonly string[],
       /**
-       * Notions que l'app ne mesure pas (« la qualité reste bonne ») : refusées, sauf si le mot
+       * Notions que l'app ne mesure pas (« la qualité reste bonne »), sauf si le mot
        * figure déjà dans le résumé.
        */
       unmeasured: ['qualit', 'hydrat', '\\bstress'] as readonly string[],
       /**
-       * Réponse écrite à la première personne (« je dors », « ma récupération ») : refusée.
-       * « Je ne sais pas » et « Je ne peux pas encore le dire » restent acceptés.
+       * Réponse écrite à la première personne (« je dors », « ma récupération »).
+       * « Je ne sais pas » et « Je ne peux pas encore le dire » ne sont pas concernés.
        */
       firstPerson: [
         "\\bje (dors|mange|récup|recup|m'entra|m’entra|progress|suis|dois|cours)",
         '\\b(ma|mon|mes) (récup|recup|sommeil|progr|forme|séance|seance|charge|prot|alimentation|nutrition|poids|nuit|heure|repas)',
       ] as readonly string[],
-      /** Vouvoiement : refusé (l'app tutoie). */
+      /** Vouvoiement (l'app demande le tutoiement). */
       formalYou: ['\\bvous\\b', '\\bvotre\\b', '\\bvos\\b'] as readonly string[],
       /** Noms qui contiennent un chiffre sans en être un (« zone 2 », « 1RM ») : acceptés dans le conseil. */
       numberNames: ['zone\\s*[1-5]', '\\b1\\s?rm\\b', 'n°\\s*\\d'] as readonly string[],
@@ -654,6 +674,24 @@ export const SETTINGS = {
           forbidden: ['récupération (est |reste )?(bonne|excellente|en hausse|stable)', 'progression en récupération'],
         },
       ] as readonly { section: string; field: string; when: readonly (string | number | boolean)[]; forbidden: readonly string[] }[],
+      /**
+       * Sévérité de chaque contrôle. Refus seulement pour ce qui serait faux (verdict contredit) ;
+       * phrase retirée pour un chiffre, un diagnostic, un jugement inventé ou une maladresse ;
+       * style toléré. Une réponse réparée reste refusée s'il n'y reste plus d'explication ou plus
+       * d'action alors qu'il y en avait (et, pour le bilan, moins d'actions que demandé).
+       */
+      policy: {
+        contradiction: 'reject',
+        number: 'drop',
+        diagnosis: 'drop',
+        unmeasured: 'drop',
+        referral: 'drop',
+        'first-person': 'drop',
+        unsure: 'drop',
+        meta: 'drop',
+        formal: 'accept',
+        'off-topic': 'accept',
+      } as Readonly<Record<GuardRule, GuardPolicy>>,
     },
   },
 

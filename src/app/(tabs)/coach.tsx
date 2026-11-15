@@ -230,7 +230,7 @@ export default function CoachScreen() {
                 )}
                 {__DEV__ && devReasons?.id === e.id && (
                   <AppText variant="small" style={styles.soft}>
-                    {`Refus (version de développement) :\n${devReasons.text}`}
+                    {`Contrôle (version de développement) :\n${devReasons.text}`}
                   </AppText>
                 )}
               </View>

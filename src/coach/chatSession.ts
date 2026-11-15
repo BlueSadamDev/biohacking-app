@@ -35,9 +35,9 @@ export class ChatSession {
       const context = await loadCoachContext(now);
       // Réponse écrite par l'app (hors sujet, chiffre manquant) : inutile de charger le modèle.
       const direct = appAnswer(context, task);
-      let out: Pick<CoachOutcome, 'kind' | 'text' | 'facts' | 'rejections' | 'rejectedTexts'>;
+      let out: Pick<CoachOutcome, 'kind' | 'text' | 'facts' | 'rejections' | 'rejectedTexts' | 'removed'>;
       if (direct) {
-        out = { kind: 'fallback', text: direct.text, facts: direct.facts, rejections: [], rejectedTexts: [] };
+        out = { kind: 'fallback', text: direct.text, facts: direct.facts, rejections: [], rejectedTexts: [], removed: [] };
       } else {
         // Modèle libéré par l'app entre deux questions (app passée en arrière-plan) : on en recharge un.
         if (this.model?.interrupted) await this.release();
@@ -59,6 +59,11 @@ export class ChatSession {
         const refused = (out.rejectedTexts[i] ?? '').replace(/\d/g, '•');
         return `essai ${i + 1} : ${reasons}\n« ${refused} »`;
       });
+      // Phrases retirées de la réponse affichée (chiffres masqués).
+      for (const r of out.removed) {
+        const reason = r.problem.kind === 'number' ? 'chiffre écrit par le modèle' : describeProblem(r.problem);
+        lastChatRejections.push(`phrase retirée (${reason}) :\n« ${r.sentence.replace(/\d/g, '•')} »`);
+      }
       const exchange: CoachExchange = {
         id: `${now.getTime()}`,
         createdMs: now.getTime(),

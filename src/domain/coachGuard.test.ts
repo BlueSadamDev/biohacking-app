@@ -1,6 +1,7 @@
 import { coachInputs } from './__fixtures__/coach';
 import { buildCoachContext } from './coachContext';
 import { checkAnswer, describeProblem, dropMetaSentences, sanitize } from './coachGuard';
+import { SETTINGS } from './settings';
 
 // Résumé fictif : protéines sous la cible, sommeil sous la durée visée, HRV sous la plage,
 // charge en hausse, zone 2 sous la cible, récupération en baisse, aucune alerte qui persiste.
@@ -65,9 +66,12 @@ describe('contrôle du conseil du coach', () => {
     expect(checkAnswer('Cette alerte revient souvent : consulte un médecin.', persistent).ok).toBe(true);
   });
 
-  it('demande exactement 2 actions dans le bilan', () => {
+  it('garde les 2 premières actions du bilan, refuse s’il en manque', () => {
     const three = 'Semaine chargée.\nAction n°1 : dors plus.\nAction n°2 : allège la charge.\nAction n°3 : surveille ta charge.';
-    expect(kinds(three, { kind: 'weekly' })).toEqual(['action-count']);
+    const r = checkAnswer(three, ctx, { kind: 'weekly' });
+    expect(r.ok).toBe(true);
+    expect(r.text).toBe('Semaine chargée.\nAction n°1 : dors plus.\nAction n°2 : allège la charge.');
+    expect(r.removed.map((x) => x.problem.kind)).toEqual(['action-count']);
     expect(kinds('Semaine chargée.\n1. Dors plus.', { kind: 'weekly' })).toEqual(['action-count']);
     expect(kinds(three)).toEqual([]);
   });
@@ -98,7 +102,15 @@ describe('contrôle du conseil du coach', () => {
     expect(kinds('Je ne peux pas encore le dire : il faut une pesée récente.\nAction : pèse-toi demain matin.')).toEqual([]);
   });
 
-  it('refuse une réponse hors du sujet de la question', () => {
+  it('accepte un sujet voisin de la question (contrôle désactivé dans les réglages)', () => {
+    const food = { kind: 'question' as const, text: 'Est-ce que je mange bien ?' };
+    expect(kinds('Non, tu dors moins que la durée visée.\nAction : couche-toi plus tôt.', food)).toEqual([]);
+  });
+
+  it('refuse une réponse hors du sujet de la question quand le contrôle est actif', () => {
+    const strict = { ...SETTINGS, coach: { ...SETTINGS.coach, guard: { ...SETTINGS.coach.guard, policy: { ...SETTINGS.coach.guard.policy, 'off-topic': 'reject' as const } } } };
+    const kinds = (answer: string, task: Parameters<typeof checkAnswer>[2]) =>
+      checkAnswer(answer, ctx, task, strict).problems.map((p) => p.kind);
     const food = { kind: 'question' as const, text: 'Est-ce que je mange bien ?' };
     expect(kinds('Non, tu dors moins que la durée visée.\nAction : couche-toi plus tôt.', food)).toEqual(['off-topic']);
     expect(kinds('Tes protéines restent sous la cible.\nAction : ajoute une portion de protéines au déjeuner.', food)).toEqual([]);
@@ -110,9 +122,34 @@ describe('contrôle du conseil du coach', () => {
     expect(kinds('Tu récupères moins bien.\nAction : allège ta séance.', { kind: 'question', text: 'Que faire demain ?' })).toEqual([]);
   });
 
-  it('refuse le vouvoiement', () => {
-    expect(kinds('Action : augmentez votre apport en protéines.')).toContain('formal');
+  it('accepte le vouvoiement (question de style)', () => {
+    expect(checkAnswer('Action : augmentez votre apport en protéines.', ctx).ok).toBe(true);
     expect(describeProblem({ kind: 'formal', text: 'votre' })).toContain('tutoie');
+  });
+
+  it('retire seulement la phrase fautive quand le reste de la réponse est bon', () => {
+    const r = checkAnswer(
+      'Non, tu dors moins que la durée visée. Vise 8 h par nuit. C’est peut-être une insomnie. Ça freine ta récupération.\nAction : couche-toi plus tôt.',
+      ctx,
+    );
+    expect(r.ok).toBe(true);
+    expect(r.text).toBe('Non, tu dors moins que la durée visée. Ça freine ta récupération.\nAction : couche-toi plus tôt.');
+    expect(r.removed.map((x) => x.problem.kind)).toEqual(['number', 'diagnosis']);
+    // Aucun chiffre ni mot de diagnostic ne reste affiché.
+    expect(r.text).not.toMatch(/\d|insomnie/);
+  });
+
+  it('refuse une réponse qui a perdu son action ou son explication', () => {
+    expect(kinds('Tu dors moins que la durée visée.\nAction : dors 8 h.')).toEqual(['number']);
+    expect(kinds('Je dors mal.\nAction : couche-toi plus tôt.')).toEqual(['first-person']);
+    // Une réponse sans ligne « Action » au départ reste acceptée.
+    expect(checkAnswer('Tu dors moins que la durée visée.', ctx).ok).toBe(true);
+  });
+
+  it('refuse toute la réponse quand un verdict est contredit, même avec d’autres phrases justes', () => {
+    const r = checkAnswer('Tu dors moins que la durée visée. Ton sommeil est bon.\nAction : couche-toi plus tôt.', ctx);
+    expect(r.ok).toBe(false);
+    expect(r.problems.map((p) => p.kind)).toEqual(['contradiction']);
   });
 
   it('retire les questions de fin de réponse', () => {

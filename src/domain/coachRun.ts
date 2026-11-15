@@ -1,11 +1,11 @@
 // Coach IA (lot 4, étape C3) : une demande au coach, avec ses garde-fous.
 // Le constat chiffré est écrit par l'app (toujours juste) ; le modèle écrit le conseil.
-// 1re génération → contrôle ; si refusée, seconde chance avec la raison du refus ;
+// 1re génération → contrôle (les phrases fautives sont retirées) ; si refusée, seconde chance avec la raison du refus ;
 // si encore refusée, conseil de repli (le constat reste affiché).
 // Le modèle est passé en paramètre : llama.rn dans l'app, un modèle simulé dans les tests.
 
 import type { CoachContext } from './coachContext';
-import { checkAnswer, describeProblem, sanitize, type GuardProblem } from './coachGuard';
+import { checkAnswer, describeProblem, sanitize, type GuardProblem, type GuardRemoval } from './coachGuard';
 import { appAnswer, buildUserMessage, COACH_SYSTEM_PROMPT, factLines, fallbackAdvice, type CoachTask } from './coachPrompt';
 import { SETTINGS, type Settings } from './settings';
 
@@ -32,6 +32,8 @@ export type CoachOutcome = {
   rejections: GuardProblem[][];
   /** Textes refusés, dans l'ordre des essais (affichés seulement dans la version de développement). */
   rejectedTexts: string[];
+  /** Phrases retirées de la réponse acceptée (affichées seulement dans la version de développement). */
+  removed: GuardRemoval[];
 };
 
 export async function runCoach(
@@ -44,7 +46,9 @@ export async function runCoach(
   const g = settings.coach.generation;
   // L'app répond elle-même quand elle sait que le modèle ne peut pas bien répondre (hors sujet, chiffre manquant).
   const direct = appAnswer(context, task, settings);
-  if (direct) return { kind: 'fallback', text: direct.text, facts: direct.facts, attempts: 0, rejections: [], rejectedTexts: [] };
+  if (direct) {
+    return { kind: 'fallback', text: direct.text, facts: direct.facts, attempts: 0, rejections: [], rejectedTexts: [], removed: [] };
+  }
   const facts = factLines(context, task, settings);
   const base = buildUserMessage(context, task, settings);
   const rejections: GuardProblem[][] = [];
@@ -66,9 +70,12 @@ export async function runCoach(
         attempts: attempt,
         rejections: check.ok ? rejections : [...rejections, check.problems],
         rejectedTexts: check.ok ? rejectedTexts : [...rejectedTexts, sanitize(res.text)],
+        removed: check.ok ? check.removed : [],
       };
     }
-    if (check.ok) return { kind: 'answer', text: check.text, facts, attempts: attempt, rejections, rejectedTexts };
+    if (check.ok) {
+      return { kind: 'answer', text: check.text, facts, attempts: attempt, rejections, rejectedTexts, removed: check.removed };
+    }
     rejections.push(check.problems);
     rejectedTexts.push(sanitize(res.text));
     user = `${base}\n\nTa réponse précédente a été refusée : ${check.problems
@@ -76,5 +83,5 @@ export async function runCoach(
       .join(' ; ')}. Réécris-la en respectant strictement les consignes, sans aucun chiffre.`;
   }
 
-  return { kind: 'fallback', text: fallbackAdvice(task), facts, attempts: maxAttempts, rejections, rejectedTexts };
+  return { kind: 'fallback', text: fallbackAdvice(task), facts, attempts: maxAttempts, rejections, rejectedTexts, removed: [] };
 }

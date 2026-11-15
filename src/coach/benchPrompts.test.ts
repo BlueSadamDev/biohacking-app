@@ -17,7 +17,7 @@ describe('banc d’essai du coach', () => {
   });
 
   it('décrit le résultat du contrôle', () => {
-    const base = { text: '', facts: [], rejectedTexts: [] };
+    const base = { text: '', facts: [], rejectedTexts: [], removed: [] };
     expect(outcomeLine({ ...base, kind: 'answer', attempts: 1, rejections: [] })).toBe('Contrôle réussi au 1er essai');
     expect(outcomeLine({ ...base, kind: 'answer', attempts: 2, rejections: [[{ kind: 'number', numbers: [160] }]] })).toBe(
       "Contrôle réussi au 2e essai (1er essai refusé : chiffre écrit (160) : l'utilisateur voit déjà ses chiffres, n'en écris aucun)",

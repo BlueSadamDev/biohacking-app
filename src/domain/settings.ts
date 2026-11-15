@@ -405,7 +405,7 @@ export const SETTINGS = {
      */
     focus: [
       { pattern: 'prot[ée]ine|manger|mange|nutrition|calorie|repas|alimentation', sections: ['nutrition', 'weight'] },
-      { pattern: 'sommeil|dormi|dormir|nuit|coucher', sections: ['sleep', 'recovery'] },
+      { pattern: 'sommeil|dormi|dormir|\\bdor[st]\\b|nuit|coucher|sieste|réveil|reveil', sections: ['sleep', 'recovery'] },
       { pattern: 'hrv|variabilit', sections: ['hrv', 'recovery'] },
       { pattern: 'fc au repos|fréquence cardiaque|pouls|bpm', sections: ['restingHr', 'recovery'] },
       { pattern: 'charge|entra[iî]nement|séance|seance|surcharge', sections: ['load', 'zone2'] },

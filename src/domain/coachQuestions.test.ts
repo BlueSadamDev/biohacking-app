@@ -54,6 +54,12 @@ describe('questions libres du coach', () => {
     }
   });
 
+  it('reconnaît le sujet des questions écrites au clavier', () => {
+    expect(focusSections({ kind: 'question', text: 'Est ce que je dors bien?' })).toContain('sleep');
+    expect(focusSections({ kind: 'question', text: 'Je me réveille souvent, pourquoi ?' })).toContain('sleep');
+    expect(focusSections({ kind: 'question', text: 'Est-ce que je mange bien ?' })).toContain('nutrition');
+  });
+
   it('nettoie la question et limite sa longueur', () => {
     expect(normalizeQuestion('   ')).toBeNull();
     expect(normalizeQuestion('  Est-ce   que je dors\nassez ? ')).toBe('Est-ce que je dors assez ?');

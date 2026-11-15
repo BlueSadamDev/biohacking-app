@@ -4,7 +4,7 @@
 import type { CoachExchange } from '@/domain/coachQuestions';
 import { SETTINGS } from '@/domain/settings';
 
-import { getDb } from './database';
+import { getDb, writeSql } from './database';
 
 type Row = { id: string; created_ms: number; question: string; answer: string; facts_json: string; kind: string };
 
@@ -20,8 +20,7 @@ function facts(json: string): string[] {
 const KINDS: CoachExchange['kind'][] = ['answer', 'fallback', 'stopped'];
 
 export async function saveExchange(e: CoachExchange): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
+  await writeSql(
     'INSERT OR REPLACE INTO coach_message (id, created_ms, question, answer, facts_json, kind) VALUES (?, ?, ?, ?, ?, ?)',
     e.id,
     e.createdMs,
@@ -51,6 +50,5 @@ export async function loadExchanges(): Promise<CoachExchange[]> {
 
 /** Efface toute la conversation. */
 export async function clearConversation(): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM coach_message');
+  await writeSql('DELETE FROM coach_message');
 }

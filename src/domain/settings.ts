@@ -713,6 +713,15 @@ export const SETTINGS = {
     /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
     launchScreenMaxSeconds: 10,
   },
+
+  /** Base de données locale. */
+  database: {
+    /**
+     * Base occupée par une autre écriture (tâche de fond) : on attend jusqu'à N ms
+     * avant d'abandonner, au lieu d'échouer tout de suite (« database is locked »).
+     */
+    busyTimeoutMs: 5000,
+  },
 } as const;
 
 export type Settings = typeof SETTINGS;

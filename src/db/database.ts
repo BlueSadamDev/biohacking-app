@@ -5,6 +5,8 @@
 
 import * as SQLite from 'expo-sqlite';
 
+import { SETTINGS } from '@/domain/settings';
+
 /**
  * Évolutions successives du schéma. Ne jamais modifier une étape existante :
  * ajouter une nouvelle étape à la fin.
@@ -178,11 +180,29 @@ const MIGRATIONS: string[] = [
   `,
 ];
 
+// Base occupée (« database is locked ») : la synchro du lancement et la tâche de fond
+// peuvent écrire en même temps. Deux protections :
+// 1. une file d'attente : dans l'app, les écritures passent une par une (`runExclusive`) ;
+// 2. un délai de patience SQLite (`busy_timeout`) sur chaque connexion : si une autre
+//    connexion écrit (tâche de fond lancée dans un moteur séparé), on attend au lieu d'échouer.
+const BUSY_TIMEOUT = `PRAGMA busy_timeout = ${Math.round(SETTINGS.database.busyTimeoutMs)};`;
+
+/** Transaction exclusive (nouvelle connexion) avec le délai de patience réglé dessus. */
+async function exclusiveTransaction(
+  db: SQLite.SQLiteDatabase,
+  task: (tx: SQLite.SQLiteDatabase) => Promise<void>,
+): Promise<void> {
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.execAsync(BUSY_TIMEOUT);
+    await task(tx);
+  });
+}
+
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
   for (let version = current; version < MIGRATIONS.length; version++) {
-    await db.withExclusiveTransactionAsync(async (tx) => {
+    await exclusiveTransaction(db, async (tx) => {
       await tx.execAsync(MIGRATIONS[version]);
       await tx.execAsync(`PRAGMA user_version = ${version + 1}`);
     });
@@ -196,6 +216,7 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!opening) {
     opening = (async () => {
       const db = await SQLite.openDatabaseAsync('biohacking.db');
+      await db.execAsync(BUSY_TIMEOUT);
       await db.execAsync('PRAGMA journal_mode = WAL;');
       await migrate(db);
       return db;
@@ -205,4 +226,29 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
     });
   }
   return opening;
+}
+
+/** Fin de la dernière écriture demandée : la suivante attend qu'elle soit terminée. */
+let lastWrite: Promise<unknown> = Promise.resolve();
+
+/**
+ * File d'attente des écritures : `task` ne démarre qu'après la fin de l'écriture
+ * précédente (réussie ou non). Deux écritures ne se chevauchent jamais.
+ */
+export function runExclusive<T>(task: () => Promise<T>): Promise<T> {
+  const run = lastWrite.then(task, task);
+  lastWrite = run.catch(() => undefined);
+  return run;
+}
+
+/** Écritures groupées en une transaction, à leur tour dans la file d'attente. */
+export async function writeTransaction(task: (tx: SQLite.SQLiteDatabase) => Promise<void>): Promise<void> {
+  const db = await getDb();
+  await runExclusive(() => exclusiveTransaction(db, task));
+}
+
+/** Une seule requête d'écriture (UPDATE, DELETE…), à son tour dans la file d'attente. */
+export async function writeSql(sql: string, ...params: (string | number | null)[]): Promise<void> {
+  const db = await getDb();
+  await runExclusive(() => db.runAsync(sql, ...params));
 }

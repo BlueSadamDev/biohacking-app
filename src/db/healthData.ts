@@ -6,16 +6,15 @@ import { computeNights, type NightValue, type Sample, type SleepSession } from '
 import { countedSessions, type ExerciseSession } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
 
-import { getDb } from './database';
+import { getDb, writeTransaction } from './database';
 
 type Value = string | number | null;
 
 /** Insère (ou remplace, à identifiant égal) des lignes en une seule transaction. */
 export async function upsertRows(table: string, columns: string[], rows: Value[][]): Promise<void> {
   if (rows.length === 0) return;
-  const db = await getDb();
   const sql = `INSERT OR REPLACE INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await writeTransaction(async (tx) => {
     const statement = await tx.prepareAsync(sql);
     try {
       for (const row of rows) await statement.executeAsync(row);

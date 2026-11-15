@@ -111,8 +111,8 @@ export default function CoachModelScreen() {
             </SettingRow>
           </SettingsGroup>
           {SETTINGS.coach.alternativeModels.length > 0 && (
-            // Comparaison : un autre modèle accepté remplace celui-ci (un seul installé à la fois).
-            <SecondaryButton title="Changer de modèle (comparaison)" onPress={choose} />
+            // Deux modèles acceptés : le fichier choisi remplace celui-ci (un seul installé à la fois).
+            <SecondaryButton title="Changer de modèle" onPress={choose} />
           )}
           {step !== null && step !== 'picking' && (
             <AppText variant="small" style={styles.center}>

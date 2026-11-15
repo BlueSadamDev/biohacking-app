@@ -359,7 +359,7 @@ export const SETTINGS = {
         'https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-Q4_K_M.gguf',
     },
     /**
-     * Autres modèles acceptés à l'import, pour comparaison (un seul installé à la fois).
+     * Autres modèles acceptés à l'import (un seul installé à la fois ; on change depuis l'écran Modèle du coach).
      * Luth-LFM2 1.2B : version de LFM2 entraînée en français (quantification Q4_K_M de mradermacher).
      */
     alternativeModels: [

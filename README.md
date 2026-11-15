@@ -79,7 +79,7 @@ Le coach utilise un petit modèle d'IA ouvert qui tourne **sur le téléphone**,
 
 Le choix de ce modèle est expliqué dans [docs/RAPPORT_LOT_4_MODELE.md](docs/RAPPORT_LOT_4_MODELE.md).
 
-**Modèle en comparaison (lot 4)** : l'app accepte aussi Luth-LFM2 1.2B, une version de LFM2 entraînée en français. Un seul modèle est installé à la fois : dans **Modèle du coach > Changer de modèle (comparaison)**, le fichier choisi remplace l'autre.
+**Second modèle accepté** : l'app accepte aussi Luth-LFM2 1.2B, une version de LFM2 entraînée en français (souvent meilleure en français à l'usage). Un seul modèle est installé à la fois : dans **Modèle du coach > Changer de modèle**, le fichier choisi remplace l'autre. Garder les deux fichiers sur l'ordinateur pour pouvoir passer de l'un à l'autre.
 
 | | |
 |---|---|

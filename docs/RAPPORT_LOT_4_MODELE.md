@@ -112,6 +112,8 @@ Ses erreurs de sens sont réelles. Elles se traitent par un résumé plus explic
 
 Si le français reste insuffisant après C2 et C3 : essayer Luth-LFM2-1.2B, la version de LFM2 entraînée en français, même moteur, sans changement de code.
 
+**Suite (15 novembre 2026, étape C6)** : Luth-LFM2-1.2B (quantification Q4_K_M de mradermacher, 731 Mo, empreinte dans le README) a été essayé sur les questions libres et jugé meilleur à l'usage par l'utilisateur. Décision : **les deux modèles restent acceptés**, un seul installé à la fois, pour pouvoir comparer leurs performances dans le temps (bouton « Changer de modèle »). Toute modification des consignes du coach se vérifie avec les deux.
+
 ## Sources
 
 - npm : `llama.rn`, `react-native-executorch`, `react-native-executorch-expo-resource-fetcher` (versions et dépendances déclarées, consultées le 14 novembre 2026)

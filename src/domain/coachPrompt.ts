@@ -28,10 +28,21 @@ export const COACH_SYSTEM_PROMPT = [
 /** Demande et format attendu, pour chaque tâche. */
 function request(task: CoachTask, settings: Settings): string {
   switch (task.kind) {
-    case 'weekly':
-      return `Fais le bilan de ma semaine. Commence directement par UNE phrase de synthèse qui s'adresse à moi (par exemple « Ta semaine… »), sans parler du « constat ». Puis écris exactement ${
-        settings.coach.generation.weeklyMaxActions
-      } actions numérotées pour la semaine prochaine, une par ligne${task.stuck?.length ? ', qui visent ce qui coince' : ''}.`;
+    case 'weekly': {
+      const n = settings.coach.generation.weeklyMaxActions;
+      const stuck = task.stuck?.length ?? 0;
+      const target =
+        stuck >= n
+          ? 'qui visent ce qui coince'
+          : stuck > 0
+            ? "la première vise ce qui coince, la seconde aide à garder ce qui a marché"
+            : 'qui aident à garder ce qui a marché';
+      return [
+        `Fais le bilan de ma semaine. Commence directement par une synthèse de ${settings.coach.generation.weeklySynthesisSentences} phrases bien rédigées qui s'adressent à moi (par exemple « Ta semaine… »), qui disent ce qui a marché et ce qui coince, sans parler du « constat ».`,
+        `Puis écris exactement ${n} actions numérotées pour la semaine prochaine, une par ligne : ${target}.`,
+        "N'écris aucun chiffre, même pour une durée ou une quantité : écris « un peu plus tôt », pas « 30 minutes ».",
+      ].join(' ');
+    }
     case 'why-alert':
       return `Explique simplement pourquoi j'ai reçu l'alerte « ${task.title} », en 2 phrases au plus, puis une ligne « Action : … ».`;
     case 'why-link':

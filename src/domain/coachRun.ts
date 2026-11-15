@@ -45,7 +45,9 @@ export async function runCoach(
   const rejections: GuardProblem[][] = [];
   let user = base;
 
-  for (let attempt = 1; attempt <= g.maxAttempts; attempt++) {
+  // Le bilan de la semaine (plus long, une fois par semaine) a droit à un essai de plus.
+  const maxAttempts = task.kind === 'weekly' ? g.weeklyMaxAttempts : g.maxAttempts;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     onText('');
     const res = await model.generate(COACH_SYSTEM_PROMPT, user, g.maxTokens, onText);
     const check = checkAnswer(res.text, context, task, settings);
@@ -66,5 +68,5 @@ export async function runCoach(
       .join(' ; ')}. Réécris-la en respectant strictement les consignes, sans aucun chiffre.`;
   }
 
-  return { kind: 'fallback', text: fallbackAdvice(task), facts, attempts: g.maxAttempts, rejections };
+  return { kind: 'fallback', text: fallbackAdvice(task), facts, attempts: maxAttempts, rejections };
 }

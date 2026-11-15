@@ -89,10 +89,10 @@ describe('bilan de la semaine', () => {
     expect(parseWeeklyAnswer('Voici ton bilan :\nSemaine dense.\nAction n°1 : dors.\nAction n°2 : marche.').actions).toEqual(['dors.', 'marche.']);
   });
 
-  it('ne garde que la première phrase de synthèse, sans phrase d’annonce', () => {
+  it('garde au plus 2 phrases de synthèse, sans phrase d’annonce', () => {
     const answer =
-      'Ta semaine montre des progrès, mais le sommeil reste à améliorer. Pour la semaine prochaine, fais ceci :\nPour la suite :\n1. Couche-toi plus tôt.\n2. Marche après le dîner.';
-    expect(parseWeeklyAnswer(answer).synthesis).toBe('Ta semaine montre des progrès, mais le sommeil reste à améliorer.');
+      'Ta semaine montre des progrès. Pour la semaine prochaine, fais ceci :\nLe sommeil reste à améliorer. Une troisième phrase.\n1. Couche-toi plus tôt.\n2. Marche après le dîner.';
+    expect(parseWeeklyAnswer(answer).synthesis).toBe('Ta semaine montre des progrès. Le sommeil reste à améliorer.');
   });
 
   it("ne donne pas de verdict protéines sans assez de jours de repas", () => {
@@ -101,14 +101,27 @@ describe('bilan de la semaine', () => {
     expect([...worked, ...stuck].map((i) => i.section)).not.toContain('nutrition');
   });
 
-  it("propose un repli écrit par l'app", () => {
+  it("propose un repli rédigé par l'app, avec 2 actions", () => {
     const { worked, stuck } = weekStatus(ctx);
     const f = fallbackWeekly(worked, stuck);
     expect(f.synthesis).toBe(
-      'Semaine à ajuster : charge d’entraînement en hausse, sommeil sous la durée visée, protéines souvent sous la cible.',
+      'Bon point de la semaine : squat en hausse. À travailler : charge d’entraînement en hausse, sommeil sous la durée visée et protéines souvent sous la cible.',
     );
     expect(f.actions).toHaveLength(2);
-    expect(fallbackWeekly([{ section: 'load', text: 'x', action: '' }], []).synthesis).toContain('rien ne coince');
+  });
+
+  it('complète avec une action pour garder ce qui a marché, et garde les sigles', () => {
+    const worked = [
+      { section: 'load', text: 'Charge d’entraînement équilibrée', action: 'Garde le même volume.' },
+      { section: 'hrv', text: 'HRV dans ta plage normale', action: 'Garde l’alternance.' },
+    ];
+    const stuck = [{ section: 'sleep', text: 'Sommeil sous la durée visée', action: 'Couche-toi plus tôt.' }];
+    expect(fallbackWeekly(worked, stuck)).toEqual({
+      synthesis:
+        'Bons points de la semaine : charge d’entraînement équilibrée et HRV dans ta plage normale. À travailler : sommeil sous la durée visée.',
+      actions: ['Couche-toi plus tôt.', 'Garde le même volume.'],
+    });
+    expect(fallbackWeekly(worked, []).synthesis).toContain('Rien ne coince');
   });
 
   it('garde la synthèse et les actions du modèle si elles passent le contrôle', async () => {
@@ -127,11 +140,13 @@ describe('bilan de la semaine', () => {
     expect(model.calls[0]).toContain('qui visent ce qui coince');
   });
 
-  it("passe au repli de l'app après deux conseils refusés", async () => {
-    const model = fakeModel(['Dors 8 h.\n1. a\n2. b', 'Ton sommeil est bon.\n1. a\n2. b']);
-    const { review } = await runWeeklyReview(model, ctx, weekToReview('2026-11-08'));
+  it("passe au repli de l'app après trois conseils refusés", async () => {
+    const model = fakeModel(['Dors 8 h.\n1. a\n2. b', 'Ton sommeil est bon.\n1. a\n2. b', 'Je ne sais pas.\n1. a\n2. b']);
+    const { review, outcome } = await runWeeklyReview(model, ctx, weekToReview('2026-11-08'));
+    expect(model.calls).toHaveLength(3);
+    expect(outcome.rejections).toHaveLength(3);
     expect(review.source).toBe('app');
-    expect(review.synthesis).toContain('Semaine à ajuster');
+    expect(review.synthesis).toContain('À travailler');
     expect(review.actions).toHaveLength(2);
   });
 });

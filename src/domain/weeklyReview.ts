@@ -114,32 +114,45 @@ export function weeklyFacts(context: CoachContext, items: WeeklyItem[]): string[
 const ACTION_LINE = /^\s*(\d+[.)]|action\s*n°?\s*\d+\s*:?)\s*/i;
 
 /**
- * Sépare le conseil du modèle en synthèse et actions numérotées. Synthèse : la première phrase
- * hors actions, sans les phrases d'annonce (« Voici… », « … :  »).
+ * Sépare le conseil du modèle en synthèse et actions numérotées. Synthèse : les premières phrases
+ * hors actions (au plus `weeklySynthesisSentences`), sans les phrases d'annonce (« Voici… », « … : »).
  */
-export function parseWeeklyAnswer(text: string): { synthesis: string; actions: string[] } {
+export function parseWeeklyAnswer(text: string, settings: Settings = SETTINGS): { synthesis: string; actions: string[] } {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const actions = lines.filter((l) => ACTION_LINE.test(l)).map((l) => l.replace(ACTION_LINE, '').trim());
   const prose = lines.filter((l) => !ACTION_LINE.test(l) && !/^voici\b/i.test(l)).join(' ');
   // Phrases (terminées par . ! ? ou :) ; les phrases d'annonce finissent par « : ».
-  const sentences = (prose.match(/[^.!?:]+[.!?:]+/g) ?? []).map((s) => s.trim());
-  const synthesis = sentences.find((s) => !s.endsWith(':')) ?? '';
+  const sentences = (prose.match(/[^.!?:]+[.!?:]+/g) ?? []).map((s) => s.trim()).filter((s) => !s.endsWith(':'));
+  const synthesis = sentences.slice(0, settings.coach.generation.weeklySynthesisSentences).join(' ');
   return { synthesis, actions };
 }
 
-/** Repli écrit par l'app : synthèse à partir de ce qui coince, actions des règles. */
+/** Première lettre en minuscule, sauf sigle (« HRV »). */
+function lowerFirst(text: string): string {
+  return /^[A-ZÀ-Ý]{2}/.test(text) ? text : text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/** « a », « a et b », « a, b et c ». */
+function joinFr(items: string[]): string {
+  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
+}
+
+/**
+ * Repli écrit par l'app : deux phrases (ce qui a marché, ce qui coince) et deux actions
+ * (corriger ce qui coince d'abord, puis garder ce qui a marché).
+ */
 export function fallbackWeekly(worked: WeeklyItem[], stuck: WeeklyItem[], settings: Settings = SETTINGS): { synthesis: string; actions: string[] } {
   const max = settings.coach.generation.weeklyMaxActions;
-  if (stuck.length === 0) {
-    return {
-      synthesis: worked.length ? 'Semaine équilibrée : rien ne coince d’après tes chiffres.' : 'Pas assez de données cette semaine pour un bilan détaillé.',
-      actions: ['Garde ton rythme actuel la semaine prochaine.'],
-    };
-  }
-  return {
-    synthesis: `Semaine à ajuster : ${stuck.map((s) => s.text.toLowerCase()).join(', ')}.`,
-    actions: stuck.map((s) => s.action).filter(Boolean).slice(0, max),
-  };
+  const good = joinFr(worked.map((w) => lowerFirst(w.text)));
+  const bad = joinFr(stuck.map((s) => lowerFirst(s.text)));
+  const goodLine = `${worked.length > 1 ? 'Bons points' : 'Bon point'} de la semaine : ${good}.`;
+  let synthesis: string;
+  if (worked.length && stuck.length) synthesis = `${goodLine} À travailler : ${bad}.`;
+  else if (stuck.length) synthesis = `Semaine à ajuster : ${bad}. Concentre-toi sur ${stuck.length > 1 ? 'ces points' : 'ce point'} la semaine prochaine.`;
+  else if (worked.length) synthesis = `${goodLine} Rien ne coince d’après tes chiffres.`;
+  else synthesis = 'Pas assez de données cette semaine pour un bilan détaillé.';
+  const actions = [...stuck, ...worked].map((i) => i.action).filter(Boolean).slice(0, max);
+  return { synthesis, actions: actions.length ? actions : ['Garde ton rythme actuel la semaine prochaine.'] };
 }
 
 /** Rédige le bilan de la semaine `week` à partir du résumé (construit pour le dimanche de cette semaine). */
@@ -159,7 +172,7 @@ export async function runWeeklyReview(
     sections: [...new Set([...stuck, ...worked].map((i) => i.section))],
   };
   const outcome = await runCoach(model, context, task, onText, settings);
-  const parsed = outcome.kind === 'answer' ? parseWeeklyAnswer(outcome.text) : null;
+  const parsed = outcome.kind === 'answer' ? parseWeeklyAnswer(outcome.text, settings) : null;
   const usable = parsed && parsed.synthesis && parsed.actions.length === settings.coach.generation.weeklyMaxActions;
   const content = usable ? parsed! : fallbackWeekly(worked, stuck, settings);
   return {

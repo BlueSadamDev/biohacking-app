@@ -14,6 +14,7 @@ import { colors, fonts } from '@/components/theme';
 import type { GenResult, LlamaRnEngine } from '@/coach/benchEngines';
 import { BENCH_CONTEXT, BENCH_PROMPTS, countWords, outcomeLine, wordsPerSecond, type BenchPrompt } from '@/coach/benchPrompts';
 import { getInstalledModel, type InstalledModel } from '@/coach/modelStore';
+import { lastWeeklyRejections } from '@/coach/weeklyService';
 import { deleteWeeklyReview } from '@/db/coachWeekly';
 import { formatBytes } from '@/domain/coachModel';
 import { dayKey } from '@/domain/dates';
@@ -166,6 +167,12 @@ export default function CoachBenchScreen() {
         <Button title="Refaire le bilan de cette semaine" onPress={redoWeekly} disabled={!!running || busy} />
         <Text style={styles.muted}>
           Supprime le bilan de la semaine en cours : il sera rédigé de nouveau à la prochaine ouverture de l’onglet Coach.
+        </Text>
+        <Text style={styles.muted}>
+          Dernier bilan, refus du modèle :{' '}
+          {lastWeeklyRejections.length === 0
+            ? 'aucun (ou pas encore de bilan rédigé depuis le lancement)'
+            : lastWeeklyRejections.map((r, i) => `essai ${i + 1} : ${r.join(' ; ')}`).join(' · ')}
         </Text>
       </View>
 

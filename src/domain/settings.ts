@@ -393,8 +393,11 @@ export const SETTINGS = {
       factSections: 3,
       /** Rubriques du constat du bilan de la semaine (celles qui sont disponibles). */
       weeklySections: ['recovery', 'sleep', 'hrv', 'restingHr', 'load', 'zone2', 'nutrition', 'strength', 'weight'] as readonly string[],
-      /** Actions numérotées au plus dans le bilan de la semaine. */
+      /** Actions numérotées dans le bilan de la semaine (exactement). */
       weeklyMaxActions: 2,
+      /** Bilan : essais du modèle avant le repli de l'app, et phrases gardées pour la synthèse. */
+      weeklyMaxAttempts: 3,
+      weeklySynthesisSentences: 2,
     },
     /**
      * Sujets d'une question libre : mots-clés (expressions régulières, sans majuscules) → rubriques
@@ -414,7 +417,8 @@ export const SETTINGS = {
     /**
      * Bilan de la semaine (étape C4) : l'app décide elle-même ce qui a marché et ce qui coince,
      * d'après les verdicts du résumé. Une règle s'applique si la valeur `field` de la rubrique
-     * `section` vérifie `op` / `value`. `action` : action proposée si le conseil du modèle est refusé.
+     * `section` vérifie `op` / `value`. `action` : action proposée par l'app si le conseil du modèle est
+     * refusé (pour « ce qui coince » : corriger ; pour « ce qui a marché » : garder).
      * Les règles d'une même rubrique sont testées dans l'ordre ; la première qui s'applique compte.
      */
     weekly: {
@@ -423,21 +427,21 @@ export const SETTINGS = {
       rules: [
         { section: 'load', field: 'status', op: 'in', value: ['rising', 'high'], kind: 'stuck', text: 'Charge d’entraînement en hausse', action: 'Remplace une séance intense par une séance légère ou de mobilité.' },
         { section: 'load', field: 'status', op: 'eq', value: 'under', kind: 'stuck', text: 'Charge d’entraînement en baisse (sous-charge)', action: 'Ajoute une séance modérée cette semaine.' },
-        { section: 'load', field: 'status', op: 'eq', value: 'balanced', kind: 'worked', text: 'Charge d’entraînement équilibrée', action: '' },
+        { section: 'load', field: 'status', op: 'eq', value: 'balanced', kind: 'worked', text: 'Charge d’entraînement équilibrée', action: 'Garde le même volume d’entraînement la semaine prochaine.' },
         { section: 'sleep', field: 'belowTarget', op: 'eq', value: true, kind: 'stuck', text: 'Sommeil sous la durée visée', action: 'Couche-toi 30 minutes plus tôt les soirs de semaine.' },
-        { section: 'sleep', field: 'belowTarget', op: 'eq', value: false, kind: 'worked', text: 'Sommeil à la durée visée', action: '' },
+        { section: 'sleep', field: 'belowTarget', op: 'eq', value: false, kind: 'worked', text: 'Sommeil à la durée visée', action: 'Garde tes horaires de coucher actuels.' },
         // Seuil identique à l'alerte protéines (alerts.proteinMaxDaysBelow).
         { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'gt', value: 3, kind: 'stuck', text: 'Protéines souvent sous la cible', action: 'Ajoute une portion de protéines à un repas chaque jour.' },
-        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'lte', value: 3, kind: 'worked', text: 'Protéines le plus souvent dans la cible', action: '' },
+        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'lte', value: 3, kind: 'worked', text: 'Protéines le plus souvent dans la cible', action: 'Garde tes apports en protéines au même niveau.' },
         { section: 'zone2', field: 'zone2Reached', op: 'eq', value: false, kind: 'stuck', text: 'Zone 2 sous la cible', action: 'Ajoute une sortie d’endurance douce en zone 2.' },
-        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: true, kind: 'worked', text: 'Cible de zone 2 atteinte', action: '' },
+        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: true, kind: 'worked', text: 'Cible de zone 2 atteinte', action: 'Garde ta séance d’endurance douce en zone 2.' },
         { section: 'hrv', field: 'position', op: 'eq', value: 'below', kind: 'stuck', text: 'HRV sous ta plage normale', action: 'Garde une journée légère ou de mobilité après chaque grosse séance.' },
-        { section: 'hrv', field: 'position', op: 'in', value: ['within', 'above'], kind: 'worked', text: 'HRV dans ta plage normale', action: '' },
+        { section: 'hrv', field: 'position', op: 'in', value: ['within', 'above'], kind: 'worked', text: 'HRV dans ta plage normale', action: 'Garde l’alternance entre séances intenses et journées plus légères.' },
         { section: 'recovery', field: 'trend', op: 'eq', value: 'en baisse', kind: 'stuck', text: 'Récupération en baisse', action: 'Allège une séance cette semaine.' },
-        { section: 'recovery', field: 'trend', op: 'eq', value: 'en hausse', kind: 'worked', text: 'Récupération en hausse', action: '' },
-        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Squat en hausse', action: '' },
-        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Développé couché en hausse', action: '' },
-        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Soulevé de terre en hausse', action: '' },
+        { section: 'recovery', field: 'trend', op: 'eq', value: 'en hausse', kind: 'worked', text: 'Récupération en hausse', action: 'Garde le même rythme de séances et de repos.' },
+        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Squat en hausse', action: 'Continue ton programme de squat tel quel.' },
+        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Développé couché en hausse', action: 'Continue ton programme de développé couché tel quel.' },
+        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Soulevé de terre en hausse', action: 'Continue ton programme de soulevé de terre tel quel.' },
         { section: 'strength', field: 'squatTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Squat qui stagne', action: 'Change de programme de squat (séries, répétitions ou variante).' },
         { section: 'strength', field: 'benchTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Développé couché qui stagne', action: 'Change de programme de développé couché (séries, répétitions ou variante).' },
         { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Soulevé de terre qui stagne', action: 'Change de programme de soulevé de terre (séries, répétitions ou variante).' },

@@ -12,7 +12,12 @@ import { LlamaCoachModel } from './llamaModel';
 import { getInstalledModel } from './modelStore';
 
 /** Bilan en cours de rédaction : permet d'afficher le texte au fil de l'eau et d'arrêter. */
-export type WeeklyJob = { stop: () => Promise<void> };
+export type WeeklyJob = {
+  /** Arrêt demandé par l'utilisateur : le bilan de repli de l'app est enregistré. */
+  stop: () => Promise<void>;
+  /** Arrêt décidé par l'app (onglet quitté) : rien n'est enregistré, le bilan sera rédigé à la prochaine visite. */
+  cancel: () => Promise<void>;
+};
 
 /**
  * Raisons des refus du dernier bilan rédigé pendant cette session (banc d'essai, réglage du coach).
@@ -41,10 +46,12 @@ export async function generateDueWeeklyReview(
   const context = await loadCoachContext(sunday.getTime() < now.getTime() ? sunday : now);
 
   const model = new LlamaCoachModel(installed.uri);
-  onStart({ stop: () => model.stop() });
+  onStart({ stop: () => model.stop(), cancel: () => model.interrupt() });
   try {
     await model.load();
     const { review, outcome } = await runWeeklyReview(model, context, week, onText, now.getTime());
+    // Interrompu par l'app (onglet quitté, app en arrière-plan, autre modèle) : réessayé à la prochaine visite.
+    if (model.interrupted) return null;
     // Sans les chiffres écrits par le modèle : ils pourraient reprendre une vraie valeur de santé.
     lastWeeklyRejections = outcome.rejections.map((r) =>
       r.map((p) => (p.kind === 'number' ? 'chiffre écrit par le modèle' : describeProblem(p))),

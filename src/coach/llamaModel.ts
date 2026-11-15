@@ -6,6 +6,8 @@ import { initLlama, type LlamaContext } from 'llama.rn';
 
 import type { CoachModel } from '@/domain/coachRun';
 
+import { modelSlot, watchAppState } from './modelSlot';
+
 export type GenResult = {
   text: string;
   tokens: number;
@@ -29,19 +31,31 @@ export class LlamaCoachModel implements CoachModel {
   private ctx: LlamaContext | null = null;
   /** Arrêt demandé par l'utilisateur : plus aucune génération sur ce modèle. */
   private cancelled = false;
+  /** Arrêt décidé par l'app, pas par l'utilisateur : le bilan interrompu n'est pas enregistré. */
+  interrupted = false;
   /** Mesures de la dernière génération (banc d'essai, vitesse mesurée). */
   lastResult: GenResult | null = null;
 
   constructor(private readonly modelUri: string) {}
 
   async load(): Promise<void> {
-    this.ctx = await initLlama({
+    // Un seul modèle en mémoire : celui qui tournait encore est interrompu et libéré d'abord.
+    watchAppState();
+    await modelSlot.claim(this);
+    if (this.cancelled) return;
+    const ctx = await initLlama({
       model: this.modelUri,
       n_ctx: CONTEXT_TOKENS,
       n_threads: THREADS,
       n_gpu_layers: 0, // le S21 (Exynos, GPU Mali) n'a pas l'accélération OpenCL prise en charge
       use_mlock: false,
     });
+    // Interrompu pendant le chargement (app en arrière-plan, onglet quitté) : libéré aussitôt.
+    if (this.cancelled) {
+      await ctx.release().catch(() => undefined);
+      return;
+    }
+    this.ctx = ctx;
   }
 
   async generate(system: string, user: string, maxTokens: number, onText: (text: string) => void): Promise<GenResult> {
@@ -86,8 +100,17 @@ export class LlamaCoachModel implements CoachModel {
     await this.ctx?.stopCompletion();
   }
 
+  /** Arrêt décidé par l'app (onglet quitté, app en arrière-plan, autre modèle chargé). */
+  async interrupt(): Promise<void> {
+    this.interrupted = true;
+    await this.stop();
+  }
+
+  /** Libère la mémoire. Peut être appelé plusieurs fois sans risque. */
   async release(): Promise<void> {
-    await this.ctx?.release();
+    const ctx = this.ctx;
     this.ctx = null;
+    modelSlot.free(this);
+    await ctx?.release();
   }
 }

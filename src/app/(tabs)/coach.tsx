@@ -115,6 +115,8 @@ export default function CoachScreen() {
       refresh();
       // Sortie de l'onglet : la génération en cours s'arrête et le modèle des questions est libéré.
       return () => {
+        // Bilan en cours : interrompu sans être enregistré (rédigé à la prochaine visite).
+        job.current?.cancel().catch(() => undefined);
         session.current?.close().catch(() => undefined);
         session.current = null;
       };

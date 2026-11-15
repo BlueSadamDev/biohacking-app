@@ -39,6 +39,8 @@ export class ChatSession {
       if (direct) {
         out = { kind: 'fallback', text: direct.text, facts: direct.facts, rejections: [], rejectedTexts: [] };
       } else {
+        // Modèle libéré par l'app entre deux questions (app passée en arrière-plan) : on en recharge un.
+        if (this.model?.interrupted) await this.release();
         if (!this.model) {
           // Référence gardée avant le chargement : « Arrêter » pendant le chargement est pris en compte.
           this.model = new LlamaCoachModel(installed.uri);

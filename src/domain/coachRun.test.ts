@@ -40,7 +40,7 @@ describe('demande au coach avec garde-fous', () => {
     expect(out.kind).toBe('answer');
     expect(out.attempts).toBe(2);
     expect(out.rejections[0][0].kind).toBe('number');
-    expect(model.calls[1]).toContain('Ta réponse précédente a été refusée : chiffre écrit par le modèle (160)');
+    expect(model.calls[1]).toContain('Ta réponse précédente a été refusée : chiffre écrit (160)');
   });
 
   it('affiche le conseil de repli après deux refus, le constat restant juste', async () => {
@@ -90,7 +90,8 @@ describe('demande au coach avec garde-fous', () => {
   it("donne au modèle le constat, l'alerte concernée et la demande", () => {
     const why = { kind: 'why-alert', title: 'Charge en hausse', theme: 'load' } as const;
     const msg = buildUserMessage(ctx, why);
-    expect(msg.startsWith("Constat calculé par l'app Aube")).toBe(true);
+    expect(msg.startsWith("Mes chiffres, calculés par l'app Aube")).toBe(true);
+    expect(msg).not.toMatch(/constat|données/i);
     expect(msg).toContain('- Alertes des 7 derniers jours : « Charge en hausse »');
     expect(msg).toContain("- Charge d'entraînement : ratio 7 jours / 28 jours de 1,42");
     expect(msg).toContain("Demande : Explique simplement pourquoi j'ai reçu l'alerte « Charge en hausse »");

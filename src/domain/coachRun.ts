@@ -5,8 +5,8 @@
 // Le modèle est passé en paramètre : llama.rn dans l'app, un modèle simulé dans les tests.
 
 import type { CoachContext } from './coachContext';
-import { checkAnswer, describeProblem, type GuardProblem } from './coachGuard';
-import { buildUserMessage, COACH_SYSTEM_PROMPT, factLines, fallbackAdvice, type CoachTask } from './coachPrompt';
+import { checkAnswer, describeProblem, sanitize, type GuardProblem } from './coachGuard';
+import { appAnswer, buildUserMessage, COACH_SYSTEM_PROMPT, factLines, fallbackAdvice, type CoachTask } from './coachPrompt';
 import { SETTINGS, type Settings } from './settings';
 
 /** Ce que l'app attend d'un modèle de langage local. */
@@ -30,6 +30,8 @@ export type CoachOutcome = {
   attempts: number;
   /** Raisons des refus, dans l'ordre des essais. */
   rejections: GuardProblem[][];
+  /** Textes refusés, dans l'ordre des essais (affichés seulement dans la version de développement). */
+  rejectedTexts: string[];
 };
 
 export async function runCoach(
@@ -40,9 +42,13 @@ export async function runCoach(
   settings: Settings = SETTINGS,
 ): Promise<CoachOutcome> {
   const g = settings.coach.generation;
+  // L'app répond elle-même quand elle sait que le modèle ne peut pas bien répondre (hors sujet, chiffre manquant).
+  const direct = appAnswer(context, task, settings);
+  if (direct) return { kind: 'fallback', text: direct.text, facts: direct.facts, attempts: 0, rejections: [], rejectedTexts: [] };
   const facts = factLines(context, task, settings);
   const base = buildUserMessage(context, task, settings);
   const rejections: GuardProblem[][] = [];
+  const rejectedTexts: string[] = [];
   let user = base;
 
   // Le bilan de la semaine (plus long, une fois par semaine) a droit à un essai de plus.
@@ -59,14 +65,16 @@ export async function runCoach(
         facts,
         attempts: attempt,
         rejections: check.ok ? rejections : [...rejections, check.problems],
+        rejectedTexts: check.ok ? rejectedTexts : [...rejectedTexts, sanitize(res.text)],
       };
     }
-    if (check.ok) return { kind: 'answer', text: check.text, facts, attempts: attempt, rejections };
+    if (check.ok) return { kind: 'answer', text: check.text, facts, attempts: attempt, rejections, rejectedTexts };
     rejections.push(check.problems);
+    rejectedTexts.push(sanitize(res.text));
     user = `${base}\n\nTa réponse précédente a été refusée : ${check.problems
       .map(describeProblem)
       .join(' ; ')}. Réécris-la en respectant strictement les consignes, sans aucun chiffre.`;
   }
 
-  return { kind: 'fallback', text: fallbackAdvice(task), facts, attempts: maxAttempts, rejections };
+  return { kind: 'fallback', text: fallbackAdvice(task), facts, attempts: maxAttempts, rejections, rejectedTexts };
 }

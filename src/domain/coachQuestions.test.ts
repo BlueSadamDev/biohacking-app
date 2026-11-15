@@ -1,6 +1,6 @@
 import { coachInputs } from './__fixtures__/coach';
 import { buildCoachContext } from './coachContext';
-import { focusSections } from './coachPrompt';
+import { appAnswer, focusSections } from './coachPrompt';
 import { normalizeQuestion, suggestedQuestions, visibleExchanges, type CoachExchange } from './coachQuestions';
 import { SETTINGS } from './settings';
 
@@ -58,6 +58,33 @@ describe('questions libres du coach', () => {
     expect(focusSections({ kind: 'question', text: 'Est ce que je dors bien?' })).toContain('sleep');
     expect(focusSections({ kind: 'question', text: 'Je me réveille souvent, pourquoi ?' })).toContain('sleep');
     expect(focusSections({ kind: 'question', text: 'Est-ce que je mange bien ?' })).toContain('nutrition');
+  });
+
+  it('répond sans le modèle aux questions hors des sujets suivis', () => {
+    const ctx = buildCoachContext(coachInputs());
+    const ask = (text: string) => appAnswer(ctx, { kind: 'question', text });
+    expect(ask('Quel est mon tour de cou ?')).toEqual({ text: SETTINGS.coach.questions.outOfScope, facts: [] });
+    expect(ask('Que faire demain ?')).toBeNull(); // question générale : le modèle répond
+    expect(ask('Comment je vais en ce moment ?')).toBeNull();
+    // Aucune question proposée par l'app n'est refusée.
+    const proposed = [
+      ...Object.values(SETTINGS.coach.questions.bySection),
+      ...SETTINGS.coach.questions.general,
+      ...Object.values(SETTINGS.coach.questions.followUps).flat(),
+    ];
+    expect(proposed.filter((q) => ask(q) !== null)).toEqual([]);
+  });
+
+  it('dit ce qui manque quand la rubrique de la question n’a pas de verdict', () => {
+    const noWeight = buildCoachContext(
+      coachInputs({ nutrition: { ...coachInputs().nutrition!, protein: { value: 110, target: null, fraction: null, reached: null } } }),
+    );
+    const out = appAnswer(noWeight, { kind: 'question', text: 'Est-ce que je mange bien ?' });
+    expect(out?.text).toBe('Je ne peux pas encore te répondre : il faut une pesée récente pour calculer ta cible de protéines.');
+    expect(out?.facts[0]).toContain('cible de protéines non calculable');
+    const noStrength = buildCoachContext(coachInputs({ strength: [] }));
+    expect(appAnswer(noStrength, { kind: 'question', text: 'Comment progresser en force ?' })?.text).toContain('onglet Sport');
+    expect(appAnswer(noStrength, { kind: 'weekly' })).toBeNull();
   });
 
   it('nettoie la question et limite sa longueur', () => {

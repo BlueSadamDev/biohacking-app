@@ -79,6 +79,15 @@ Le coach utilise un petit modèle d'IA ouvert qui tourne **sur le téléphone**,
 
 Le choix de ce modèle est expliqué dans [docs/RAPPORT_LOT_4_MODELE.md](docs/RAPPORT_LOT_4_MODELE.md).
 
+**Modèle en comparaison (lot 4)** : l'app accepte aussi Luth-LFM2 1.2B, une version de LFM2 entraînée en français. Un seul modèle est installé à la fois : dans **Modèle du coach > Changer de modèle (comparaison)**, le fichier choisi remplace l'autre.
+
+| | |
+|---|---|
+| Modèle | Luth-LFM2 1.2B, quantification Q4_K_M de mradermacher (licence LFM 1.0, usage personnel autorisé) |
+| Fichier | `Luth-LFM2-1.2B.Q4_K_M.gguf` (731 Mo) |
+| Téléchargement | [lien figé sur Hugging Face](https://huggingface.co/mradermacher/Luth-LFM2-1.2B-GGUF/resolve/5f91c560983cf8874def628fd4a3fb5ef7333a16/Luth-LFM2-1.2B.Q4_K_M.gguf) |
+| Empreinte SHA-256 | `9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d` |
+
 ## Construire les APK
 
 Par GitHub Actions, déclenchement manuel (onglet Actions > choisir le workflow > « Run workflow », ou en ligne de commande ci-dessous). Un build dure 20 à 30 minutes.

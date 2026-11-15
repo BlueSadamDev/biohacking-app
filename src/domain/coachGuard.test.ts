@@ -1,6 +1,6 @@
 import { coachInputs } from './__fixtures__/coach';
 import { buildCoachContext } from './coachContext';
-import { checkAnswer, describeProblem, sanitize } from './coachGuard';
+import { checkAnswer, describeProblem, dropMetaSentences, sanitize } from './coachGuard';
 
 // Résumé fictif : protéines sous la cible, sommeil sous la durée visée, HRV sous la plage,
 // charge en hausse, zone 2 sous la cible, récupération en baisse, aucune alerte qui persiste.
@@ -78,10 +78,18 @@ describe('contrôle du conseil du coach', () => {
     expect(kinds('Je ne sais pas : l’app ne suit pas ce point.')).toEqual([]);
   });
 
-  it('refuse les commentaires sur les données et les notions non mesurées', () => {
-    expect(kinds('Le tableau semble un peu désordonné.')).toContain('meta');
+  it('retire les phrases qui commentent le résumé, et ne refuse que s’il ne reste rien', () => {
+    const r = checkAnswer('Ce constat montre que tu as bien suivi. Tes protéines restent sous la cible.\nAction : ajoute des œufs au petit-déjeuner.', ctx);
+    expect(r.ok).toBe(true);
+    expect(r.text).toBe('Tes protéines restent sous la cible.\nAction : ajoute des œufs au petit-déjeuner.');
+    expect(dropMetaSentences('Les données sont floues.').removed).toBe('données');
+    expect(kinds('Le tableau semble un peu désordonné.')).toEqual(['meta']);
+    // La raison donnée au modèle ne répète pas le mot fautif.
+    expect(describeProblem({ kind: 'meta', text: 'constat' })).not.toContain('constat');
+  });
+
+  it('refuse les notions non mesurées', () => {
     expect(kinds('Tu dors un peu moins, mais la qualité reste bonne.')).toContain('unmeasured');
-    expect(describeProblem({ kind: 'meta', text: 'tableau' })).toContain('réponse directe');
   });
 
   it('refuse une réponse à la première personne, accepte « je ne peux pas encore le dire »', () => {

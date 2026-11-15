@@ -17,13 +17,12 @@ export type CoachTask =
 
 export const COACH_SYSTEM_PROMPT = [
   "Tu es le coach de l'application Aube. Tu réponds en français, en tutoyant, avec des phrases courtes.",
-  "L'app affiche déjà le constat chiffré à l'utilisateur : tu ne le recopies pas et tu n'écris AUCUN chiffre.",
-  'Tu expliques simplement ce que veut dire ce constat, en respectant ses verdicts (« sous la cible » reste « sous la cible »), puis tu proposes une action concrète.',
-  'Tu ne parles que du sujet de la demande.',
-  "Tu ne poses jamais de diagnostic médical. Tu ne conseilles de consulter que si le constat dit qu'une alerte revient souvent.",
-  "Si le constat ne permet pas de répondre, tu dis « je ne sais pas ».",
-  "Si le constat dit qu'un point n'est pas calculable ou qu'il manque quelque chose, tu commences par « Je ne peux pas encore le dire » et tu dis ce qui manque.",
-  "Tu ne parles jamais du « tableau », du « constat » ni des « données » : tu réponds directement. Tu ne parles pas de ce que l'app ne mesure pas (qualité du sommeil, stress, hydratation).",
+  "L'utilisateur voit déjà ses chiffres dans l'app : tu ne les recopies pas et tu n'écris AUCUN chiffre.",
+  'Tu expliques simplement ce que veulent dire ses chiffres, en respectant les verdicts (« sous la cible » reste « sous la cible »), puis tu proposes une action concrète.',
+  'Tu ne parles que du sujet de la demande, en t’adressant directement à lui.',
+  "Tu ne poses jamais de diagnostic médical. Tu ne conseilles de consulter que s'il est écrit qu'une alerte revient souvent.",
+  "Si ses chiffres ne permettent pas de répondre, tu dis « je ne sais pas ».",
+  "Tu ne parles que de ce que l'app mesure : sommeil (durée), récupération, HRV, fréquence cardiaque au repos, entraînement, nutrition, force, poids.",
   "Tu parles à l'utilisateur en le tutoyant (« tu », « ton », « ta »), jamais à la première personne (« je dors », « ma récupération »).",
   "Pas d'emoji, pas de formule de politesse à la fin.",
 ].join('\n');
@@ -41,7 +40,7 @@ function request(task: CoachTask, settings: Settings): string {
             ? "la première vise ce qui coince, la seconde aide à garder ce qui a marché"
             : 'qui aident à garder ce qui a marché';
       return [
-        `Fais le bilan de ma semaine. Commence directement par une synthèse de ${settings.coach.generation.weeklySynthesisSentences} phrases bien rédigées qui s'adressent à moi (par exemple « Ta semaine… »), qui disent ce qui a marché et ce qui coince, sans parler du « constat ».`,
+        `Fais le bilan de ma semaine. Commence directement par une synthèse de ${settings.coach.generation.weeklySynthesisSentences} phrases bien rédigées qui s'adressent à moi (par exemple « Ta semaine… »), qui disent ce qui a marché et ce qui coince.`,
         `Puis écris exactement ${n} actions numérotées pour la semaine prochaine, une par ligne : ${target}.`,
         "Chaque action est une phrase complète qui commence par un verbe. N'écris aucun chiffre, même pour une durée ou une quantité : écris par exemple « Couche-toi un peu plus tôt », pas « Couche-toi 30 minutes plus tôt ».",
       ].join(' ');
@@ -54,7 +53,7 @@ function request(task: CoachTask, settings: Settings): string {
       return [
         `« ${task.text.trim()} »`,
         'Réponds uniquement sur le sujet de cette question, sans titre ni numéro, en trois lignes :',
-        'd’abord une réponse directe (oui, non, en partie, ou « Je ne peux pas encore le dire » et ce qui manque) qui respecte les verdicts donnés plus haut ;',
+        'd’abord une réponse directe (oui, non ou en partie) qui respecte les verdicts donnés plus haut ;',
         'ensuite pourquoi c’est important pour la forme ou la progression ; enfin une ligne « Action : … » qui commence par un verbe à l’impératif.',
       ].join(' ');
   }
@@ -100,7 +99,7 @@ export function buildUserMessage(context: CoachContext, task: CoachTask, setting
   const lines = (sections: CoachSection[]) => sections.map((s) => `- ${s.line}`).join('\n');
   const extra = task.kind === 'why-alert' ? pick(context, ['alerts']) : task.kind === 'why-link' ? pick(context, ['links']) : [];
   const parts = [
-    `Constat calculé par l'app Aube (au ${context.date}), déjà affiché à l'utilisateur :`,
+    `Mes chiffres, calculés par l'app Aube (au ${context.date}) :`,
     lines([...extra, ...factsFor(context, task, settings)]),
   ];
   if (task.kind === 'weekly' && (task.worked || task.stuck)) {
@@ -112,9 +111,36 @@ export function buildUserMessage(context: CoachContext, task: CoachTask, setting
   return parts.join('\n');
 }
 
+/**
+ * Réponse écrite par l'app, sans le modèle, quand elle sait déjà qu'il ne peut pas bien répondre :
+ * - question hors des sujets suivis par l'app (ni sujet reconnu, ni question générale sur la forme) ;
+ * - rubrique principale de la question sans chiffres, ou sans verdict possible (cible non calculable).
+ * Renvoie null quand le modèle doit répondre.
+ */
+export function appAnswer(
+  context: CoachContext,
+  task: CoachTask,
+  settings: Settings = SETTINGS,
+): { text: string; facts: string[] } | null {
+  if (task.kind !== 'question') return null;
+  const q = settings.coach.questions;
+  const topics = focusSections(task, settings).filter((k) => k !== 'alerts' && k !== 'links');
+  if (topics.length === 0) {
+    const text = task.text.toLowerCase();
+    return q.generalPatterns.some((p) => new RegExp(p).test(text)) ? null : { text: q.outOfScope, facts: [] };
+  }
+  const main = context.sections.find((s) => s.key === topics[0]);
+  if (!main || !main.available) {
+    const missing = q.missing[topics[0]] ?? "l'app n'a pas encore de chiffres sur ce sujet";
+    return { text: `Je ne peux pas encore te répondre : ${missing}.`, facts: [] };
+  }
+  if (main.missing) return { text: `Je ne peux pas encore te répondre : ${main.missing}.`, facts: [main.line] };
+  return null;
+}
+
 /** Conseil de repli (aucun conseil sûr n'a pu être rédigé) : le constat reste affiché. */
 export function fallbackAdvice(task: CoachTask): string {
   return task.kind === 'weekly'
     ? "Je n'ai pas pu rédiger de bilan fiable cette fois. Le constat ci-dessous reprend tes chiffres de la semaine."
-    : "Je n'ai pas pu rédiger d'explication fiable cette fois. Le constat ci-dessous reprend les chiffres utiles.";
+    : "Je n'ai pas pu rédiger d'explication fiable cette fois. Tes chiffres utiles sont juste en dessous.";
 }

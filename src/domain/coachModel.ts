@@ -1,9 +1,20 @@
 // Coach IA (lot 4, étape C1) : règles de vérification du fichier du modèle importé.
 // Calculs purs : l'accès aux fichiers est dans src/coach/modelStore.ts.
 
-import { SETTINGS } from './settings';
+import { SETTINGS, type Settings } from './settings';
 
 export type ModelSpec = { sizeBytes: number; sha256: string };
+export type CoachModelSpec = Settings['coach']['alternativeModels'][number];
+
+/** Modèles acceptés à l'import : le modèle choisi, puis les modèles en comparaison. */
+export function acceptedModels(settings: Settings = SETTINGS): CoachModelSpec[] {
+  return [settings.coach.model, ...settings.coach.alternativeModels];
+}
+
+/** Modèle accepté qui a exactement cette taille (premier contrôle), ou null. */
+export function modelForSize(size: number | null | undefined, settings: Settings = SETTINGS): CoachModelSpec | null {
+  return acceptedModels(settings).find((m) => sizeMatches(size, m)) ?? null;
+}
 
 export type ModelProblem = 'no-space' | 'wrong-size' | 'wrong-hash' | 'unreadable';
 

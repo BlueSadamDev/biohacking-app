@@ -1,5 +1,7 @@
 import {
+  acceptedModels,
   formatBytes,
+  modelForSize,
   hashMatches,
   hasEnoughSpace,
   problemMessage,
@@ -38,9 +40,19 @@ describe('vérification du fichier du modèle', () => {
     expect(hashMatches(null, SPEC)).toBe(false);
   });
 
-  it('a une empreinte SHA-256 complète dans les réglages', () => {
-    expect(SETTINGS.coach.model.sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(SETTINGS.coach.model.fileName.endsWith('.gguf')).toBe(true);
+  it('a une empreinte SHA-256 complète dans les réglages, pour chaque modèle accepté', () => {
+    for (const m of acceptedModels()) {
+      expect(m.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(m.fileName.endsWith('.gguf')).toBe(true);
+    }
+    // Tailles toutes différentes : la taille suffit à reconnaître le modèle avant l'empreinte.
+    expect(new Set(acceptedModels().map((m) => m.sizeBytes)).size).toBe(acceptedModels().length);
+  });
+
+  it('reconnaît le modèle importé à sa taille exacte', () => {
+    expect(modelForSize(SETTINGS.coach.model.sizeBytes)).toBe(SETTINGS.coach.model);
+    for (const m of SETTINGS.coach.alternativeModels) expect(modelForSize(m.sizeBytes)).toBe(m);
+    expect(modelForSize(123)).toBeNull();
   });
 
   it('explique chaque refus en français', () => {

@@ -43,6 +43,24 @@ export function sanitize(text: string): string {
   return lines.join('\n').trim();
 }
 
+/**
+ * Retire les phrases qui commentent le résumé (« Ce constat montre que… ») au lieu de répondre.
+ * Renvoie le texte réparé et la première expression retirée (null si rien n'a été retiré).
+ */
+export function dropMetaSentences(text: string, settings: Settings = SETTINGS): { text: string; removed: string | null } {
+  let removed: string | null = null;
+  const lines = text.split('\n').map((line) => {
+    const sentences = line.match(/[^.!?]+[.!?]*/g) ?? [];
+    const kept = sentences.filter((s) => {
+      const found = firstMatch(s.toLowerCase(), settings.coach.guard.meta);
+      if (found && removed === null) removed = found;
+      return !found;
+    });
+    return kept.join('').trim();
+  });
+  return { text: lines.filter((l) => l !== '').join('\n'), removed };
+}
+
 /** Première expression trouvée hors négation (« pas assez de protéines » ne compte pas). */
 function findAffirmed(text: string, patterns: readonly string[], settings: Settings): string | null {
   const negation = new RegExp(settings.coach.guard.negation);
@@ -76,13 +94,18 @@ export function checkAnswer(
   task: CoachTask | null = null,
   settings: Settings = SETTINGS,
 ): GuardResult {
-  const text = sanitize(answer);
+  // Phrases qui commentent le résumé : retirées (réparation) plutôt que de refuser toute la réponse.
+  const repaired = dropMetaSentences(sanitize(answer), settings);
+  const text = repaired.text;
   const lower = text.toLowerCase();
   const contextLower = context.text.toLowerCase();
   const g = settings.coach.guard;
   const problems: GuardProblem[] = [];
 
-  if (text.length === 0) problems.push({ kind: 'empty' });
+  if (text.length === 0) {
+    // Il ne restait que des commentaires sur le résumé.
+    problems.push(repaired.removed ? { kind: 'meta', text: repaired.removed } : { kind: 'empty' });
+  }
 
   // Aucun chiffre : le constat chiffré est écrit par l'app (les noms comme « zone 2 » sont acceptés).
   const withoutNames = g.numberNames.reduce((t, p) => t.replace(new RegExp(p, 'gi'), ' '), text);
@@ -121,9 +144,6 @@ export function checkAnswer(
     if (related.length && !related.some((f) => new RegExp(f.pattern).test(lower))) problems.push({ kind: 'off-topic' });
   }
 
-  const meta = firstMatch(lower, g.meta);
-  if (meta) problems.push({ kind: 'meta', text: meta });
-
   // Notion non mesurée par l'app (« qualité du sommeil ») : acceptée seulement si le résumé en parle.
   const unmeasured = firstMatch(lower, g.unmeasured.filter((p) => !new RegExp(p).test(contextLower)));
   if (unmeasured) problems.push({ kind: 'unmeasured', text: unmeasured });
@@ -146,7 +166,7 @@ export function describeProblem(p: GuardProblem): string {
     case 'empty':
       return 'réponse vide';
     case 'number':
-      return `chiffre écrit par le modèle (${p.numbers.join(', ')}) : les chiffres sont déjà dans le constat`;
+      return `chiffre écrit (${p.numbers.join(', ')}) : l'utilisateur voit déjà ses chiffres, n'en écris aucun`;
     case 'contradiction':
       return `contredit le verdict « ${p.section} » (« ${p.text} »)`;
     case 'diagnosis':
@@ -162,7 +182,8 @@ export function describeProblem(p: GuardProblem): string {
     case 'off-topic':
       return 'ne parle pas du sujet de la question';
     case 'meta':
-      return `commentaire sur les données (« ${p.text} ») au lieu d'une réponse directe`;
+      // Sans citer le mot : le redire au modèle le pousserait à le réécrire.
+      return 'tu commentes au lieu de répondre directement à la question';
     case 'unmeasured':
       return `parle d'une notion que l'app ne mesure pas (« ${p.text} »)`;
     case 'unsure':

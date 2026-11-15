@@ -57,6 +57,8 @@ export type CoachSection = {
   line: string;
   /** Mêmes informations en valeurs brutes (objet JSON du résumé). */
   values: Record<string, number | string | boolean | null>;
+  /** Rubrique sans verdict possible : ce qui manque (« il faut une pesée récente… »). */
+  missing?: string;
 };
 
 export type CoachContext = {
@@ -315,7 +317,7 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
         : `calories hier : ${Math.round(k.value)} kcal pour une cible de ${Math.round(k.target)} kcal`,
     );
   }
-  return section('nutrition', title, parts.join(', '), {
+  const result = section('nutrition', title, parts.join(', '), {
     proteinG: p.value === null ? null : Math.round(p.value),
     proteinTargetG: p.target === null ? null : Math.round(p.target),
     proteinReached: p.reached,
@@ -324,6 +326,8 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
     caloriesKcal: k.value === null ? null : Math.round(k.value),
     caloriesTargetKcal: k.target === null ? null : Math.round(k.target),
   });
+  // Sans cible de protéines, pas de verdict : l'app le dit elle-même au lieu de faire répondre le modèle.
+  return p.target === null ? { ...result, missing: 'il faut une pesée récente pour calculer ta cible de protéines' } : result;
 }
 
 function strengthSection(i: CoachInputs, s: Settings): CoachSection {
@@ -362,7 +366,7 @@ function alertsSection(i: CoachInputs, s: Settings): CoachSection {
   const line = recent
     .map(
       (a) =>
-        `« ${a.title} » (${LEVEL_LABEL[a.level]}, le ${a.date}) : constat : ${a.finding.replace(/\.$/, '')} ; cause probable : ${a.cause.replace(
+        `« ${a.title} » (${LEVEL_LABEL[a.level]}, le ${a.date}) : observé : ${a.finding.replace(/\.$/, '')} ; cause probable : ${a.cause.replace(
           /\.$/,
           '',
         )} ; action proposée : ${a.action.replace(/\.$/, '')}${a.persistent ? ' ; cette alerte revient souvent : un avis médical peut être utile' : ''}`,

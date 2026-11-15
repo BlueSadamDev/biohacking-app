@@ -359,6 +359,20 @@ export const SETTINGS = {
         'https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-Q4_K_M.gguf',
     },
     /**
+     * Autres modèles acceptés à l'import, pour comparaison (un seul installé à la fois).
+     * Luth-LFM2 1.2B : version de LFM2 entraînée en français (quantification Q4_K_M de mradermacher).
+     */
+    alternativeModels: [
+      {
+        label: 'Luth-LFM2 1.2B (Q4_K_M)',
+        fileName: 'Luth-LFM2-1.2B.Q4_K_M.gguf',
+        sizeBytes: 730_895_296,
+        sha256: '9ca9c9a4f53ec05855434061a65f541e1336a47fa7fdc38a2215b6a6e4e7d18d',
+        downloadUrl:
+          'https://huggingface.co/mradermacher/Luth-LFM2-1.2B-GGUF/resolve/5f91c560983cf8874def628fd4a3fb5ef7333a16/Luth-LFM2-1.2B.Q4_K_M.gguf',
+      },
+    ] as readonly { label: string; fileName: string; sizeBytes: number; sha256: string; downloadUrl: string }[],
+    /**
      * Espace libre demandé avant l'import : le sélecteur copie d'abord le fichier,
      * puis il est déplacé dans l'espace privé de l'app. Marge en plus de la taille du fichier (octets).
      */
@@ -410,7 +424,7 @@ export const SETTINGS = {
       { pattern: 'fc au repos|fréquence cardiaque|pouls|bpm', sections: ['restingHr', 'recovery'] },
       { pattern: 'charge|entra[iî]nement|séance|seance|surcharge', sections: ['load', 'zone2'] },
       { pattern: 'zone 2|endurance|cardio|course|courir', sections: ['zone2', 'load'] },
-      { pattern: 'force|squat|développé|developpe|soulevé|souleve|1rm|muscu', sections: ['strength', 'nutrition'] },
+      { pattern: 'force|exercice|stagn|record|squat|développé|developpe|soulevé|souleve|1rm|muscu', sections: ['strength', 'nutrition'] },
       { pattern: 'poids|gras|muscle|maigrir|grossir|kilo', sections: ['weight', 'nutrition', 'strength'] },
       { pattern: 'récup|recup|forme|fatigu|énergie', sections: ['recovery', 'hrv', 'restingHr', 'sleep'] },
     ] as readonly { pattern: string; sections: readonly string[] }[],
@@ -467,6 +481,43 @@ export const SETTINGS = {
         recovery: 'Pourquoi ma récupération baisse-t-elle ?',
         strength: 'Comment relancer ma progression en force ?',
       } as Readonly<Record<string, string>>,
+      /**
+       * Questions générales sur la forme (sans sujet précis) : le modèle répond avec les chiffres
+       * principaux. Une question sans sujet reconnu ni mot de cette liste reçoit `outOfScope`.
+       */
+      generalPatterns: [
+        'semaine',
+        'demain',
+        "aujourd",
+        'bilan',
+        'global',
+        'en ce moment',
+        'comment (je|ça|ca|tu) (vais|va)',
+        'état',
+        'alerte',
+        'conseil',
+        'priorit',
+        'que (dois|faire|faut)',
+        'quoi faire',
+        'améliorer',
+        'progress',
+        'santé',
+        'sport',
+      ] as readonly string[],
+      outOfScope:
+        "Je ne peux pas répondre à cette question : je ne connais que les chiffres suivis par l'app (sommeil, récupération, HRV, fréquence cardiaque au repos, entraînement, nutrition, force, poids).",
+      /** Rubrique sans chiffres : ce qui manque, dit par l'app (« Je ne peux pas encore te répondre : … »). */
+      missing: {
+        recovery: 'pas encore assez de nuits enregistrées par le bracelet pour calculer ta récupération',
+        sleep: 'aucune nuit récente enregistrée par le bracelet',
+        hrv: 'pas encore assez de mesures de HRV',
+        restingHr: 'pas encore assez de mesures de fréquence cardiaque au repos',
+        load: 'pas encore assez de séances enregistrées pour calculer ta charge',
+        zone2: 'pas encore de séance avec fréquence cardiaque cette semaine',
+        nutrition: 'aucun repas récent enregistré dans Suivi macro',
+        strength: "aucune série enregistrée, saisis ta meilleure série dans l'onglet Sport",
+        weight: 'aucune pesée récente',
+      } as Readonly<Record<string, string>>,
       general: [
         'Est-ce que je récupère bien ?',
         'Comment progresser en force ?',
@@ -519,8 +570,11 @@ export const SETTINGS = {
         'avis médical',
         'voir un médecin',
       ] as readonly string[],
-      /** Commentaires sur le résumé au lieu d'une réponse (« le tableau semble… ») : refusés. */
-      meta: ['\\btableau\\b', '\\ble constat\\b', '\\b(les|tes|des) données\\b', '\\brésumé\\b'] as readonly string[],
+      /**
+       * Commentaires sur le résumé au lieu d'une réponse (« ce constat montre… », « le tableau semble… ») :
+       * la phrase est retirée ; la réponse n'est refusée que s'il ne reste rien.
+       */
+      meta: ['\\btableau\\b', '\\bconstat\\b', '\\bdonnées\\b', 'résumé'] as readonly string[],
       /**
        * Notions que l'app ne mesure pas (« la qualité reste bonne ») : refusées, sauf si le mot
        * figure déjà dans le résumé.

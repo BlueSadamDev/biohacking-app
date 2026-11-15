@@ -5,10 +5,17 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 
-import { hasEnoughSpace, hashMatches, sizeMatches, type ModelProblem } from '@/domain/coachModel';
-import { SETTINGS } from '@/domain/settings';
+import {
+  acceptedModels,
+  hasEnoughSpace,
+  hashMatches,
+  modelForSize,
+  sizeMatches,
+  type CoachModelSpec,
+  type ModelProblem,
+} from '@/domain/coachModel';
 
-export type InstalledModel = { name: string; sizeBytes: number; uri: string };
+export type InstalledModel = { name: string; label: string; sizeBytes: number; uri: string };
 
 export type ImportResult =
   | { kind: 'canceled' }
@@ -24,8 +31,8 @@ function modelDir(): Directory {
   return dir;
 }
 
-function modelFile(): File {
-  return new File(modelDir(), SETTINGS.coach.model.fileName);
+function modelFile(spec: CoachModelSpec): File {
+  return new File(modelDir(), spec.fileName);
 }
 
 /** Place libre sur le téléphone (octets), ou null si Android ne la donne pas. */
@@ -37,12 +44,16 @@ export function availableSpace(): number | null {
   }
 }
 
-/** Modèle installé (fichier présent et de la bonne taille), ou null. */
+/** Modèle installé (fichier d'un modèle accepté, présent et de la bonne taille), ou null. */
 export function getInstalledModel(): InstalledModel | null {
   try {
-    const file = modelFile();
-    if (!file.exists || !sizeMatches(file.size)) return null;
-    return { name: file.name, sizeBytes: file.size ?? 0, uri: file.uri };
+    for (const spec of acceptedModels()) {
+      const file = modelFile(spec);
+      if (file.exists && sizeMatches(file.size, spec)) {
+        return { name: file.name, label: spec.label, sizeBytes: file.size ?? 0, uri: file.uri };
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -61,7 +72,9 @@ function deleteQuietly(file: File): void {
  * Le fichier refusé (ou sa copie temporaire) est supprimé : rien de douteux n'est gardé.
  */
 export async function importModel(onStep: (step: ImportStep) => void): Promise<ImportResult> {
-  if (!hasEnoughSpace(availableSpace())) return { kind: 'refused', problem: 'no-space' };
+  // Place nécessaire : celle du plus gros modèle accepté (le fichier choisi n'est pas encore connu).
+  const biggest = acceptedModels().reduce((a, b) => (b.sizeBytes > a.sizeBytes ? b : a));
+  if (!hasEnoughSpace(availableSpace(), biggest)) return { kind: 'refused', problem: 'no-space' };
 
   const picked = await DocumentPicker.getDocumentAsync({
     type: '*/*',
@@ -72,19 +85,21 @@ export async function importModel(onStep: (step: ImportStep) => void): Promise<I
 
   const temp = new File(picked.assets[0].uri);
   try {
-    if (!sizeMatches(temp.size)) {
+    const spec = modelForSize(temp.size);
+    if (!spec) {
       deleteQuietly(temp);
       return { kind: 'refused', problem: 'wrong-size' };
     }
     onStep('verifying');
     const hash = await temp.digest('SHA-256');
-    if (!hashMatches(hash)) {
+    if (!hashMatches(hash, spec)) {
       deleteQuietly(temp);
       return { kind: 'refused', problem: 'wrong-hash' };
     }
     onStep('installing');
-    const target = modelFile();
-    deleteQuietly(target);
+    // Un seul modèle à la fois : l'ancien (même s'il s'agit d'un autre modèle) est supprimé.
+    for (const other of acceptedModels()) deleteQuietly(modelFile(other));
+    const target = modelFile(spec);
     await temp.move(target);
     const model = getInstalledModel();
     return model ? { kind: 'installed', model } : { kind: 'refused', problem: 'unreadable' };

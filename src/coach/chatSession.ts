@@ -5,7 +5,8 @@
 import { saveExchange } from '@/db/coachMessages';
 import { describeProblem } from '@/domain/coachGuard';
 import type { CoachExchange } from '@/domain/coachQuestions';
-import { runCoach } from '@/domain/coachRun';
+import { appAnswer } from '@/domain/coachPrompt';
+import { runCoach, type CoachOutcome } from '@/domain/coachRun';
 
 import { loadCoachContext } from './contextLoader';
 import { LlamaCoachModel } from './llamaModel';
@@ -30,21 +31,32 @@ export class ChatSession {
     this.running = true;
     this.closing = false;
     try {
-      if (!this.model) {
-        // Référence gardée avant le chargement : « Arrêter » pendant le chargement est pris en compte.
-        this.model = new LlamaCoachModel(installed.uri);
-        this.loaded = false;
-      }
-      const model = this.model;
-      if (!this.loaded) {
-        await model.load();
-        this.loaded = true;
-      }
+      const task = { kind: 'question' as const, text: question };
       const context = await loadCoachContext(now);
-      const out = await runCoach(model, context, { kind: 'question', text: question }, onText);
-      lastChatRejections = out.rejections.map(
-        (r, i) => `essai ${i + 1} : ${r.map((p) => (p.kind === 'number' ? 'chiffre écrit par le modèle' : describeProblem(p))).join(' ; ')}`,
-      );
+      // Réponse écrite par l'app (hors sujet, chiffre manquant) : inutile de charger le modèle.
+      const direct = appAnswer(context, task);
+      let out: Pick<CoachOutcome, 'kind' | 'text' | 'facts' | 'rejections' | 'rejectedTexts'>;
+      if (direct) {
+        out = { kind: 'fallback', text: direct.text, facts: direct.facts, rejections: [], rejectedTexts: [] };
+      } else {
+        if (!this.model) {
+          // Référence gardée avant le chargement : « Arrêter » pendant le chargement est pris en compte.
+          this.model = new LlamaCoachModel(installed.uri);
+          this.loaded = false;
+        }
+        const model = this.model;
+        if (!this.loaded) {
+          await model.load();
+          this.loaded = true;
+        }
+        out = await runCoach(model, context, task, onText);
+      }
+      // Version de développement : raisons et textes refusés, chaque chiffre masqué.
+      lastChatRejections = out.rejections.map((r, i) => {
+        const reasons = r.map((p) => (p.kind === 'number' ? 'chiffre écrit par le modèle' : describeProblem(p))).join(' ; ');
+        const refused = (out.rejectedTexts[i] ?? '').replace(/\d/g, '•');
+        return `essai ${i + 1} : ${reasons}\n« ${refused} »`;
+      });
       const exchange: CoachExchange = {
         id: `${now.getTime()}`,
         createdMs: now.getTime(),

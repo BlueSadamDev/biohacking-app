@@ -55,7 +55,7 @@ export default function CoachModelScreen() {
   const confirmDelete = useCallback(() => {
     Alert.alert(
       'Supprimer le modèle ?',
-      `Le coach ne fonctionnera plus tant que tu ne l'auras pas réinstallé. Cela libère ${formatBytes(SETTINGS.coach.model.sizeBytes)}.`,
+      `Le coach ne fonctionnera plus tant que tu ne l'auras pas réinstallé. Cela libère ${formatBytes(model?.sizeBytes ?? SETTINGS.coach.model.sizeBytes)}.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -73,7 +73,7 @@ export default function CoachModelScreen() {
         },
       ],
     );
-  }, []);
+  }, [model]);
 
   const free = availableSpace();
 
@@ -97,6 +97,9 @@ export default function CoachModelScreen() {
             <SettingRow label="État">
               <SettingValue text="Installé · prêt" color={colors.good} />
             </SettingRow>
+            <SettingRow label="Modèle">
+              <SettingValue text={model.label} />
+            </SettingRow>
             <SettingRow label="Fichier" hint={model.name}>
               <SettingValue text={formatBytes(model.sizeBytes)} />
             </SettingRow>
@@ -107,6 +110,15 @@ export default function CoachModelScreen() {
               <SettingValue text="dimanche, à l'ouverture du coach" />
             </SettingRow>
           </SettingsGroup>
+          {SETTINGS.coach.alternativeModels.length > 0 && (
+            // Comparaison : un autre modèle accepté remplace celui-ci (un seul installé à la fois).
+            <SecondaryButton title="Changer de modèle (comparaison)" onPress={choose} />
+          )}
+          {step !== null && step !== 'picking' && (
+            <AppText variant="small" style={styles.center}>
+              {STEP_TEXT[step]}
+            </AppText>
+          )}
           <SecondaryButton title="Supprimer le modèle" color={colors.low} onPress={confirmDelete} />
         </>
       ) : (

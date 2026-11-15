@@ -9,7 +9,8 @@ import { SETTINGS, type Settings } from './settings';
 
 /** Ce qu'on demande au coach. */
 export type CoachTask =
-  | { kind: 'weekly' }
+  /** Bilan : `worked` / `stuck` = ce qui a marché et ce qui coince, décidés par l'app (étape C4). */
+  | { kind: 'weekly'; worked?: string[]; stuck?: string[]; sections?: string[] }
   | { kind: 'why-alert'; title: string; theme: AlertTheme }
   | { kind: 'why-link'; sentence: string }
   | { kind: 'question'; text: string };
@@ -28,7 +29,9 @@ export const COACH_SYSTEM_PROMPT = [
 function request(task: CoachTask, settings: Settings): string {
   switch (task.kind) {
     case 'weekly':
-      return `Fais le bilan de ma semaine : une phrase de synthèse, puis exactement ${settings.coach.generation.weeklyMaxActions} actions numérotées pour la semaine prochaine.`;
+      return `Fais le bilan de ma semaine : une phrase de synthèse, puis exactement ${settings.coach.generation.weeklyMaxActions} actions numérotées pour la semaine prochaine${
+        task.stuck?.length ? ', qui visent ce qui coince' : ''
+      }.`;
     case 'why-alert':
       return `Explique simplement pourquoi j'ai reçu l'alerte « ${task.title} », en 2 phrases au plus, puis une ligne « Action : … ».`;
     case 'why-link':
@@ -60,7 +63,7 @@ const pick = (context: CoachContext, keys: readonly string[]) =>
  */
 export function factsFor(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): CoachSection[] {
   const g = settings.coach.generation;
-  if (task.kind === 'weekly') return pick(context, g.weeklySections);
+  if (task.kind === 'weekly') return pick(context, task.sections?.length ? task.sections : g.weeklySections);
   const focus = focusSections(task, settings).filter((k) => k !== 'alerts' && k !== 'links');
   return pick(context, focus.length ? focus : ['recovery', 'sleep', 'load']).slice(0, g.factSections);
 }
@@ -73,6 +76,10 @@ export function buildUserMessage(context: CoachContext, task: CoachTask, setting
     `Constat calculé par l'app Aube (au ${context.date}), déjà affiché à l'utilisateur :`,
     lines([...extra, ...factsFor(context, task, settings)]),
   ];
+  if (task.kind === 'weekly' && (task.worked || task.stuck)) {
+    parts.push(`Ce qui a marché (décidé par l'app) : ${task.worked?.length ? task.worked.join(' ; ') : 'rien de particulier'}.`);
+    parts.push(`Ce qui coince (décidé par l'app) : ${task.stuck?.length ? task.stuck.join(' ; ') : 'rien de particulier'}.`);
+  }
   if (context.calibrating) parts.push("Calibration en cours : les comparaisons à la norme ne sont pas encore fiables.");
   parts.push('', `Demande : ${request(task, settings)}`);
   return parts.join('\n');

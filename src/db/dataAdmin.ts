@@ -21,6 +21,7 @@ const EXPORT_TABLES: { table: string; file: string }[] = [
   { table: 'hc_exercise', file: 'seances' },
   { table: 'hc_nutrition', file: 'repas' },
   { table: 'strength_set', file: 'musculation' },
+  { table: 'coach_weekly', file: 'bilans-coach' },
   { table: 'alert', file: 'alertes' },
   { table: 'app_setting', file: 'reglages' },
 ];
@@ -37,6 +38,7 @@ const ERASE_TABLES = [
   'hc_exercise',
   'hc_nutrition',
   'strength_set',
+  'coach_weekly',
   'alert',
   'sync_state',
 ];

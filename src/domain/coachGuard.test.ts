@@ -65,9 +65,10 @@ describe('contrôle du conseil du coach', () => {
     expect(checkAnswer('Cette alerte revient souvent : consulte un médecin.', persistent).ok).toBe(true);
   });
 
-  it('limite le bilan à 2 actions', () => {
+  it('demande exactement 2 actions dans le bilan', () => {
     const three = 'Semaine chargée.\nAction n°1 : dors plus.\nAction n°2 : allège la charge.\nAction n°3 : surveille ta charge.';
-    expect(kinds(three, { kind: 'weekly' })).toEqual(['too-many-actions']);
+    expect(kinds(three, { kind: 'weekly' })).toEqual(['action-count']);
+    expect(kinds('Semaine chargée.\n1. Dors plus.', { kind: 'weekly' })).toEqual(['action-count']);
     expect(kinds(three)).toEqual([]);
   });
 
@@ -89,6 +90,6 @@ describe('contrôle du conseil du coach', () => {
   it('explique chaque refus', () => {
     expect(describeProblem({ kind: 'number', numbers: [7, 8] })).toContain('7, 8');
     expect(describeProblem({ kind: 'contradiction', section: 'Nutrition', text: 'bonne base' })).toContain('Nutrition');
-    expect(describeProblem({ kind: 'too-many-actions', count: 3, max: 2 })).toBe('3 actions au lieu de 2');
+    expect(describeProblem({ kind: 'action-count', count: 3, max: 2 })).toBe('3 actions au lieu de 2');
   });
 });

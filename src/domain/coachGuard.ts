@@ -14,7 +14,7 @@ export type GuardProblem =
   | { kind: 'contradiction'; section: string; text: string }
   | { kind: 'diagnosis'; text: string }
   | { kind: 'referral'; text: string }
-  | { kind: 'too-many-actions'; count: number; max: number }
+  | { kind: 'action-count'; count: number; max: number }
   | { kind: 'formal'; text: string };
 
 export type GuardResult = { ok: boolean; text: string; problems: GuardProblem[] };
@@ -105,7 +105,8 @@ export function checkAnswer(
   if (task?.kind === 'weekly') {
     const count = countActions(text);
     const max = settings.coach.generation.weeklyMaxActions;
-    if (count > max) problems.push({ kind: 'too-many-actions', count, max });
+    // Le bilan demande exactement `max` actions numérotées.
+    if (count !== max) problems.push({ kind: 'action-count', count, max });
   }
 
   return { ok: problems.length === 0, text, problems };
@@ -124,7 +125,7 @@ export function describeProblem(p: GuardProblem): string {
       return `vocabulaire médical (« ${p.text} »)`;
     case 'referral':
       return `renvoi vers un professionnel sans alerte qui persiste (« ${p.text} »)`;
-    case 'too-many-actions':
+    case 'action-count':
       return `${p.count} actions au lieu de ${p.max}`;
     case 'formal':
       return `vouvoiement (« ${p.text} ») : tutoie l'utilisateur`;

@@ -61,7 +61,7 @@ Pour la HRV et la FC au repos, sans sommeil principal enregistré la nuit concer
 
 ## 4. Fonctionnalités
 
-Cinq onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages), des écrans secondaires (détail d'un indicateur, saisies du matin et de séance, alertes, sources de données, diagnostic, modèle du coach, bilans de la semaine) et un moteur de règles couvrent le besoin : récap du matin, alertes, progression sportive, tendances, coach.
+Cinq onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages), des écrans secondaires (détail d'un indicateur, journal du matin, saisie de séance, alertes, sources de données, diagnostic, modèle du coach, bilans de la semaine, périodes) et un moteur de règles couvrent le besoin : récap du matin, alertes, progression sportive, tendances, coach, collecte du contexte (périodes particulières, comportements de la veille).
 
 ### F1 – Récap du matin
 
@@ -92,7 +92,7 @@ Cinq onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages), des écrans seco
 ### F5 – Gestion des données
 
 - Synchronisation Health Connect manuelle et automatique (toutes les heures), nutrition comprise (repas écrits par Suivi macro).
-- Saisie du poids et du ressenti.
+- Saisie du poids et du ressenti, dans le journal du matin (F8) depuis le lot 5a.
 - Séances Suunto : hors périmètre (lisibles plus tard si une appli passerelle les écrit dans Health Connect).
 - Export complet en CSV (sauvegarde) et effacement des données.
 - Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données.
@@ -110,6 +110,35 @@ Un coach qui explique mes chiffres en langage naturel, en français, sans que ri
   - Le plan d'entraînement de la semaine est reporté à plus tard.
 - **Règle de sécurité** : le coach ne calcule rien. Il reformule et explique uniquement les chiffres déjà calculés par l'app (sections 3 et 5), ne pose jamais de diagnostic médical, et dit « je ne sais pas » quand l'information manque. Partage des rôles : **l'app écrit le constat chiffré** (« Chiffres utilisés », repris du résumé calculé par l'app, donc toujours juste) et **le modèle n'écrit que l'explication et l'action, sans aucun chiffre**. Chaque conseil est contrôlé (chiffre, verdict contredit, vocabulaire médical, vouvoiement) : s'il est refusé, il est refait une fois, puis remplacé par un conseil de repli, le constat restant affiché.
 - **Bilan de la semaine** : l'app décide elle-même ce qui a marché et ce qui coince, d'après ses verdicts ; le modèle écrit la phrase de synthèse et 2 actions ciblées sur ce qui coince. Généré à la première ouverture de l'onglet Coach à partir du dimanche (le modèle n'est jamais chargé ailleurs), enregistré, historique consultable.
+
+### F7 – Étiquettes de période (lot 5a)
+
+Signaler une période particulière pour qu'elle ne fausse pas mes normes et ne déclenche pas d'alertes inutiles.
+
+- **Types** : Malade, Blessure, Voyage, Vacances, Autre.
+- **Dates** : une date de début (aujourd'hui par défaut, jusqu'à 14 jours en arrière) et une date de fin, vide tant que la période est en cours. Deux périodes ne se chevauchent jamais. Le bouton « Terminer la période » fixe la fin à aujourd'hui ; les dates restent modifiables, et une période peut être supprimée (avec confirmation), depuis Réglages > Données > Mes périodes.
+- **Pendant une période et sur ses jours** (règles détaillées en section 5) :
+  - les jours sont exclus des normes (plages de HRV, FC au repos, sommeil), de la calibration, des liens observés et des suggestions de sports ;
+  - les alertes sont en pause : rien n'est envoyé ni enregistré ; elles reprennent le lendemain de la fin ;
+  - le score de récupération reste calculé et affiché, mais en gris, sans jugement de couleur ni recommandation chiffrée : la recommandation du jour est remplacée par une phrase propre au type (Malade : repos ; Blessure : pas de séance qui sollicite la zone blessée ; Voyage : régularité du sommeil ; Vacances : profite), jamais de vocabulaire médical ;
+  - la charge d'entraînement continue d'être calculée (les séances réelles comptent), mais sans alerte.
+- **Rappel** : si une période est ouverte depuis 14 jours, une notification (hors plage silencieuse) demande si elle est terminée.
+- **Coach** : le résumé fourni au modèle signale la période en cours et le nombre de jours exclus de la semaine ; le bilan de la semaine la mentionne dans « ce qui coince » ou à part, sans la compter comme un échec.
+- **Données** : les périodes sont incluses dans l'export CSV et dans l'effacement des données.
+
+### F8 – Journal du matin (lot 5a)
+
+Noter en 15 secondes ce que j'ai fait la veille, pour comprendre plus tard ce qui aide ou gêne ma nuit. Il remplace l'écran de saisie du matin.
+
+- **Comportements de la veille** : liste par défaut : magnésium le soir, alcool, caféine après 14 h, écran au lit, repas tardif, sieste, sauna, méditation. Liste modifiable : ajouter (40 caractères au plus), renommer, masquer. Pas de suppression : un comportement masqué garde son historique.
+- **Date** : un comportement coché le matin est enregistré pour la veille (le jour où il a eu lieu).
+- **« Non » et « inconnu »** : un jour dont le journal est enregistré et où un comportement n'est pas coché compte comme « non » ; un jour sans journal enregistré compte comme « inconnu » et est exclu des analyses. Rien coché = rien de particulier.
+- **Champs existants** : poids, ressenti (énergie, courbatures, humeur) et note libre rejoignent cet écran ; les saisies du matin déjà enregistrées sont conservées.
+- **Corrections** : le journal des 7 derniers jours reste modifiable.
+- **Rappel** : le récap du matin rappelle le journal s'il n'est pas rempli, dans la notification existante (pas de notification supplémentaire).
+- **Liens observés** (F4) : chaque comportement affiché devient une paire testée (règles en section 5).
+- **Coach** : le résumé fourni au modèle liste les comportements des 7 derniers jours sous forme de faits (« Alcool : 2 soirs sur 7 »).
+- **Données** : la liste des comportements et le journal sont inclus dans l'export CSV et dans l'effacement des données.
 
 ## 5. Indicateurs et règles de calcul
 
@@ -132,6 +161,28 @@ Tous les indicateurs se comparent à ma propre norme : une valeur n'est « mauva
 **Transparence** : chaque score affiche les éléments qui l'ont fait monter ou baisser. Aucune « boîte noire ».
 
 Ces règles servent au suivi personnel et ne remplacent pas un avis médical. L'app le rappelle quand une alerte persiste.
+
+### Jours étiquetés et comportements (lot 5a)
+
+**Date d'une nuit** : une nuit porte la date du réveil (la nuit du 3 au 4 est la « nuit du 4 »). Un sommeil qui se termine avant 14 h compte pour ce jour-là, après 18 h pour le lendemain ; entre les deux, c'est une sieste, ignorée.
+
+**Jour étiqueté** : un jour compris entre la date de début et la date de fin d'une période (aujourd'hui inclus si la période est en cours). Une seule fonction de calcul dit si un jour est étiqueté.
+
+**Exclusion des jours étiquetés** : un filtre unique retire ces jours des données avant les calculs concernés.
+
+- Une nuit est exclue si elle se termine un jour étiqueté. Exemple : période du 10 au 12 → les nuits du 10, du 11 et du 12 sont exclues (celle du 9 au 10 comprise) ; la nuit du 12 au 13 compte de nouveau.
+- Exclus des normes (plages de HRV, FC au repos, sommeil) et de la calibration : les jours étiquetés ne comptent pas dans les 28 jours.
+- Exclus des liens observés et des suggestions de sports.
+- La charge d'entraînement n'est pas filtrée : les séances réelles comptent toujours.
+- Alertes en pause : pendant une période, aucune alerte n'est envoyée ni enregistrée ; elles reprennent le lendemain de la date de fin.
+- Le score de récupération reste calculé, sans couleur d'état ni recommandation chiffrée (phrase propre au type, voir F7).
+
+**Comportements (F8) dans les liens observés** :
+
+- Chaque comportement affiché devient trois paires : comportement du jour J → HRV de la nuit suivante (celle qui porte la date J+1), durée du sommeil de cette nuit, score de récupération de J+1.
+- Jour « oui » : comportement coché ; jour « non » : journal enregistré, comportement non coché. Les jours « inconnus » (sans journal) et les jours étiquetés (J ou la nuit de J+1) sont exclus.
+- Mêmes minimums qu'au lot 3 : au moins 20 jours comparables, dont au moins 5 « oui » et 5 « non » ; sinon « pas assez de jours ».
+- **Limiter les faux liens** (on teste beaucoup plus de paires) : pour un comportement, le lien doit être au moins « modéré » (au lieu de « faible ») et tenir dans le même sens sur les deux moitiés de la période, avec au moins 3 jours « oui » et 3 « non » dans chaque moitié (au lieu de 2). Les comportements partagent le plafond de 3 liens affichés en tout. Seuils réglables dans `settings.ts`.
 
 ## 6. Exigences non fonctionnelles
 
@@ -178,7 +229,7 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 4. **Lot 3 – Progression et corrélations** : zones cardiaques (temps en zone 2), saisie de la meilleure série des 3 exercices clés, 1RM estimé, composition corporelle, corrélations, suggestions d'autres sports faciles à pratiquer à Paris. Sans la Suunto (hors périmètre). *Condition de passage : lots 1 à 3 stables et utilisés au quotidien.*
 5. **Lot 4 – Coach IA local** (F6) : d'abord un test de faisabilité (comparaison de 2 moteurs et de 2 ou 3 petits modèles sur le S21 : mémoire, vitesse, qualité en français, licence), résultat dans `docs/RAPPORT_LOT_4_MODELE.md` et choix du modèle ; puis installation du modèle par import manuel, résumé chiffré des données (seule source de chiffres du coach), garde-fous, bilan de la semaine, « Pourquoi ? » sur les alertes et les liens observés, questions libres. *Condition de passage : réponses jugées justes et utiles, aucun chiffre inventé, aucune formulation de diagnostic.*
 6. **Lot 4.1 – Fiabilité** : stabiliser l'app pendant la calibration des normes, sans nouvelle fonctionnalité de calcul. Base de données qui attend quelques secondes au lieu d'échouer (« database is locked » quand la synchro du lancement et la tâche de fond tournent en même temps) et écritures qui ne se chevauchent jamais ; bouton « Ouvrir Zepp » sur l'onglet Aujourd'hui quand la nuit n'est pas encore arrivée dans Health Connect (il ouvre seulement l'app Zepp, sans appel réseau ; Aube relance sa synchro au retour ; absent si Zepp n'est pas installée) ; chiffres utilisés repliables sur la carte « Bilan de la semaine », comme dans les réponses du coach.
-7. **Lot 5a – Collecter** : étiquettes de période (malade, blessure, voyage, vacances) : les jours étiquetés sont exclus des normes et les alertes sont en pause ; journal de comportements du matin.
+7. **Lot 5a – Collecter** : étiquettes de période (F7 : malade, blessure, voyage, vacances, autre) : les jours étiquetés sont exclus des normes, de la calibration, des liens observés et des suggestions, les alertes sont en pause, rappel au bout de 14 jours ; journal du matin (F8 : comportements de la veille, qui remplace la saisie du matin et devient une source des liens observés). Aucun nouveau calcul de recommandation.
 8. **Pause d'usage de 3 à 4 semaines** : aucun développement. Objectifs : calibration des normes terminée, et vérification des conditions de passage des lots 2 et 3.
 9. **Lot 5b – Exploiter** : expériences personnelles (tests « avec / sans » tirés au sort) et cible d'effort du jour.
 10. **Lot 6 – Nutrition et nuit** : répartition des protéines dans la journée ; préparation de la nuit (dette de sommeil, heure de coucher conseillée).
@@ -188,7 +239,7 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 
 **Écartés** : widget d'écran d'accueil, âge biologique, réveil intelligent, météo et pollution (demandent Internet, or l'APK de production n'a pas cette permission).
 
-Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie. Les lots 5a à 7 seront détaillés (fonctionnalités, règles de calcul, permissions) dans ce cahier avant leur développement.
+Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie. Le lot 5a est détaillé (F7, F8, section 5 ; aucune nouvelle permission). Les lots 5b à 7 seront détaillés (fonctionnalités, règles de calcul, permissions) dans ce cahier avant leur développement.
 
 **Révision après le lot 0** : faite. Ce cahier intègre les constats du lot 0 (sections 2, 3 et 8). Les deux points bloquants pour le lot 1 (valeur par nuit, source du poids) sont tranchés.
 
@@ -208,6 +259,9 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 | Le coach invente un chiffre | Conseil faux, perte de confiance | Le coach ne calcule rien : chaque nombre de la réponse est vérifié dans les données fournies, sinon nouvelle génération puis message de repli |
 | Une réponse ressemble à un avis médical | Fausse réassurance ou inquiétude | Consignes du coach (aucun diagnostic) et mention permanente « Ce n'est pas un avis médical » |
 | Fichier du modèle corrompu ou erroné | Coach qui plante ou répond mal | Vérification de la taille et de l'empreinte SHA-256 à l'import |
+| Oubli de fermer une période | Normes amputées de jours normaux, alertes muettes trop longtemps | Bandeau permanent sur l'accueil avec « Terminer la période » ; notification au bout de 14 jours ; dates modifiables après coup (Mes périodes) |
+| Journal du matin non rempli | Trous dans les analyses de comportements | Un jour sans journal compte comme « inconnu », jamais comme « non » ; rappel dans le récap du matin ; corrections possibles sur les 7 derniers jours |
+| Faux liens quand on teste beaucoup de comportements | Conseils fondés sur le hasard | Seuil plus strict pour les comportements (lien au moins modéré, même sens sur les deux moitiés avec au moins 3 jours « oui » et 3 « non » dans chaque moitié) ; 3 liens affichés au plus ; rappel « Un lien observé n'est pas une preuve de cause » |
 
 **Points ouverts**
 
@@ -244,4 +298,4 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
 5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).
 6. ~~Lot 4.1 : fiabilité.~~ Fait (PR #16). Les trois « idées pour plus tard » notées à la fin du lot 4 y sont intégrées (section 7).
-7. Lot 5a : collecter, puis pause d'usage de 3 à 4 semaines (section 7).
+7. Lot 5a : collecter (F7, F8 ; règles en section 5), puis pause d'usage de 3 à 4 semaines (section 7).

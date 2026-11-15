@@ -71,6 +71,16 @@ describe('contrôle du conseil du coach', () => {
     expect(kinds(three)).toEqual([]);
   });
 
+  it('refuse le vouvoiement', () => {
+    expect(kinds('Action : augmentez votre apport en protéines.')).toContain('formal');
+    expect(describeProblem({ kind: 'formal', text: 'votre' })).toContain('tutoie');
+  });
+
+  it('retire les questions de fin de réponse', () => {
+    expect(sanitize('1. Dors plus.\n2. Allège la charge.\n\nQue dis-tu ?')).toBe('1. Dors plus.\n2. Allège la charge.');
+    expect(sanitize('Est-ce suffisant ?')).toBe('Est-ce suffisant ?');
+  });
+
   it('retire les emoji et refuse une réponse vide', () => {
     expect(sanitize('Prends soin de toi ! 🌟')).toBe('Prends soin de toi !');
     expect(kinds('  🌟 ')).toEqual(['empty']);

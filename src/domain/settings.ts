@@ -428,6 +428,8 @@ export const SETTINGS = {
         'avis médical',
         'voir un médecin',
       ] as readonly string[],
+      /** Vouvoiement : refusé (l'app tutoie). */
+      formalYou: ['\\bvous\\b', '\\bvotre\\b', '\\bvos\\b'] as readonly string[],
       /** Noms qui contiennent un chiffre sans en être un (« zone 2 », « 1RM ») : acceptés dans le conseil. */
       numberNames: ['zone\\s*[1-5]', '\\b1\\s?rm\\b', 'n°\\s*\\d'] as readonly string[],
       /** Négation juste avant une expression (« pas assez de protéines ») : ne contredit pas le verdict. */

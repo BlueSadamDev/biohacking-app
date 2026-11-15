@@ -14,20 +14,26 @@ export type GuardProblem =
   | { kind: 'contradiction'; section: string; text: string }
   | { kind: 'diagnosis'; text: string }
   | { kind: 'referral'; text: string }
-  | { kind: 'too-many-actions'; count: number; max: number };
+  | { kind: 'too-many-actions'; count: number; max: number }
+  | { kind: 'formal'; text: string };
 
 export type GuardResult = { ok: boolean; text: string; problems: GuardProblem[] };
 
 // Pictogrammes, symboles divers, dingbats, sélecteur de variante et liant d'emoji.
 const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
 
-/** Retire les emoji et les espaces en trop. */
+/** Retire les emoji, les espaces en trop et les questions finales (« Qu'en penses-tu ? »). */
 export function sanitize(text: string): string {
-  return text
+  const lines = text
     .replace(EMOJI, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+    .trim()
+    .split('\n');
+  // Le conseil se termine par une action, jamais par une question adressée à l'utilisateur.
+  const isClosing = (line: string) => line.trim() === '' || /\?\s*$/.test(line);
+  while (lines.length > 1 && isClosing(lines[lines.length - 1])) lines.pop();
+  return lines.join('\n').trim();
 }
 
 /** Première expression trouvée hors négation (« pas assez de protéines » ne compte pas). */
@@ -93,6 +99,9 @@ export function checkAnswer(
     if (referral) problems.push({ kind: 'referral', text: referral });
   }
 
+  const formal = firstMatch(lower, g.formalYou);
+  if (formal) problems.push({ kind: 'formal', text: formal });
+
   if (task?.kind === 'weekly') {
     const count = countActions(text);
     const max = settings.coach.generation.weeklyMaxActions;
@@ -117,5 +126,7 @@ export function describeProblem(p: GuardProblem): string {
       return `renvoi vers un professionnel sans alerte qui persiste (« ${p.text} »)`;
     case 'too-many-actions':
       return `${p.count} actions au lieu de ${p.max}`;
+    case 'formal':
+      return `vouvoiement (« ${p.text} ») : tutoie l'utilisateur`;
   }
 }

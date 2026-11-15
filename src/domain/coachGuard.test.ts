@@ -94,6 +94,10 @@ describe('contrôle du conseil du coach', () => {
     const food = { kind: 'question' as const, text: 'Est-ce que je mange bien ?' };
     expect(kinds('Non, tu dors moins que la durée visée.\nAction : couche-toi plus tôt.', food)).toEqual(['off-topic']);
     expect(kinds('Tes protéines restent sous la cible.\nAction : ajoute une portion de protéines au déjeuner.', food)).toEqual([]);
+    // Sujet lié : les protéines comptent pour la force.
+    const strength = { kind: 'question' as const, text: 'Comment progresser en force ?' };
+    expect(kinds('Tes protéines restent sous la cible.\nAction : ajoute une portion de protéines au dîner.', strength)).toEqual([]);
+    expect(kinds('Tu dors moins que la durée visée.\nAction : couche-toi plus tôt.', strength)).toEqual(['off-topic']);
     // Question sans sujet reconnu : pas de contrôle du sujet.
     expect(kinds('Tu récupères moins bien.\nAction : allège ta séance.', { kind: 'question', text: 'Que faire demain ?' })).toEqual([]);
   });

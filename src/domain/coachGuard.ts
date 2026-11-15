@@ -5,7 +5,7 @@
 
 import type { CoachContext } from './coachContext';
 import { unknownNumbers } from './coachNumbers';
-import type { CoachTask } from './coachPrompt';
+import { focusSections, type CoachTask } from './coachPrompt';
 import { SETTINGS, type Settings } from './settings';
 
 export type GuardProblem =
@@ -112,11 +112,13 @@ export function checkAnswer(
   const firstPerson = firstMatch(lower, g.firstPerson);
   if (firstPerson) problems.push({ kind: 'first-person', text: firstPerson });
 
-  // Question sur un sujet reconnu (nutrition, sommeil…) : la réponse doit en parler
-  // (refuse, par exemple, une réponse sur le sommeil à « Est-ce que je mange bien ? »).
+  // Question sur un sujet reconnu (nutrition, sommeil…) : la réponse doit parler de ce sujet ou d'un
+  // sujet lié (rubriques envoyées au modèle : les protéines comptent pour « progresser en force »).
+  // Refuse, par exemple, une réponse sur le sommeil à « Est-ce que je mange bien ? ».
   if (task?.kind === 'question' && text.length > 0) {
-    const topics = settings.coach.focus.filter((f) => new RegExp(f.pattern).test(task.text.toLowerCase()));
-    if (topics.length && !topics.some((f) => new RegExp(f.pattern).test(lower))) problems.push({ kind: 'off-topic' });
+    const sections = new Set<string>(focusSections(task, settings));
+    const related = settings.coach.focus.filter((f) => f.sections.some((s) => sections.has(s)));
+    if (related.length && !related.some((f) => new RegExp(f.pattern).test(lower))) problems.push({ kind: 'off-topic' });
   }
 
   const meta = firstMatch(lower, g.meta);

@@ -243,5 +243,5 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 3. ~~Lot 2 : alertes, charge et nutrition.~~ Fait (PR #8).
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
 5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).
-6. Lot 4.1 : fiabilité (en cours). Les trois « idées pour plus tard » notées à la fin du lot 4 y sont intégrées (section 7).
+6. ~~Lot 4.1 : fiabilité.~~ Fait (PR #16). Les trois « idées pour plus tard » notées à la fin du lot 4 y sont intégrées (section 7).
 7. Lot 5a : collecter, puis pause d'usage de 3 à 4 semaines (section 7).

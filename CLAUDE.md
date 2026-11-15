@@ -14,6 +14,7 @@
   - `src/components/` : composants d'interface réutilisables ;
   - `src/background/` : tâche de fond (synchro horaire) et notification du récap du matin ;
   - `src/coach/` : coach IA local (lot 4) : fichier du modèle, moteur, gardien de la mémoire, services (bilan, « Pourquoi ? », questions).
+  - `modules/zepp-launcher/` (hors de `src/`) : module Android maison qui détecte et ouvre l'app Zepp (lot 4.1). Code natif : le modifier demande un nouvel APK de développement.
 
 ## Données de santé et confidentialité
 - Toutes les données restent sur le téléphone. Aucun appel réseau dans le code de l'application, aucun SDK d'analytics, de suivi des plantages ou de publicité.
@@ -44,6 +45,8 @@
 - **Lot 2** (terminé, fusionné via la PR #8) : nutrition (repas Suivi macro via Health Connect), charge d'entraînement (TRIMP, ratio 7 j / 28 j), écran Réglages, export CSV (`expo-file-system`), moteur d'alertes et historique. Le sexe (coefficient du TRIMP) et l'année de naissance (FC max) se saisissent dans l'app, jamais dans le dépôt.
 - **Lot 3** (terminé, fusionné via la PR #11) : zones cardiaques (cible de zone 2 dans Réglages), saisie de la meilleure série des 3 exercices clés et 1RM (Epley), alerte de stagnation, rappel de saisie, composition corporelle, liens observés (onglet Tendances), suggestions de sports à Paris (catalogue local). Aucune nouvelle dépendance ni permission. Suunto abandonnée (hors périmètre).
 - **Lot 4** (terminé, fusionné via la PR #14) : coach IA local (voir la section « Coach IA ») avec llama.rn ; modèles LFM2.5 1.2B et Luth-LFM2 1.2B acceptés (choix et mesures dans `docs/RAPPORT_LOT_4_MODELE.md`). Aussi : séances de moins de 20 minutes ignorées dans les calculs (musculation toujours comptée).
+- **Lot 4.1** (terminé, fusionné via la PR #16) : fiabilité. Écritures en base en file d'attente avec délai de patience (`busy_timeout`, fin de « database is locked »), une seule synchro à la fois ; bouton « Ouvrir Zepp » (module maison `modules/zepp-launcher/`, déclaration `<queries>` pour la seule app Zepp) ; chiffres repliables sur la carte « Bilan de la semaine ».
+- **Suite** (cahier des charges, section 7) : lot 5a (collecter), pause d'usage de 3 à 4 semaines, lot 5b (exploiter), lot 6 (nutrition et nuit), lot 7 (cycles et bilans).
 
 ## Coach IA
 - **100 % local** : le modèle tourne sur le téléphone. Aucun appel réseau dans le code du coach (ni API en ligne, ni téléchargement du modèle depuis l'app). L'APK de production reste sans permission Internet.

@@ -59,6 +59,43 @@ describe('demande au coach avec garde-fous', () => {
     expect(bad).toMatchObject({ kind: 'stopped', text: '' });
   });
 
+  it('répare au premier essai une réponse dont une seule phrase est fautive, sans nouvel essai', async () => {
+    const model = fakeModel([
+      'Non, tes protéines restent sous la cible. Vise 160 g par jour. Elles aident tes muscles à récupérer.\nAction : ajoute une portion de protéines au déjeuner.',
+    ]);
+    const out = await runCoach(model, ctx, question);
+    expect(out).toMatchObject({ kind: 'answer', attempts: 1 });
+    expect(out.text).toBe(
+      'Non, tes protéines restent sous la cible. Elles aident tes muscles à récupérer.\nAction : ajoute une portion de protéines au déjeuner.',
+    );
+    expect(out.removed.map((r) => r.problem.kind)).toEqual(['number']);
+    expect(model.calls).toHaveLength(1);
+  });
+
+  it('ne charge pas le modèle pour une question hors des sujets suivis', async () => {
+    const model = fakeModel([GOOD]);
+    const out = await runCoach(model, ctx, { kind: 'question', text: 'Quel est mon tour de cou ?' });
+    expect(out).toMatchObject({ kind: 'fallback', attempts: 0, facts: [] });
+    expect(model.calls).toHaveLength(0);
+  });
+
+  it('n’affiche jamais un chiffre, un diagnostic ou un verdict contredit, quelle que soit la réponse du modèle', async () => {
+    const bad = [
+      'Vise 160 g de protéines.',
+      'Tu manges assez de protéines.\nAction : continue.',
+      'C’est peut-être une maladie.\nAction : repose-toi.',
+      'Tes protéines sont à 118 g, la cible est 140 g.\nAction : mange 22 g de plus.',
+      'Consulte un médecin.',
+      '',
+    ];
+    for (const answer of bad) {
+      const out = await runCoach(fakeModel([answer, answer]), ctx, question);
+      expect(out.text).not.toMatch(/\d/);
+      expect(out.text.toLowerCase()).not.toMatch(/maladi|médecin|assez de prot/);
+      expect(out.facts[0]).toContain('sous la cible'); // le constat de l'app reste juste
+    }
+  });
+
   it('retire les emoji du conseil affiché', async () => {
     const out = await runCoach(fakeModel([`${GOOD} 🌟`]), ctx, question);
     expect(out.text).toBe(GOOD);

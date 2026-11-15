@@ -140,6 +140,20 @@ describe('bilan de la semaine', () => {
     expect(model.calls[0]).toContain('qui visent ce qui coince');
   });
 
+  it('garde le bilan du modèle réparé : phrase chiffrée retirée, deux premières actions', async () => {
+    const model = fakeModel([
+      'Semaine fatigante, ta récupération baisse. Tu as dormi 6 h par nuit.\n1. Couche-toi plus tôt.\n2. Allège une séance.\n3. Marche le soir.',
+    ]);
+    const { review, outcome } = await runWeeklyReview(model, ctx, weekToReview('2026-11-08'));
+    expect(model.calls).toHaveLength(1);
+    expect(outcome.kind).toBe('answer');
+    expect(review).toMatchObject({
+      synthesis: 'Semaine fatigante, ta récupération baisse.',
+      actions: ['Couche-toi plus tôt.', 'Allège une séance.'],
+      source: 'model',
+    });
+  });
+
   it("passe au repli de l'app après trois conseils refusés", async () => {
     const model = fakeModel(['Dors 8 h.\n1. a\n2. b', 'Ton sommeil est bon.\n1. a\n2. b', 'Je ne sais pas.\n1. a\n2. b']);
     const { review, outcome } = await runWeeklyReview(model, ctx, weekToReview('2026-11-08'));

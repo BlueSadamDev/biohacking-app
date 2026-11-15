@@ -147,12 +147,14 @@ function recoverySection(i: CoachInputs, s: Settings): CoachSection {
   }
   if (short.mean !== null) parts.push(`moyenne ${Math.round(short.mean)} sur ${c.shortDays} jours`);
   if (long.mean !== null) parts.push(`moyenne ${Math.round(long.mean)} sur ${c.longDays} jours`);
-  if (short.mean !== null && long.mean !== null) parts.push(trendWord(short.mean - long.mean, c.recoveryTrendPoints));
+  const trend = short.mean !== null && long.mean !== null ? trendWord(short.mean - long.mean, c.recoveryTrendPoints) : null;
+  if (trend) parts.push(trend);
   return section('recovery', 'Récupération', parts.join(', '), {
     score,
     status: i.recap.calibration.done ? i.recap.recommendation.status : null,
     mean7d: short.mean === null ? null : Math.round(short.mean),
     mean30d: long.mean === null ? null : Math.round(long.mean),
+    trend,
   });
 }
 
@@ -170,16 +172,20 @@ function sleepSection(i: CoachInputs, s: Settings): CoachSection {
   parts.push(
     `${shortNights} nuit${shortNights > 1 ? 's' : ''} sous ${hours(s.alerts.sleepShortMinutes)} h sur les ${short.length} dernières`,
   );
+  const belowTarget = shortMean < s.recovery.sleepTargetMinutes;
   parts.push(
-    shortMean < s.recovery.sleepTargetMinutes
+    belowTarget
       ? `sous la durée visée de ${hours(s.recovery.sleepTargetMinutes)} h`
       : `durée visée de ${hours(s.recovery.sleepTargetMinutes)} h atteinte`,
   );
-  if (longMean !== null) parts.push(`${trendWord(shortMean - longMean, c.sleepTrendMinutes)} par rapport à d'habitude`);
+  const trend = longMean !== null ? trendWord(shortMean - longMean, c.sleepTrendMinutes) : null;
+  if (trend) parts.push(`${trend} par rapport à d'habitude`);
   return section('sleep', 'Sommeil', parts.join(', '), {
     hours7d: Number(hours(shortMean).replace(',', '.')),
     hours30d: longMean === null ? null : Number(hours(longMean).replace(',', '.')),
     shortNights7d: shortNights,
+    belowTarget,
+    trend,
   });
 }
 
@@ -332,7 +338,7 @@ function alertsSection(i: CoachInputs, s: Settings): CoachSection {
   const since = addDays(i.today, -(s.coach.context.alertDays - 1));
   const recent = i.alerts.filter((a) => a.date >= since && a.date <= i.today);
   const title = `Alertes des ${s.coach.context.alertDays} derniers jours`;
-  if (recent.length === 0) return section('alerts', title, 'aucune', { count: 0 });
+  if (recent.length === 0) return section('alerts', title, 'aucune', { count: 0, persistent: 0 });
   const line = recent
     .map(
       (a) =>
@@ -342,7 +348,7 @@ function alertsSection(i: CoachInputs, s: Settings): CoachSection {
         )} ; action proposée : ${a.action.replace(/\.$/, '')}${a.persistent ? ' ; cette alerte revient souvent : un avis médical peut être utile' : ''}`,
     )
     .join(' | ');
-  return section('alerts', title, line, { count: recent.length });
+  return section('alerts', title, line, { count: recent.length, persistent: recent.filter((a) => a.persistent).length });
 }
 
 function linksSection(i: CoachInputs): CoachSection {

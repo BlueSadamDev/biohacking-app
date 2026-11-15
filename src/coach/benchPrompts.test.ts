@@ -1,15 +1,12 @@
-import { BENCH_PROMPTS, buildUserMessage, countWords, unknownNumbers, wordsPerSecond } from './benchPrompts';
+import { BENCH_CONTEXT, BENCH_PROMPTS, countWords, outcomeLine, wordsPerSecond } from './benchPrompts';
 
 describe('banc d’essai du coach', () => {
   it('prévoit les 3 demandes types', () => {
-    expect(BENCH_PROMPTS.map((p) => p.id)).toEqual(['bilan', 'pourquoi', 'libre']);
+    expect(BENCH_PROMPTS.map((p) => p.task.kind)).toEqual(['weekly', 'why-alert', 'question']);
   });
 
-  it('met le résumé chiffré (fictif) avant la demande', () => {
-    const msg = buildUserMessage('Question ?');
-    expect(msg.startsWith("Résumé de mes données calculé par l'app Aube")).toBe(true);
-    expect(msg).toContain('protéines hier : 118 g pour une cible de 140 g (sous la cible)');
-    expect(msg.endsWith('Demande : Question ?')).toBe(true);
+  it('utilise le résumé fictif', () => {
+    expect(BENCH_CONTEXT.text).toContain('protéines hier : 118 g pour une cible de 140 g (sous la cible)');
   });
 
   it('compte les mots et la vitesse', () => {
@@ -19,7 +16,13 @@ describe('banc d’essai du coach', () => {
     expect(wordsPerSecond('un', 0)).toBeNull();
   });
 
-  it('repère les nombres absents du résumé fictif', () => {
-    expect(unknownNumbers('Ton ratio est à 1,42 : vise 150 g de protéines.')).toEqual([150]);
+  it('décrit le résultat du contrôle', () => {
+    expect(outcomeLine({ kind: 'answer', text: '', attempts: 1, rejections: [] })).toBe('Contrôle réussi au 1er essai');
+    expect(
+      outcomeLine({ kind: 'answer', text: '', attempts: 2, rejections: [[{ kind: 'unknown-number', numbers: [160] }]] }),
+    ).toBe('Contrôle réussi au 2e essai (1er essai refusé : nombre absent du résumé (160))');
+    expect(outcomeLine({ kind: 'fallback', text: '', attempts: 2, rejections: [[{ kind: 'empty' }], [{ kind: 'empty' }]] })).toContain(
+      'Message de repli',
+    );
   });
 });

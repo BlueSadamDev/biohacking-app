@@ -367,6 +367,116 @@ export const SETTINGS = {
       /** FC au repos « comme d'habitude » si l'écart à la moyenne 30 j est sous N bpm. */
       restingHrUsualBpm: 1,
     },
+    /** Génération (étape C3) : longueur limitée, une seconde chance, puis un message de repli. */
+    generation: {
+      maxTokens: 220,
+      maxAttempts: 2,
+      /** Rubriques reprises dans le message de repli (au plus N). */
+      fallbackSections: 3,
+    },
+    /**
+     * Sujets d'une question libre : mots-clés (expressions régulières, sans majuscules) → rubriques
+     * du résumé mises en tête. Sans mot-clé reconnu : tout le résumé, dans l'ordre habituel.
+     */
+    focus: [
+      { pattern: 'prot[ée]ine|manger|mange|nutrition|calorie|repas|alimentation', sections: ['nutrition', 'weight'] },
+      { pattern: 'sommeil|dormi|dormir|nuit|coucher', sections: ['sleep', 'recovery'] },
+      { pattern: 'hrv|variabilit', sections: ['hrv', 'recovery'] },
+      { pattern: 'fc au repos|fréquence cardiaque|pouls|bpm', sections: ['restingHr', 'recovery'] },
+      { pattern: 'charge|entra[iî]nement|séance|seance|surcharge', sections: ['load', 'zone2'] },
+      { pattern: 'zone 2|endurance|cardio|course|courir', sections: ['zone2', 'load'] },
+      { pattern: 'force|squat|développé|developpe|soulevé|souleve|1rm|muscu', sections: ['strength', 'nutrition'] },
+      { pattern: 'poids|gras|muscle|maigrir|grossir|kilo', sections: ['weight', 'nutrition', 'strength'] },
+      { pattern: 'récup|recup|forme|fatigu|énergie', sections: ['recovery', 'hrv', 'restingHr', 'sleep'] },
+    ] as readonly { pattern: string; sections: readonly string[] }[],
+    /** Rubriques liées au thème d'une alerte (« Pourquoi ? »). */
+    alertFocus: {
+      recovery: ['recovery', 'hrv', 'restingHr', 'sleep'],
+      load: ['load', 'zone2', 'recovery'],
+      nutrition: ['nutrition', 'weight'],
+    } as Readonly<Record<string, readonly string[]>>,
+    /** Contrôle des réponses (expressions régulières, sans majuscules). */
+    guard: {
+      /**
+       * Mots de diagnostic médical : réponse refusée, sauf si le mot figure déjà dans le résumé
+       * (le coach reprend alors un texte de l'app, par exemple une alerte « maladie ou stress »).
+       */
+      diagnosis: [
+        'maladi',
+        'malade',
+        'patholog',
+        'diagnosti',
+        'syndrome',
+        'infection',
+        'd[ée]pression',
+        'burn-?out',
+        'insomnie',
+        'apn[ée]e',
+        'trouble[s]? du sommeil',
+      ] as readonly string[],
+      /** Renvoi vers un professionnel : accepté seulement si une alerte revient souvent. */
+      referral: [
+        'consult\\w* (un|une|ton|ta|le) (professionnel|médecin|medecin|docteur|spécialiste|specialiste)',
+        'avis médical',
+        'voir un médecin',
+      ] as readonly string[],
+      /** Négation juste avant une expression (« pas assez de protéines ») : ne contredit pas le verdict. */
+      negation: "\\b(pas|plus|jamais|manque|manques|ne|n')\\b[^.!?]{0,20}$",
+      /**
+       * Verdicts du résumé à ne pas contredire : si la valeur `field` de la rubrique `section`
+       * vaut l'une des valeurs `when`, aucune expression `forbidden` ne doit apparaître.
+       */
+      contradictions: [
+        {
+          section: 'nutrition',
+          field: 'proteinReached',
+          when: [false],
+          forbidden: [
+            '(assez|suffisamment) de prot[ée]ines',
+            'prot[ée]ines (sont |est )?(suffisante|bonne|solide)',
+            'bonne (base )?nutrition',
+            'apport (en prot[ée]ines )?(est )?(solide|suffisant|bon)',
+            "(cible|objectif) (de prot[ée]ines )?(est )?atteint",
+            'tu manges assez',
+          ],
+        },
+        {
+          section: 'sleep',
+          field: 'belowTarget',
+          when: [true],
+          forbidden: [
+            '(bien|assez) dormi',
+            'sommeil (est |a été |reste )?(bon|suffisant|correct|excellent)',
+            'bonne gestion du sommeil',
+            'bon sommeil',
+          ],
+        },
+        {
+          section: 'hrv',
+          field: 'position',
+          when: ['below'],
+          forbidden: ['hrv (est |reste )?(bonne|normale|stable|en hausse)', 'hrv dans (ta|la) (plage|norme)'],
+        },
+        {
+          section: 'load',
+          field: 'status',
+          when: ['rising', 'high'],
+          forbidden: ['charge (est |reste )?(normale|équilibrée|equilibree|faible|légère|legere)'],
+        },
+        {
+          section: 'zone2',
+          field: 'zone2Reached',
+          when: [false],
+          forbidden: ['(cible de )?zone 2 (est )?(atteinte|suffisante)'],
+        },
+        {
+          section: 'recovery',
+          field: 'trend',
+          when: ['en baisse'],
+          forbidden: ['récupération (est |reste )?(bonne|excellente|en hausse|stable)', 'progression en récupération'],
+        },
+      ] as readonly { section: string; field: string; when: readonly (string | number | boolean)[]; forbidden: readonly string[] }[],
+    },
   },
 
   /** Synchronisation Health Connect. */

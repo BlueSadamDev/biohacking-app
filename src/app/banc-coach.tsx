@@ -12,19 +12,10 @@ import { AppText as Text } from '@/components/AppText';
 import { BackHeader, Screen } from '@/components/Screen';
 import { colors, fonts } from '@/components/theme';
 import type { GenResult, LlamaRnEngine } from '@/coach/benchEngines';
-import {
-  BENCH_PROMPTS,
-  BENCH_SYSTEM_PROMPT,
-  buildUserMessage,
-  countWords,
-  unknownNumbers,
-  wordsPerSecond,
-  type BenchPrompt,
-} from '@/coach/benchPrompts';
+import { BENCH_CONTEXT, BENCH_PROMPTS, countWords, outcomeLine, wordsPerSecond, type BenchPrompt } from '@/coach/benchPrompts';
 import { getInstalledModel, type InstalledModel } from '@/coach/modelStore';
 import { formatBytes } from '@/domain/coachModel';
-
-const MAX_TOKENS = 300;
+import { runCoach, type CoachOutcome } from '@/domain/coachRun';
 
 /** Fichiers importés pendant le test de faisabilité (étape C0), à supprimer. */
 function leftoverFiles(): File[] {
@@ -38,7 +29,8 @@ function leftoverFiles(): File[] {
 }
 
 type Loaded = { file: string; loadMs: number };
-type RunResult = GenResult & { unknown: number[] };
+/** Résultat du circuit du coach + mesures de la dernière génération. */
+type RunResult = { outcome: CoachOutcome; last: GenResult | null };
 
 export default function CoachBenchScreen() {
   const router = useRouter();
@@ -115,8 +107,8 @@ export default function CoachBenchScreen() {
     setRunning(prompt.id);
     setPartial('');
     try {
-      const res = await engine.generate(BENCH_SYSTEM_PROMPT, buildUserMessage(prompt.question), MAX_TOKENS, setPartial);
-      setResults((r) => ({ ...r, [prompt.id]: { ...res, unknown: unknownNumbers(res.text) } }));
+      const outcome = await runCoach(engine, BENCH_CONTEXT, prompt.task, setPartial);
+      setResults((r) => ({ ...r, [prompt.id]: { outcome, last: engine.lastResult } }));
     } catch (e) {
       setError(`Génération impossible : ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -218,29 +210,32 @@ export default function CoachBenchScreen() {
   );
 }
 
-function speedLine(r: RunResult): string {
-  const tps = r.decodeMs > 0 ? (r.tokens / (r.decodeMs / 1000)).toFixed(1) : '?';
-  const wps = wordsPerSecond(r.text, r.decodeMs);
+/** Vitesse de la dernière génération (mesurée par le moteur). */
+function speedLine(g: GenResult | null): string {
+  if (!g) return 'vitesse ?';
+  const tps = g.decodeMs > 0 ? (g.tokens / (g.decodeMs / 1000)).toFixed(1) : '?';
+  const wps = wordsPerSecond(g.text, g.decodeMs);
   return `${wps === null ? '?' : wps.toFixed(1)} mots/s · ${tps} jetons/s`;
 }
 
-function timingLine(r: RunResult): string {
-  return `lecture ${(r.promptMs / 1000).toFixed(1)} s · premier mot ${
-    r.firstTokenMs === null ? '?' : (r.firstTokenMs / 1000).toFixed(1)
-  } s · total ${(r.totalMs / 1000).toFixed(1)} s · ${countWords(r.text)} mots${r.stopped ? ' · arrêté' : ''}`;
+function timingLine(g: GenResult | null): string {
+  if (!g) return '';
+  return `lecture ${(g.promptMs / 1000).toFixed(1)} s · premier mot ${
+    g.firstTokenMs === null ? '?' : (g.firstTokenMs / 1000).toFixed(1)
+  } s · dernière génération ${(g.totalMs / 1000).toFixed(1)} s · ${countWords(g.text)} mots`;
 }
 
 function ResultCard({ prompt, result: r }: { prompt: BenchPrompt; result: RunResult }) {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{prompt.label}</Text>
-      <Text>Vitesse : {speedLine(r)}</Text>
-      <Text style={styles.muted}>{timingLine(r)}</Text>
-      <Text style={r.unknown.length ? styles.warning : styles.good}>
-        {r.unknown.length ? `Nombres absents du résumé : ${r.unknown.join(', ')}` : 'Aucun nombre inventé'}
+      <Text>Vitesse : {speedLine(r.last)}</Text>
+      <Text style={styles.muted}>{timingLine(r.last)}</Text>
+      <Text style={r.outcome.kind === 'answer' && r.outcome.attempts === 1 ? styles.good : styles.warning}>
+        {outcomeLine(r.outcome)}
       </Text>
       <View style={styles.spacer} />
-      <Text>{r.text}</Text>
+      <Text>{r.outcome.text}</Text>
     </View>
   );
 }
@@ -254,9 +249,9 @@ function report(loaded: Loaded, results: Record<string, RunResult>): string {
     lines.push(
       '',
       `## ${p.label}`,
-      `${speedLine(r)} · ${timingLine(r)}`,
-      `Nombres absents du résumé : ${r.unknown.length ? r.unknown.join(', ') : 'aucun'}`,
-      r.text,
+      `${speedLine(r.last)} · ${timingLine(r.last)}`,
+      outcomeLine(r.outcome),
+      r.outcome.text,
     );
   }
   return lines.join('\n');

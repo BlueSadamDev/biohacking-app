@@ -9,7 +9,7 @@ import { AlertHistoryCard } from '@/components/AlertViews';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
 import { WhySheet, type WhyRequest } from '@/components/CoachViews';
-import { getInstalledModel } from '@/coach/modelStore';
+import { isCoachAvailable } from '@/coach/availability';
 import { BackHeader, Screen } from '@/components/Screen';
 import { ChoiceChips } from '@/components/SettingsControls';
 import { colors } from '@/components/theme';
@@ -39,7 +39,9 @@ export default function AlertsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setCoach(getInstalledModel() !== null);
+      isCoachAvailable()
+        .then(setCoach)
+        .catch(() => setCoach(false));
       loadAlerts()
         .then(setAlerts)
         .catch(() => setAlerts([]));

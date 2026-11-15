@@ -286,6 +286,9 @@ export default function SettingsScreen() {
       </SettingsGroup>
 
       <SettingsGroup title="Coach" footer={coachMessage ?? undefined}>
+        <SettingRow label="Coach">
+          <Switch label="Coach" value={user.coachEnabled} onChange={(v) => save('coachEnabled', v)} />
+        </SettingRow>
         <SettingLink label="Modèle du coach" onPress={() => router.push('/coach-modele')} />
         <SettingLink label="Effacer la conversation" color={colors.low} onPress={confirmClearConversation} />
       </SettingsGroup>

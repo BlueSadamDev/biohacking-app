@@ -26,6 +26,8 @@ export type UserSettings = {
   quietStart: TimeOfDay;
   quietEnd: TimeOfDay;
   alertsEnabled: boolean;
+  /** Coach IA activé (lot 4). Désactivé : ni bilan, ni question, ni « Pourquoi ? » ; le modèle reste installé. */
+  coachEnabled: boolean;
 };
 
 export function defaultUserSettings(settings: Settings = SETTINGS): UserSettings {
@@ -42,6 +44,7 @@ export function defaultUserSettings(settings: Settings = SETTINGS): UserSettings
     quietStart: { ...settings.quietHours.defaultStart },
     quietEnd: { ...settings.quietHours.defaultEnd },
     alertsEnabled: true,
+    coachEnabled: true,
   };
 }
 

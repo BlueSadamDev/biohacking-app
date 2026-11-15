@@ -10,7 +10,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { WhySheet, type WhyRequest } from '@/components/CoachViews';
 import { LinkCard } from '@/components/LinkCard';
-import { getInstalledModel } from '@/coach/modelStore';
+import { isCoachAvailable } from '@/coach/availability';
 import { Screen } from '@/components/Screen';
 import { colors, fonts, radius } from '@/components/theme';
 import { useHealthData } from '@/components/useHealthData';
@@ -33,8 +33,14 @@ export default function TrendsScreen() {
   const [coach, setCoach] = useState(false);
   const [why, setWhy] = useState<WhyRequest | null>(null);
 
-  // Modèle du coach installé ? (lien « Pourquoi ? » sur les cartes)
-  useFocusEffect(useCallback(() => setCoach(getInstalledModel() !== null), []));
+  // Coach activé et modèle installé ? (lien « Pourquoi ? » sur les cartes)
+  useFocusEffect(
+    useCallback(() => {
+      isCoachAvailable()
+        .then(setCoach)
+        .catch(() => setCoach(false));
+    }, []),
+  );
 
   const refresh = useCallback(() => {
     loadCorrelations()

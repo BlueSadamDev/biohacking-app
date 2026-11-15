@@ -3,6 +3,7 @@
 // Le bilan dû est rédigé à l'ouverture de l'onglet. Pour les questions, le modèle est chargé à la
 // première question et libéré quand on quitte l'onglet. Jamais deux modèles en même temps : pas de
 // question pendant la rédaction du bilan. Sans modèle installé : une carte unique vers l'écran Modèle.
+// Coach désactivé dans Réglages (étape C7) : une carte unique vers Réglages, rien n'est chargé.
 // Le champ de question reste en bas, au-dessus du clavier ; la conversation défile jusqu'au dernier message.
 
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -26,6 +27,7 @@ import { ChatSession, lastChatRejections } from '@/coach/chatSession';
 import { loadCoachContext } from '@/coach/contextLoader';
 import { getInstalledModel } from '@/coach/modelStore';
 import { generateDueWeeklyReview, type WeeklyJob } from '@/coach/weeklyService';
+import { getUserSettings } from '@/db/appSettings';
 import { loadExchanges } from '@/db/coachMessages';
 import { loadLatestWeeklyReview } from '@/db/coachWeekly';
 import type { CoachContext } from '@/domain/coachContext';
@@ -37,6 +39,8 @@ export default function CoachScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [installed, setInstalled] = useState(() => getInstalledModel() !== null);
+  /** Coach activé dans Réglages (null : pas encore lu). */
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [latest, setLatest] = useState<WeeklyReview | null>(null);
   const [writing, setWriting] = useState(false);
   const [partial, setPartial] = useState('');
@@ -57,10 +61,7 @@ export default function CoachScreen() {
   /** Suivre le bas de la conversation (après une question, pendant la réponse). */
   const follow = useRef(false);
 
-  const refresh = useCallback(() => {
-    const hasModel = getInstalledModel() !== null;
-    setInstalled(hasModel);
-    follow.current = false;
+  const load = useCallback((hasModel: boolean) => {
     loadLatestWeeklyReview()
       .then(setLatest)
       .catch(() => setLatest(null));
@@ -94,6 +95,20 @@ export default function CoachScreen() {
         setPartial('');
       });
   }, []);
+
+  const refresh = useCallback(() => {
+    const hasModel = getInstalledModel() !== null;
+    setInstalled(hasModel);
+    follow.current = false;
+    // Coach désactivé dans Réglages : rien n'est chargé ni rédigé.
+    getUserSettings()
+      .then((u) => u.coachEnabled)
+      .catch(() => true)
+      .then((on) => {
+        setEnabled(on);
+        if (on) load(hasModel);
+      });
+  }, [load]);
 
   useFocusEffect(
     useCallback(() => {
@@ -155,7 +170,16 @@ export default function CoachScreen() {
           <PrivacyBadge onPress={() => router.push('/coach-modele')} />
         </View>
 
-        {!installed ? (
+        {enabled === null ? null : !enabled ? (
+          <Card style={styles.intro}>
+            <AppText variant="strong">Le coach est désactivé</AppText>
+            <AppText variant="bodySmall" style={styles.soft}>
+              Pas de bilan de la semaine ni de réponse à tes questions tant qu’il est désactivé. Le modèle reste
+              installé et ta conversation est gardée : tu peux le réactiver dans Réglages.
+            </AppText>
+            <SecondaryButton title="Ouvrir les Réglages" onPress={() => router.navigate('/reglages')} />
+          </Card>
+        ) : !installed ? (
           <Card style={styles.intro}>
             <AppText variant="strong">Un coach qui explique tes chiffres</AppText>
             <AppText variant="bodySmall" style={styles.soft}>
@@ -234,7 +258,7 @@ export default function CoachScreen() {
         )}
       </ScrollView>
 
-      {installed && (
+      {installed && enabled && (
         <View style={styles.inputBar}>
           <QuestionInput
             value={draft}

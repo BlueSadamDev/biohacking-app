@@ -104,7 +104,7 @@ export default function CoachModelScreen() {
               <SettingValue text="pas encore mesurée" color={colors.textMuted} />
             </SettingRow>
             <SettingRow label="Bilan de la semaine">
-              <SettingValue text="dimanche, à l'ouverture" />
+              <SettingValue text="dimanche, à l'ouverture du coach" />
             </SettingRow>
           </SettingsGroup>
           <SecondaryButton title="Supprimer le modèle" color={colors.low} onPress={confirmDelete} />

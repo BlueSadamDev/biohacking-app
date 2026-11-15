@@ -49,9 +49,9 @@
 - **100 % local** : le modèle tourne sur le téléphone. Aucun appel réseau dans le code du coach (ni API en ligne, ni téléchargement du modèle depuis l'app). L'APK de production reste sans permission Internet.
 - Téléphone : Samsung Galaxy S21 5G (8 Go de RAM), sans Gemini Nano. Modèle : petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié, fichier d'environ 1 Go), installé une fois par **import manuel du fichier** (`expo-document-picker`), vérifié (taille et empreinte SHA-256) puis copié dans l'espace privé de l'app. Supprimable depuis l'app.
 - Usages : bilan de la semaine, bouton « Pourquoi ? » sur les alertes et les liens observés, questions libres encadrées. Le plan de semaine est reporté.
-- **Le coach ne calcule rien** : il reformule et explique uniquement les chiffres déjà calculés par l'app. Sa seule source de chiffres est le résumé produit par `src/domain/`. Chaque nombre d'une réponse doit exister dans ce résumé, sinon nouvelle génération, puis message de repli.
+- **Le coach ne calcule rien** : il reformule et explique uniquement les chiffres déjà calculés par l'app. Sa seule source de chiffres est le résumé produit par `src/domain/` (`coachContext.ts`). Partage des rôles (décidé au lot 4, étape C3) : **l'app écrit le constat chiffré** (« Chiffres utilisés »), toujours juste ; **le modèle n'écrit que l'explication et l'action, sans aucun chiffre**. Chaque conseil est contrôlé (chiffre, verdict contredit, diagnostic, vouvoiement…) : sinon nouvelle génération, puis conseil de repli. Règles du contrôle dans `settings.ts`.
 - Jamais de diagnostic médical ; le coach dit « je ne sais pas » quand l'information manque.
-- Le modèle n'est chargé que sur l'onglet Coach ou pour un « Pourquoi ? », puis libéré. Aucune génération en arrière-plan.
+- Le modèle n'est chargé que sur l'onglet Coach ou pour un « Pourquoi ? », puis libéré. Aucune génération en arrière-plan. Le bilan de la semaine est donc généré à la première ouverture de l'onglet Coach à partir du dimanche.
 - Les fichiers de modèle (`*.gguf`, `*.pte`, `*.bin`, `*.safetensors`, `*.onnx`…) ne vont **jamais** dans le dépôt (bloqués par `.gitignore`).
 - Les tests du coach utilisent un modèle simulé et des données fictives.
 

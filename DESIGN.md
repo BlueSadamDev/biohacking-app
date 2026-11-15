@@ -268,7 +268,7 @@ fichier depuis l'ordinateur, le copier dans Téléchargements, le choisir
 dans Aube), taille et espace nécessaires, bouton « Choisir le fichier du
 modèle ». Avec modèle : lignes de réglage État (« Installé · prêt » en
 `good`), Fichier (nom + taille), Vitesse mesurée (mots / s), Bilan de la
-semaine (« dimanche, à l'ouverture »), puis bouton secondaire « Supprimer
+semaine (« dimanche, à l'ouverture du coach »), puis bouton secondaire « Supprimer
 le modèle » en `low` avec confirmation.
 
 ## États à toujours prévoir

@@ -94,6 +94,13 @@ describe('contrôle du conseil du coach', () => {
     expect(sanitize('Est-ce suffisant ?')).toBe('Est-ce suffisant ?');
   });
 
+  it('retire les étiquettes recopiées de la consigne', () => {
+    expect(sanitize('Réponse :\n1re phrase : Non, tu dors peu.\n2e phrase : Ça freine ta récupération.\nAction : couche-toi plus tôt.')).toBe(
+      'Non, tu dors peu.\nÇa freine ta récupération.\nAction : couche-toi plus tôt.',
+    );
+    expect(checkAnswer('1re phrase : Non, tu ne dors pas assez.\nAction : couche-toi plus tôt.', ctx).ok).toBe(true);
+  });
+
   it('retire les emoji et refuse une réponse vide', () => {
     expect(sanitize('Prends soin de toi ! 🌟')).toBe('Prends soin de toi !');
     expect(kinds('  🌟 ')).toEqual(['empty']);

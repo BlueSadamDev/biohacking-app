@@ -22,7 +22,7 @@ import {
   WeeklyReviewCard,
 } from '@/components/CoachViews';
 import { colors, space } from '@/components/theme';
-import { ChatSession } from '@/coach/chatSession';
+import { ChatSession, lastChatRejections } from '@/coach/chatSession';
 import { loadCoachContext } from '@/coach/contextLoader';
 import { getInstalledModel } from '@/coach/modelStore';
 import { generateDueWeeklyReview, type WeeklyJob } from '@/coach/weeklyService';
@@ -49,6 +49,8 @@ export default function CoachScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<{ question: string; partial: string } | null>(null);
+  /** Version de développement seulement : pourquoi la dernière réponse a été refusée. */
+  const [devReasons, setDevReasons] = useState<{ id: string; text: string } | null>(null);
   const session = useRef<ChatSession | null>(null);
   const context = useRef<CoachContext | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -120,6 +122,7 @@ export default function CoachScreen() {
         if (exchange) {
           const all = [...exchanges, exchange].slice(-SETTINGS.coach.questions.historyShown);
           setExchanges(all);
+          if (__DEV__ && lastChatRejections.length) setDevReasons({ id: exchange.id, text: lastChatRejections.join('\n') });
           // Nouvelles suggestions : relances sur le sujet de cette question.
           if (context.current) setSuggestions(suggestedQuestions(context.current, all));
         }
@@ -198,6 +201,11 @@ export default function CoachScreen() {
                   <CoachAnswer text={e.answer} facts={e.facts} />
                 ) : (
                   <AppText variant="small">Réponse arrêtée.</AppText>
+                )}
+                {__DEV__ && devReasons?.id === e.id && (
+                  <AppText variant="small" style={styles.soft}>
+                    {`Refus (version de développement) :\n${devReasons.text}`}
+                  </AppText>
                 )}
               </View>
             ))}

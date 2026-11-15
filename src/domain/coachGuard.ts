@@ -29,6 +29,8 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{
 export function sanitize(text: string): string {
   const lines = text
     .replace(EMOJI, '')
+    // Étiquettes recopiées de la consigne (« Réponse : », « 1re phrase : », « Phrase 2 : ») : retirées.
+    .replace(/^[ \t]*(?:\*\*)?(?:réponse|explication|\d+(?:re|er|e|ère)? phrase|phrase \d+)(?:\*\*)?[ \t]*:[ \t]*/gim, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/[ \t]{2,}/g, ' ')
     .trim()

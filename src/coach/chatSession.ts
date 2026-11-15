@@ -3,12 +3,19 @@
 // (release) quand on le quitte. Chaque question est traitée à part (pas de mémoire des précédentes).
 
 import { saveExchange } from '@/db/coachMessages';
+import { describeProblem } from '@/domain/coachGuard';
 import type { CoachExchange } from '@/domain/coachQuestions';
 import { runCoach } from '@/domain/coachRun';
 
 import { loadCoachContext } from './contextLoader';
 import { LlamaCoachModel } from './llamaModel';
 import { getInstalledModel } from './modelStore';
+
+/**
+ * Raisons des refus de la dernière question (affichées seulement dans la version de développement),
+ * sans les chiffres écrits par le modèle : ils pourraient reprendre une vraie valeur de santé.
+ */
+export let lastChatRejections: string[] = [];
 
 export class ChatSession {
   private model: LlamaCoachModel | null = null;
@@ -35,6 +42,9 @@ export class ChatSession {
       }
       const context = await loadCoachContext(now);
       const out = await runCoach(model, context, { kind: 'question', text: question }, onText);
+      lastChatRejections = out.rejections.map(
+        (r, i) => `essai ${i + 1} : ${r.map((p) => (p.kind === 'number' ? 'chiffre écrit par le modèle' : describeProblem(p))).join(' ; ')}`,
+      );
       const exchange: CoachExchange = {
         id: `${now.getTime()}`,
         createdMs: now.getTime(),

@@ -59,8 +59,8 @@ function request(task: CoachTask, settings: Settings): string {
     case 'question':
       return [
         `« ${task.text.trim()} »`,
-        'Réponds comme dans l’exemple : 1re phrase, une réponse directe (oui, non ou en partie) qui reprend le verdict du constat ;',
-        '2e phrase, pourquoi c’est important pour ta forme ou ta progression ; puis une ligne « Action : … » qui commence par un verbe.',
+        'Réponds comme dans l’exemple, sans titre ni numéro : d’abord une réponse directe (oui, non ou en partie) qui respecte les verdicts donnés plus haut,',
+        'ensuite pourquoi c’est important pour ta forme ou ta progression, puis une ligne « Action : … » qui commence par un verbe.',
       ].join(' ');
   }
 }

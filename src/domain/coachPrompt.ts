@@ -1,5 +1,7 @@
-// Coach IA (lot 4, étape C3) : consignes système et message envoyé au modèle.
-// Le modèle reçoit le résumé chiffré (seule source de chiffres), les rubriques utiles en tête.
+// Coach IA (lot 4, étape C3) : partage des rôles entre l'app et le modèle.
+// - L'app écrit le CONSTAT : les lignes du résumé chiffré utiles à la demande, toujours justes
+//   (affichées sous la réponse, « Chiffres utilisés »).
+// - Le modèle n'écrit que l'EXPLICATION et l'ACTION, sans aucun chiffre, à partir de ce constat.
 
 import type { AlertTheme } from './alerts';
 import type { CoachContext, CoachSection, SectionKey } from './coachContext';
@@ -13,30 +15,30 @@ export type CoachTask =
   | { kind: 'question'; text: string };
 
 export const COACH_SYSTEM_PROMPT = [
-  "Tu es le coach de l'application Aube. Tu réponds en français, en tutoyant, en 4 phrases au plus.",
-  "Tu t'appuies UNIQUEMENT sur le résumé fourni, calculé par l'app. Tu ne calcules rien et tu n'inventes aucun chiffre.",
-  'Tu reprends mot pour mot le verdict du résumé (par exemple « sous la cible », « en hausse ») et tu cites au moins un chiffre du résumé.',
-  'Tu ne réponds que sur le sujet de la demande, sans parler des autres rubriques.',
-  "Tu ne poses jamais de diagnostic médical. Tu ne conseilles de consulter que si le résumé dit qu'une alerte revient souvent.",
-  "Si l'information n'est pas dans le résumé, tu dis « je ne sais pas ».",
-  "Pas d'emoji. Termine par une action concrète.",
+  "Tu es le coach de l'application Aube. Tu réponds en français, en tutoyant, avec des phrases courtes.",
+  "L'app affiche déjà le constat chiffré à l'utilisateur : tu ne le recopies pas et tu n'écris AUCUN chiffre.",
+  'Tu expliques simplement ce que veut dire ce constat, en respectant ses verdicts (« sous la cible » reste « sous la cible »), puis tu proposes une action concrète.',
+  'Tu ne parles que du sujet de la demande.',
+  "Tu ne poses jamais de diagnostic médical. Tu ne conseilles de consulter que si le constat dit qu'une alerte revient souvent.",
+  "Si le constat ne permet pas de répondre, tu dis « je ne sais pas ».",
+  "Pas d'emoji, pas de formule de politesse à la fin.",
 ].join(' ');
 
-/** Demande écrite au modèle pour chaque tâche. */
-function request(task: CoachTask): string {
+/** Demande et format attendu, pour chaque tâche. */
+function request(task: CoachTask, settings: Settings): string {
   switch (task.kind) {
     case 'weekly':
-      return 'Fais le bilan de ma semaine : une phrase de synthèse, ce qui a marché, ce qui coince, puis 2 actions numérotées pour la semaine prochaine.';
+      return `Fais le bilan de ma semaine : une phrase de synthèse, puis exactement ${settings.coach.generation.weeklyMaxActions} actions numérotées pour la semaine prochaine.`;
     case 'why-alert':
-      return `Pourquoi ai-je reçu l'alerte « ${task.title} » ? Explique simplement à partir des rubriques utiles.`;
+      return `Explique simplement pourquoi j'ai reçu l'alerte « ${task.title} », en 2 phrases au plus, puis une ligne « Action : … ».`;
     case 'why-link':
-      return `Explique simplement ce lien observé : « ${task.sentence} ». Rappelle qu'un lien n'est pas une preuve de cause.`;
+      return `Explique simplement ce lien observé : « ${task.sentence} », en 2 phrases au plus, en rappelant qu'un lien n'est pas une preuve de cause, puis une ligne « Action : … ».`;
     case 'question':
-      return task.text.trim();
+      return `${task.text.trim()} Réponds en 2 phrases au plus, puis une ligne « Action : … ».`;
   }
 }
 
-/** Rubriques mises en tête pour une tâche (vide = tout le résumé, dans l'ordre habituel). */
+/** Rubriques mises en avant pour une tâche (vide = aucune rubrique particulière). */
 export function focusSections(task: CoachTask, settings: Settings = SETTINGS): SectionKey[] {
   const keys: string[] = [];
   if (task.kind === 'why-alert') keys.push('alerts', ...(settings.coach.alertFocus[task.theme] ?? []));
@@ -48,25 +50,37 @@ export function focusSections(task: CoachTask, settings: Settings = SETTINGS): S
   return [...new Set(keys)] as SectionKey[];
 }
 
-/** Message utilisateur : rubriques utiles d'abord, puis le reste du résumé, puis la demande. */
-export function buildUserMessage(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): string {
-  const focus = focusSections(task, settings);
-  const lines = (sections: CoachSection[]) => sections.map((s) => `- ${s.line}`).join('\n');
-  const header = `Résumé de mes données calculé par l'app Aube (au ${context.date}) :`;
-  if (focus.length === 0) return `${header}\n${lines(context.sections)}\n\nDemande : ${request(task)}`;
-  const first = focus.map((k) => context.sections.find((s) => s.key === k)).filter((s): s is CoachSection => !!s);
-  const rest = context.sections.filter((s) => !focus.includes(s.key));
-  return `${header}\nRubriques utiles pour la demande :\n${lines(first)}\nAutres données :\n${lines(rest)}\n\nDemande : ${request(task)}`;
+const pick = (context: CoachContext, keys: readonly string[]) =>
+  keys.map((k) => context.sections.find((s) => s.key === k)).filter((s): s is CoachSection => !!s && s.available);
+
+/**
+ * Constat écrit par l'app : les rubriques chiffrées utiles à la demande.
+ * Bilan : les rubriques principales disponibles. Autres demandes : les rubriques mises en avant
+ * (hors alertes et liens, déjà affichés sur leur carte), au plus `factSections`.
+ */
+export function factsFor(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): CoachSection[] {
+  const g = settings.coach.generation;
+  if (task.kind === 'weekly') return pick(context, g.weeklySections);
+  const focus = focusSections(task, settings).filter((k) => k !== 'alerts' && k !== 'links');
+  return pick(context, focus.length ? focus : ['recovery', 'sleep', 'load']).slice(0, g.factSections);
 }
 
-/** Message de repli : les verdicts du résumé, sans passer par le modèle. */
-export function fallbackAnswer(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): string {
-  const focus = focusSections(task, settings);
-  const keys = focus.length ? focus : (['recovery', 'sleep', 'load'] as SectionKey[]);
-  const picked = keys
-    .map((k) => context.sections.find((s) => s.key === k))
-    .filter((s): s is CoachSection => !!s && s.available)
-    .slice(0, settings.coach.generation.fallbackSections);
-  if (picked.length === 0) return "Je ne sais pas répondre de façon sûre avec les données disponibles.";
-  return ['Je préfère ne pas improviser. Voici ce que disent tes données :', ...picked.map((s) => s.line)].join('\n');
+/** Message utilisateur : le constat (et l'alerte ou le lien concerné), puis la demande. */
+export function buildUserMessage(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): string {
+  const lines = (sections: CoachSection[]) => sections.map((s) => `- ${s.line}`).join('\n');
+  const extra = task.kind === 'why-alert' ? pick(context, ['alerts']) : task.kind === 'why-link' ? pick(context, ['links']) : [];
+  const parts = [
+    `Constat calculé par l'app Aube (au ${context.date}), déjà affiché à l'utilisateur :`,
+    lines([...extra, ...factsFor(context, task, settings)]),
+  ];
+  if (context.calibrating) parts.push("Calibration en cours : les comparaisons à la norme ne sont pas encore fiables.");
+  parts.push('', `Demande : ${request(task, settings)}`);
+  return parts.join('\n');
+}
+
+/** Conseil de repli (aucun conseil sûr n'a pu être rédigé) : le constat reste affiché. */
+export function fallbackAdvice(task: CoachTask): string {
+  return task.kind === 'weekly'
+    ? "Je n'ai pas pu rédiger de bilan fiable cette fois. Le constat ci-dessous reprend tes chiffres de la semaine."
+    : "Je n'ai pas pu rédiger d'explication fiable cette fois. Le constat ci-dessous reprend les chiffres utiles.";
 }

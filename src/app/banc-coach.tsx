@@ -236,6 +236,8 @@ function ResultCard({ prompt, result: r }: { prompt: BenchPrompt; result: RunRes
       </Text>
       <View style={styles.spacer} />
       <Text>{r.outcome.text}</Text>
+      <View style={styles.spacer} />
+      <Text style={styles.muted}>Chiffres utilisés : {r.outcome.facts.join(' ')}</Text>
     </View>
   );
 }
@@ -252,6 +254,7 @@ function report(loaded: Loaded, results: Record<string, RunResult>): string {
       `${speedLine(r.last)} · ${timingLine(r.last)}`,
       outcomeLine(r.outcome),
       r.outcome.text,
+      `Chiffres utilisés : ${r.outcome.facts.join(' ')}`,
     );
   }
   return lines.join('\n');

@@ -17,11 +17,12 @@ describe('banc d’essai du coach', () => {
   });
 
   it('décrit le résultat du contrôle', () => {
-    expect(outcomeLine({ kind: 'answer', text: '', attempts: 1, rejections: [] })).toBe('Contrôle réussi au 1er essai');
-    expect(
-      outcomeLine({ kind: 'answer', text: '', attempts: 2, rejections: [[{ kind: 'unknown-number', numbers: [160] }]] }),
-    ).toBe('Contrôle réussi au 2e essai (1er essai refusé : nombre absent du résumé (160))');
-    expect(outcomeLine({ kind: 'fallback', text: '', attempts: 2, rejections: [[{ kind: 'empty' }], [{ kind: 'empty' }]] })).toContain(
+    const base = { text: '', facts: [] };
+    expect(outcomeLine({ ...base, kind: 'answer', attempts: 1, rejections: [] })).toBe('Contrôle réussi au 1er essai');
+    expect(outcomeLine({ ...base, kind: 'answer', attempts: 2, rejections: [[{ kind: 'number', numbers: [160] }]] })).toBe(
+      'Contrôle réussi au 2e essai (1er essai refusé : chiffre écrit par le modèle (160) : les chiffres sont déjà dans le constat)',
+    );
+    expect(outcomeLine({ ...base, kind: 'fallback', attempts: 2, rejections: [[{ kind: 'empty' }], [{ kind: 'empty' }]] })).toContain(
       'Message de repli',
     );
   });

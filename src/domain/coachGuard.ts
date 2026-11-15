@@ -1,17 +1,20 @@
-// Coach IA (lot 4, étape C3) : contrôle d'une réponse du modèle avant de l'afficher.
-// Refusée si : nombre absent du résumé, verdict du résumé contredit, mot de diagnostic,
-// renvoi vers un professionnel sans alerte qui persiste, réponse vide. Les emoji sont retirés.
+// Coach IA (lot 4, étape C3) : contrôle du conseil écrit par le modèle avant de l'afficher.
+// Le constat chiffré est écrit par l'app ; le modèle ne doit écrire AUCUN chiffre.
+// Refusé si : chiffre, verdict du résumé contredit, mot de diagnostic, renvoi vers un professionnel
+// sans alerte qui persiste, trop d'actions dans le bilan, texte vide. Les emoji sont retirés.
 
 import type { CoachContext } from './coachContext';
 import { unknownNumbers } from './coachNumbers';
+import type { CoachTask } from './coachPrompt';
 import { SETTINGS, type Settings } from './settings';
 
 export type GuardProblem =
   | { kind: 'empty' }
-  | { kind: 'unknown-number'; numbers: number[] }
+  | { kind: 'number'; numbers: number[] }
   | { kind: 'contradiction'; section: string; text: string }
   | { kind: 'diagnosis'; text: string }
-  | { kind: 'referral'; text: string };
+  | { kind: 'referral'; text: string }
+  | { kind: 'too-many-actions'; count: number; max: number };
 
 export type GuardResult = { ok: boolean; text: string; problems: GuardProblem[] };
 
@@ -48,8 +51,18 @@ function firstMatch(text: string, patterns: readonly string[]): string | null {
   return null;
 }
 
-/** Contrôle une réponse par rapport au résumé qui l'a produite. */
-export function checkAnswer(answer: string, context: CoachContext, settings: Settings = SETTINGS): GuardResult {
+/** Actions numérotées (« 1. », « 2) », « Action n°3 ») du texte. */
+function countActions(text: string): number {
+  return (text.match(/^\s*(\d+[.)]|action\s*n°?\s*\d)/gim) ?? []).length;
+}
+
+/** Contrôle le conseil du modèle par rapport au résumé qui l'a produit. */
+export function checkAnswer(
+  answer: string,
+  context: CoachContext,
+  task: CoachTask | null = null,
+  settings: Settings = SETTINGS,
+): GuardResult {
   const text = sanitize(answer);
   const lower = text.toLowerCase();
   const contextLower = context.text.toLowerCase();
@@ -58,8 +71,10 @@ export function checkAnswer(answer: string, context: CoachContext, settings: Set
 
   if (text.length === 0) problems.push({ kind: 'empty' });
 
-  const unknown = unknownNumbers(text, context.numbers);
-  if (unknown.length) problems.push({ kind: 'unknown-number', numbers: unknown });
+  // Aucun chiffre : le constat chiffré est écrit par l'app (les noms comme « zone 2 » sont acceptés).
+  const withoutNames = g.numberNames.reduce((t, p) => t.replace(new RegExp(p, 'gi'), ' '), text);
+  const numbers = unknownNumbers(withoutNames, []);
+  if (numbers.length) problems.push({ kind: 'number', numbers });
 
   for (const c of g.contradictions) {
     const section = context.sections.find((s) => s.key === c.section);
@@ -73,10 +88,15 @@ export function checkAnswer(answer: string, context: CoachContext, settings: Set
   if (diagnosis) problems.push({ kind: 'diagnosis', text: diagnosis });
 
   const alerts = context.sections.find((s) => s.key === 'alerts');
-  const persistent = Number(alerts?.values.persistent ?? 0) > 0;
-  if (!persistent) {
+  if (Number(alerts?.values.persistent ?? 0) === 0) {
     const referral = firstMatch(lower, g.referral);
     if (referral) problems.push({ kind: 'referral', text: referral });
+  }
+
+  if (task?.kind === 'weekly') {
+    const count = countActions(text);
+    const max = settings.coach.generation.weeklyMaxActions;
+    if (count > max) problems.push({ kind: 'too-many-actions', count, max });
   }
 
   return { ok: problems.length === 0, text, problems };
@@ -87,13 +107,15 @@ export function describeProblem(p: GuardProblem): string {
   switch (p.kind) {
     case 'empty':
       return 'réponse vide';
-    case 'unknown-number':
-      return `nombre absent du résumé (${p.numbers.join(', ')})`;
+    case 'number':
+      return `chiffre écrit par le modèle (${p.numbers.join(', ')}) : les chiffres sont déjà dans le constat`;
     case 'contradiction':
       return `contredit le verdict « ${p.section} » (« ${p.text} »)`;
     case 'diagnosis':
       return `vocabulaire médical (« ${p.text} »)`;
     case 'referral':
       return `renvoi vers un professionnel sans alerte qui persiste (« ${p.text} »)`;
+    case 'too-many-actions':
+      return `${p.count} actions au lieu de ${p.max}`;
   }
 }

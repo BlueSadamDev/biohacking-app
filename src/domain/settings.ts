@@ -367,12 +367,20 @@ export const SETTINGS = {
       /** FC au repos « comme d'habitude » si l'écart à la moyenne 30 j est sous N bpm. */
       restingHrUsualBpm: 1,
     },
-    /** Génération (étape C3) : longueur limitée, une seconde chance, puis un message de repli. */
+    /**
+     * Génération (étape C3). Partage des rôles : l'app écrit le constat chiffré (« Chiffres utilisés »),
+     * le modèle n'écrit que l'explication et l'action, SANS aucun chiffre. Longueur limitée,
+     * une seconde chance, puis un conseil de repli.
+     */
     generation: {
-      maxTokens: 220,
+      maxTokens: 200,
       maxAttempts: 2,
-      /** Rubriques reprises dans le message de repli (au plus N). */
-      fallbackSections: 3,
+      /** Rubriques du constat pour une question ou un « Pourquoi ? » (au plus N). */
+      factSections: 3,
+      /** Rubriques du constat du bilan de la semaine (celles qui sont disponibles). */
+      weeklySections: ['recovery', 'sleep', 'hrv', 'restingHr', 'load', 'zone2', 'nutrition', 'strength', 'weight'] as readonly string[],
+      /** Actions numérotées au plus dans le bilan de la semaine. */
+      weeklyMaxActions: 2,
     },
     /**
      * Sujets d'une question libre : mots-clés (expressions régulières, sans majuscules) → rubriques
@@ -420,6 +428,8 @@ export const SETTINGS = {
         'avis médical',
         'voir un médecin',
       ] as readonly string[],
+      /** Noms qui contiennent un chiffre sans en être un (« zone 2 », « 1RM ») : acceptés dans le conseil. */
+      numberNames: ['zone\\s*[1-5]', '\\b1\\s?rm\\b', 'n°\\s*\\d'] as readonly string[],
       /** Négation juste avant une expression (« pas assez de protéines ») : ne contredit pas le verdict. */
       negation: "\\b(pas|plus|jamais|manque|manques|ne|n')\\b[^.!?]{0,20}$",
       /**
@@ -438,6 +448,9 @@ export const SETTINGS = {
             'apport (en prot[ée]ines )?(est )?(solide|suffisant|bon)',
             "(cible|objectif) (de prot[ée]ines )?(est )?atteint",
             'tu manges assez',
+            'proche de (ta |la )?cible',
+            'dans (ta |la )?cible',
+            'bonne base',
           ],
         },
         {
@@ -461,7 +474,10 @@ export const SETTINGS = {
           section: 'load',
           field: 'status',
           when: ['rising', 'high'],
-          forbidden: ['charge (est |reste )?(normale|équilibrée|equilibree|faible|légère|legere)'],
+          forbidden: [
+            'charge (est |reste )?(normale|équilibrée|equilibree|faible|légère|legere)',
+            'charge[^.!?]{0,60}(positi|bonne nouvelle|encourageant)',
+          ],
         },
         {
           section: 'zone2',

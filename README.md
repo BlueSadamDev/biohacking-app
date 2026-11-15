@@ -6,7 +6,7 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition) et 3 (progression et corrélations) terminés ; lot 4 (coach IA local) en cours.
+- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition) 3 (progression et corrélations) et 4 (coach IA local) terminés.
 
 ## Organisation du code
 

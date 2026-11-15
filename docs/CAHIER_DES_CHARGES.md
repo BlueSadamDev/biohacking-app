@@ -153,7 +153,7 @@ Application Expo (React Native, TypeScript), 100 % locale, développée avec Cla
 | Stockage | expo-sqlite | Données fusionnées, normes, alertes |
 | Tâches de fond | expo-background-task (WorkManager, 15 min minimum) | Synchro horaire, calculs de nuit, récap du matin |
 | Notifications | expo-notifications | Récap du matin, alertes |
-| Coach IA | Moteur local à choisir au test de faisabilité du lot 4 (llama.rn ou react-native-executorch) | Faire tourner le petit modèle ouvert sur le téléphone |
+| Coach IA | llama.rn (moteur local choisi au test de faisabilité du lot 4) | Faire tourner le petit modèle ouvert sur le téléphone |
 | Import de fichier | expo-document-picker | Importer le fichier du modèle (une fois) |
 | Tests des calculs | Jest (jest-expo) sur données fictives | Vérifier les règles sans lire le code |
 | Architecture | Dossiers séparés : sources, domain (calculs), db, écrans | Ajouter une source sans casser le reste |
@@ -232,4 +232,4 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 2. ~~Lot 1 : récap du matin.~~ Fait (PR #5).
 3. ~~Lot 2 : alertes, charge et nutrition.~~ Fait (PR #8).
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
-5. Lot 4 (coach IA local) : cadré (F6). Première étape : test de faisabilité du modèle sur le S21, rapport `docs/RAPPORT_LOT_4_MODELE.md`, puis choix du modèle.
+5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).

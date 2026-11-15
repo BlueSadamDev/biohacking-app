@@ -33,6 +33,8 @@ export function WhyLink({ onPress }: { onPress: () => void }) {
 /** Bulle de réponse du coach : explication (14), lignes « Action : » (14/600), chiffres utilisés (11). */
 export function CoachAnswer({ text, facts }: { text: string; facts: string[] }) {
   const lines = text.split('\n').filter((l) => l.trim());
+  // « Chiffres utilisés » repliés par défaut : un appui les affiche.
+  const [showFacts, setShowFacts] = useState(false);
   return (
     <View style={styles.bubble}>
       {lines.map((l, i) => (
@@ -40,7 +42,21 @@ export function CoachAnswer({ text, facts }: { text: string; facts: string[] }) 
           {l}
         </AppText>
       ))}
-      {facts.length > 0 && <AppText style={styles.facts}>Chiffres utilisés : {facts.join(' ')}</AppText>}
+      {facts.length > 0 && (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showFacts }}
+            hitSlop={10}
+            onPress={() => setShowFacts((v) => !v)}
+            style={({ pressed }) => [styles.factsToggle, pressed && { opacity: 0.7 }]}>
+            <AppText style={styles.factsToggleText}>
+              {showFacts ? 'Masquer les chiffres utilisés' : 'Voir les chiffres utilisés'}
+            </AppText>
+          </Pressable>
+          {showFacts && <AppText style={styles.facts}>{facts.join(' ')}</AppText>}
+        </>
+      )}
     </View>
   );
 }
@@ -343,4 +359,6 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: colors.surfaceAlt, marginVertical: 4 },
   action: { fontFamily: fonts.body600, fontSize: 14, color: colors.text },
   facts: { fontFamily: fonts.body400, fontSize: 11, color: colors.tabInactive, marginTop: 4 },
+  factsToggle: { alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center', marginTop: 4 },
+  factsToggleText: { fontFamily: fonts.body600, fontSize: 12, color: colors.infoText },
 });

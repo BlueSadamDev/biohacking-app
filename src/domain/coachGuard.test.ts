@@ -84,6 +84,20 @@ describe('contrôle du conseil du coach', () => {
     expect(describeProblem({ kind: 'meta', text: 'tableau' })).toContain('réponse directe');
   });
 
+  it('refuse une réponse à la première personne, accepte « je ne peux pas encore le dire »', () => {
+    expect(kinds('Non, je dors moins que prévu.\nAction : couche-toi plus tôt.')).toContain('first-person');
+    expect(kinds('C’est important pour ma récupération.')).toContain('first-person');
+    expect(kinds('Je ne peux pas encore le dire : il faut une pesée récente.\nAction : pèse-toi demain matin.')).toEqual([]);
+  });
+
+  it('refuse une réponse hors du sujet de la question', () => {
+    const food = { kind: 'question' as const, text: 'Est-ce que je mange bien ?' };
+    expect(kinds('Non, tu dors moins que la durée visée.\nAction : couche-toi plus tôt.', food)).toEqual(['off-topic']);
+    expect(kinds('Tes protéines restent sous la cible.\nAction : ajoute une portion de protéines au déjeuner.', food)).toEqual([]);
+    // Question sans sujet reconnu : pas de contrôle du sujet.
+    expect(kinds('Tu récupères moins bien.\nAction : allège ta séance.', { kind: 'question', text: 'Que faire demain ?' })).toEqual([]);
+  });
+
   it('refuse le vouvoiement', () => {
     expect(kinds('Action : augmentez votre apport en protéines.')).toContain('formal');
     expect(describeProblem({ kind: 'formal', text: 'votre' })).toContain('tutoie');

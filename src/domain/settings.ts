@@ -526,6 +526,14 @@ export const SETTINGS = {
        * figure déjà dans le résumé.
        */
       unmeasured: ['qualit', 'hydrat', '\\bstress'] as readonly string[],
+      /**
+       * Réponse écrite à la première personne (« je dors », « ma récupération ») : refusée.
+       * « Je ne sais pas » et « Je ne peux pas encore le dire » restent acceptés.
+       */
+      firstPerson: [
+        "\\bje (dors|mange|récup|recup|m'entra|m’entra|progress|suis|dois|cours)",
+        '\\b(ma|mon|mes) (récup|recup|sommeil|progr|forme|séance|seance|charge|prot|alimentation|nutrition|poids|nuit|heure|repas)',
+      ] as readonly string[],
       /** Vouvoiement : refusé (l'app tutoie). */
       formalYou: ['\\bvous\\b', '\\bvotre\\b', '\\bvos\\b'] as readonly string[],
       /** Noms qui contiennent un chiffre sans en être un (« zone 2 », « 1RM ») : acceptés dans le conseil. */

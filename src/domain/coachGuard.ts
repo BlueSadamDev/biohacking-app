@@ -16,6 +16,8 @@ export type GuardProblem =
   | { kind: 'referral'; text: string }
   | { kind: 'action-count'; count: number; max: number }
   | { kind: 'formal'; text: string }
+  | { kind: 'first-person'; text: string }
+  | { kind: 'off-topic' }
   | { kind: 'unsure' }
   | { kind: 'meta'; text: string }
   | { kind: 'unmeasured'; text: string };
@@ -107,6 +109,16 @@ export function checkAnswer(
   const formal = firstMatch(lower, g.formalYou);
   if (formal) problems.push({ kind: 'formal', text: formal });
 
+  const firstPerson = firstMatch(lower, g.firstPerson);
+  if (firstPerson) problems.push({ kind: 'first-person', text: firstPerson });
+
+  // Question sur un sujet reconnu (nutrition, sommeil…) : la réponse doit en parler
+  // (refuse, par exemple, une réponse sur le sommeil à « Est-ce que je mange bien ? »).
+  if (task?.kind === 'question' && text.length > 0) {
+    const topics = settings.coach.focus.filter((f) => new RegExp(f.pattern).test(task.text.toLowerCase()));
+    if (topics.length && !topics.some((f) => new RegExp(f.pattern).test(lower))) problems.push({ kind: 'off-topic' });
+  }
+
   const meta = firstMatch(lower, g.meta);
   if (meta) problems.push({ kind: 'meta', text: meta });
 
@@ -143,6 +155,10 @@ export function describeProblem(p: GuardProblem): string {
       return `${p.count} actions au lieu de ${p.max}`;
     case 'formal':
       return `vouvoiement (« ${p.text} ») : tutoie l'utilisateur`;
+    case 'first-person':
+      return `écrit à la première personne (« ${p.text} ») : parle à l'utilisateur en le tutoyant`;
+    case 'off-topic':
+      return 'ne parle pas du sujet de la question';
     case 'meta':
       return `commentaire sur les données (« ${p.text} ») au lieu d'une réponse directe`;
     case 'unmeasured':

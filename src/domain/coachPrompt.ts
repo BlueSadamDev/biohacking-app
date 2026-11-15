@@ -40,7 +40,7 @@ function request(task: CoachTask, settings: Settings): string {
       return [
         `Fais le bilan de ma semaine. Commence directement par une synthèse de ${settings.coach.generation.weeklySynthesisSentences} phrases bien rédigées qui s'adressent à moi (par exemple « Ta semaine… »), qui disent ce qui a marché et ce qui coince, sans parler du « constat ».`,
         `Puis écris exactement ${n} actions numérotées pour la semaine prochaine, une par ligne : ${target}.`,
-        "N'écris aucun chiffre, même pour une durée ou une quantité : écris « un peu plus tôt », pas « 30 minutes ».",
+        "Chaque action est une phrase complète qui commence par un verbe. N'écris aucun chiffre, même pour une durée ou une quantité : écris par exemple « Couche-toi un peu plus tôt », pas « Couche-toi 30 minutes plus tôt ».",
       ].join(' ');
     }
     case 'why-alert':

@@ -13,7 +13,7 @@
   - `src/db/` : base de données locale ;
   - `src/components/` : composants d'interface réutilisables ;
   - `src/background/` : tâche de fond (synchro horaire) et notification du récap du matin ;
-  - `src/coach/` : coach IA local (lot 4) : fichier du modèle, moteur, banc d'essai temporaire.
+  - `src/coach/` : coach IA local (lot 4) : fichier du modèle, moteur, gardien de la mémoire, services (bilan, « Pourquoi ? », questions).
 
 ## Données de santé et confidentialité
 - Toutes les données restent sur le téléphone. Aucun appel réseau dans le code de l'application, aucun SDK d'analytics, de suivi des plantages ou de publicité.

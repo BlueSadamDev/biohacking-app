@@ -10,8 +10,8 @@
 
 ## Organisation du code
 
-- `src/app/` : les écrans. Onglets : Aujourd'hui, Tendances, Sport, Coach (lot 4), Réglages. Autres écrans : Détail (HRV, FC au repos, Sommeil, Poids), Saisie du matin, Saisie de séance de musculation, Sources de données, Alertes, Diagnostic, Modèle du coach, Bilans de la semaine, Banc d'essai du coach (temporaire, lot 4).
-- `src/coach/` : coach IA local (lot 4) : installation et vérification du fichier du modèle, banc d'essai.
+- `src/app/` : les écrans. Onglets : Aujourd'hui, Tendances, Sport, Coach (lot 4), Réglages. Autres écrans : Détail (HRV, FC au repos, Sommeil, Poids), Saisie du matin, Saisie de séance de musculation, Sources de données, Alertes, Diagnostic, Modèle du coach, Bilans de la semaine.
+- `src/coach/` : coach IA local (lot 4) : installation et vérification du fichier du modèle, moteur local, gardien de la mémoire, bilan de la semaine, « Pourquoi ? » et questions.
 - `src/sources/` : lecture de Health Connect (dont les repas de Suivi macro et les séances) et saisie manuelle.
 - `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation, charge d'entraînement, nutrition, alertes, zones cardiaques, musculation et 1RM, composition corporelle, liens observés, suggestions de sports et leur catalogue, export CSV). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
 - `src/db/` : base de données locale (SQLite), réglages de l'utilisateur, historique des alertes, saisies de musculation, export CSV et effacement.

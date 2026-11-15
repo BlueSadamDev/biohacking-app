@@ -126,11 +126,6 @@ export default function InventoryScreen() {
     <Screen bottomInset>
       <BackHeader title="Diagnostic" onBack={() => router.back()} />
       <Text style={styles.subtitle}>Données reçues sur les {DAYS} derniers jours</Text>
-      {/* Lot 4, étape C0 (temporaire) : banc d'essai des modèles du coach. */}
-      <View style={styles.block}>
-        <Button title="Banc d'essai du coach" onPress={() => router.push('/banc-coach')} />
-      </View>
-
       {state.kind === 'loading' && <ActivityIndicator size="large" color={colors.text} style={styles.block} />}
 
       {state.kind === 'unavailable' && (

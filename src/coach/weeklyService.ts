@@ -3,7 +3,6 @@
 // chargé pour l'occasion puis libéré. Le résumé est construit pour le dimanche de la semaine couverte.
 
 import { loadLatestWeeklyReview, saveWeeklyReview } from '@/db/coachWeekly';
-import { describeProblem } from '@/domain/coachGuard';
 import { dayKey } from '@/domain/dates';
 import { isReviewDue, runWeeklyReview, weekToReview, type WeeklyReview } from '@/domain/weeklyReview';
 
@@ -18,12 +17,6 @@ export type WeeklyJob = {
   /** Arrêt décidé par l'app (onglet quitté) : rien n'est enregistré, le bilan sera rédigé à la prochaine visite. */
   cancel: () => Promise<void>;
 };
-
-/**
- * Raisons des refus du dernier bilan rédigé pendant cette session (banc d'essai, réglage du coach).
- * Ne contient que des types de refus et les mots refusés, jamais de valeur de santé.
- */
-export let lastWeeklyRejections: string[][] = [];
 
 /**
  * Rédige et enregistre le bilan dû, puis libère le modèle. Renvoie null si aucun bilan n'est dû
@@ -49,13 +42,9 @@ export async function generateDueWeeklyReview(
   onStart({ stop: () => model.stop(), cancel: () => model.interrupt() });
   try {
     await model.load();
-    const { review, outcome } = await runWeeklyReview(model, context, week, onText, now.getTime());
+    const { review } = await runWeeklyReview(model, context, week, onText, now.getTime());
     // Interrompu par l'app (onglet quitté, app en arrière-plan, autre modèle) : réessayé à la prochaine visite.
     if (model.interrupted) return null;
-    // Sans les chiffres écrits par le modèle : ils pourraient reprendre une vraie valeur de santé.
-    lastWeeklyRejections = outcome.rejections.map((r) =>
-      r.map((p) => (p.kind === 'number' ? 'chiffre écrit par le modèle' : describeProblem(p))),
-    );
     await saveWeeklyReview(review);
     return review;
   } finally {

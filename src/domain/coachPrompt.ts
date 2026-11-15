@@ -75,8 +75,16 @@ const pick = (context: CoachContext, keys: readonly string[]) =>
 export function factsFor(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): CoachSection[] {
   const g = settings.coach.generation;
   if (task.kind === 'weekly') return pick(context, task.sections?.length ? task.sections : g.weeklySections);
+  // Lien observé : le constat est le lien lui-même (voir factLines), pas d'autres rubriques.
+  if (task.kind === 'why-link') return [];
   const focus = focusSections(task, settings).filter((k) => k !== 'alerts' && k !== 'links');
   return pick(context, focus.length ? focus : ['recovery', 'sleep', 'load']).slice(0, g.factSections);
+}
+
+/** Lignes « Chiffres utilisés » affichées sous le conseil (écrites par l'app). */
+export function factLines(context: CoachContext, task: CoachTask, settings: Settings = SETTINGS): string[] {
+  if (task.kind === 'why-link') return [`Lien observé : ${task.sentence}`];
+  return factsFor(context, task, settings).map((s) => s.line);
 }
 
 /** Message utilisateur : le constat (et l'alerte ou le lien concerné), puis la demande. */

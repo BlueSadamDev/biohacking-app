@@ -8,6 +8,7 @@ import type { StoredAlert } from '@/db/alerts';
 import { LEVEL_LABEL, THEME_LABEL, type AlertLevel } from '@/domain/alerts';
 
 import { AppText } from './AppText';
+import { WhyLink } from './CoachViews';
 import { formatShortDate } from './format';
 import { BellIcon, ChevronIcon } from './Icons';
 import { colors, fonts, radius, TOUCH } from './theme';
@@ -55,7 +56,7 @@ export function TodayAlertCard({ alert, onPress }: { alert: StoredAlert; onPress
 }
 
 /** Carte de l'historique : niveau · thème et date, titre, constat, cause probable, action. */
-export function AlertHistoryCard({ alert }: { alert: StoredAlert }) {
+export function AlertHistoryCard({ alert, onWhy }: { alert: StoredAlert; onWhy?: () => void }) {
   const color = levelColor(alert.level);
   return (
     <View style={styles.card}>
@@ -80,6 +81,7 @@ export function AlertHistoryCard({ alert }: { alert: StoredAlert }) {
           Cette alerte revient souvent : si ça dure, parles-en à un professionnel de santé.
         </AppText>
       )}
+      {onWhy && <WhyLink onPress={onWhy} />}
     </View>
   );
 }

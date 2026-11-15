@@ -97,6 +97,29 @@ describe('demande au coach avec garde-fous', () => {
     expect(buildUserMessage(ctx, { kind: 'weekly' })).toContain('exactement 2 actions numérotées');
   });
 
+  it('explique un lien observé à partir du lien lui-même, en rappelant que ce n’est pas une cause', async () => {
+    const task = { kind: 'why-link', sentence: 'Les soirs de séance après 20 h, ta HRV de la nuit est inférieure de 12 % en moyenne.' } as const;
+    expect(factsFor(ctx, task)).toEqual([]);
+    const msg = buildUserMessage(ctx, task);
+    expect(msg).toContain('- Liens observés (90 derniers jours) : lien modéré');
+    expect(msg).toContain("en rappelant qu'un lien n'est pas une preuve de cause");
+    expect(msg).not.toContain('- Sommeil :');
+    const out = await runCoach(
+      fakeModel(['Les séances tardives semblent peser sur ta HRV, sans que ce soit une preuve de cause.\nAction : avance tes séances intenses.']),
+      ctx,
+      task,
+    );
+    expect(out.kind).toBe('answer');
+    expect(out.facts).toEqual([`Lien observé : ${task.sentence}`]);
+  });
+
+  it("met en avant les rubriques liées au thème de l'alerte", () => {
+    const recovery = { kind: 'why-alert', title: 'HRV basse', theme: 'recovery' } as const;
+    expect(factsFor(ctx, recovery).map((s) => s.key)).toEqual(['recovery', 'hrv', 'restingHr']);
+    const nutrition = { kind: 'why-alert', title: 'Protéines sous la cible', theme: 'nutrition' } as const;
+    expect(factsFor(ctx, nutrition).map((s) => s.key)).toEqual(['nutrition', 'weight']);
+  });
+
   it('signale la calibration en cours au modèle', () => {
     const nights = series('2026-11-08', 10);
     const calibrating = buildCoachContext(coachInputs({ nights, recap: buildRecap(nights, '2026-11-08') }));

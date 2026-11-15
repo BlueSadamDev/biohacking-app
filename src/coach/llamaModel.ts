@@ -27,6 +27,8 @@ const THREADS = 4;
 export class LlamaCoachModel implements CoachModel {
   readonly label = 'llama.rn';
   private ctx: LlamaContext | null = null;
+  /** Arrêt demandé par l'utilisateur : plus aucune génération sur ce modèle. */
+  private cancelled = false;
   /** Mesures de la dernière génération (banc d'essai, vitesse mesurée). */
   lastResult: GenResult | null = null;
 
@@ -43,6 +45,10 @@ export class LlamaCoachModel implements CoachModel {
   }
 
   async generate(system: string, user: string, maxTokens: number, onText: (text: string) => void): Promise<GenResult> {
+    // Arrêt demandé avant le début (par exemple panneau fermé pendant le chargement) : rien à générer.
+    if (this.cancelled) {
+      return { text: '', tokens: 0, promptMs: 0, decodeMs: 0, firstTokenMs: null, totalMs: 0, stopped: true };
+    }
     if (!this.ctx) throw new Error('Modèle non chargé');
     const start = Date.now();
     let firstTokenMs: number | null = null;
@@ -76,6 +82,7 @@ export class LlamaCoachModel implements CoachModel {
   }
 
   async stop(): Promise<void> {
+    this.cancelled = true;
     await this.ctx?.stopCompletion();
   }
 

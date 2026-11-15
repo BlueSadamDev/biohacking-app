@@ -1,14 +1,123 @@
-// Composants du coach (DESIGN.md, « Écrans du lot 4 ») : badge « 100 % sur ton téléphone »
-// et carte « Bilan de la semaine ».
+// Composants du coach (DESIGN.md, « Écrans du lot 4 ») : badge « 100 % sur ton téléphone »,
+// carte « Bilan de la semaine », lien « Pourquoi ? », bulle de réponse et panneau du bas.
 
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { explain, type ExplainJob } from '@/coach/explainService';
+import type { CoachTask } from '@/domain/coachPrompt';
+import type { CoachOutcome } from '@/domain/coachRun';
 import type { WeeklyReview } from '@/domain/weeklyReview';
 
 import { AppText } from './AppText';
+import { SecondaryButton } from './Buttons';
 import { formatShortDate } from './format';
 import { LockIcon } from './Icons';
-import { colors, fonts, radius } from './theme';
+import { colors, fonts, radius, TOUCH } from './theme';
+
+/** Lien « Pourquoi ? » en bas d'une carte alerte ou lien observé (masqué sans modèle : à l'appelant). */
+export function WhyLink({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Pourquoi ? Explication du coach"
+      onPress={onPress}
+      hitSlop={10}
+      style={({ pressed }) => [styles.why, pressed && { opacity: 0.7 }]}>
+      <AppText style={styles.whyText}>Pourquoi ?</AppText>
+    </Pressable>
+  );
+}
+
+/** Bulle de réponse du coach : explication (14), lignes « Action : » (14/600), chiffres utilisés (11). */
+export function CoachAnswer({ text, facts }: { text: string; facts: string[] }) {
+  const lines = text.split('\n').filter((l) => l.trim());
+  return (
+    <View style={styles.bubble}>
+      {lines.map((l, i) => (
+        <AppText key={i} style={/^\s*action\s*:/i.test(l) ? styles.answerAction : styles.answer}>
+          {l}
+        </AppText>
+      ))}
+      {facts.length > 0 && <AppText style={styles.facts}>Chiffres utilisés : {facts.join(' ')}</AppText>}
+    </View>
+  );
+}
+
+export type WhyRequest = { task: CoachTask; date: string | null; title: string };
+
+/** Panneau du bas « Pourquoi ? » : le modèle est chargé à l'ouverture et libéré à la fermeture. */
+export function WhySheet({ request, onClose }: { request: WhyRequest | null; onClose: () => void }) {
+  return (
+    <Modal visible={!!request} transparent animationType="slide" onRequestClose={onClose}>
+      {/* Contenu monté seulement pendant l'ouverture : chaque « Pourquoi ? » repart de zéro. */}
+      {request && <WhyContent request={request} onClose={onClose} />}
+    </Modal>
+  );
+}
+
+function WhyContent({ request, onClose }: { request: WhyRequest; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [partial, setPartial] = useState('');
+  const [outcome, setOutcome] = useState<CoachOutcome | null>(null);
+  const [failed, setFailed] = useState(false);
+  const job = useRef<ExplainJob | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    explain(request.task, request.date, (t) => alive && setPartial(t), (j) => (job.current = j))
+      .then((o) => alive && (o ? setOutcome(o) : setFailed(true)))
+      .catch(() => alive && setFailed(true))
+      .finally(() => {
+        job.current = null;
+      });
+    return () => {
+      // Fermeture : on arrête la génération ; le modèle est libéré par explain().
+      alive = false;
+      job.current?.stop().catch(() => undefined);
+    };
+  }, [request]);
+
+  const running = !outcome && !failed;
+
+  return (
+    <>
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Fermer" />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+        <AppText variant="label">Pourquoi ?</AppText>
+        <AppText variant="strong">{request.title}</AppText>
+        <ScrollView style={styles.sheetBody} contentContainerStyle={styles.sheetContent}>
+          {running && (
+            <View style={styles.bubble}>
+              {partial ? (
+                <AppText style={styles.answer}>{partial}</AppText>
+              ) : (
+                <View style={styles.loading}>
+                  <ActivityIndicator color={colors.text} />
+                  <AppText variant="small">Le coach prépare son explication…</AppText>
+                </View>
+              )}
+            </View>
+          )}
+          {outcome &&
+            (outcome.text ? (
+              <CoachAnswer text={outcome.text} facts={outcome.facts} />
+            ) : (
+              <AppText variant="small">Explication arrêtée.</AppText>
+            ))}
+          {failed && <AppText variant="small">Le coach n’a pas pu répondre. Vérifie l’écran « Modèle du coach ».</AppText>}
+        </ScrollView>
+        <AppText style={styles.notice}>Le coach explique tes chiffres, il n’en invente pas. Ce n’est pas un avis médical.</AppText>
+        {running ? (
+          <SecondaryButton title="Arrêter" onPress={() => job.current?.stop()} />
+        ) : (
+          <SecondaryButton title="Fermer" onPress={onClose} />
+        )}
+      </View>
+    </>
+  );
+}
 
 /** Badge : pilule de 32 px, fond surface, cadenas 14 px + texte 12 textSoft. Ouvre l'écran Modèle. */
 export function PrivacyBadge({ onPress }: { onPress: () => void }) {
@@ -65,6 +174,36 @@ function Line({ label, color, text }: { label: string; color: string; text: stri
 }
 
 const styles = StyleSheet.create({
+  why: { minHeight: TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
+  whyText: { fontFamily: fonts.body600, fontSize: 13, color: colors.infoText },
+  bubble: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 4,
+    padding: 14,
+    gap: 8,
+    maxWidth: '88%',
+  },
+  answer: { fontFamily: fonts.body400, fontSize: 14, color: colors.text },
+  answerAction: { fontFamily: fonts.body600, fontSize: 14, color: colors.text },
+  loading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+  sheet: {
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    borderColor: colors.surfaceAlt,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 12,
+    maxHeight: '80%',
+  },
+  sheetBody: { flexGrow: 0 },
+  sheetContent: { gap: 12 },
+  notice: { fontSize: 11, color: colors.tabInactive, textAlign: 'center' },
   badge: {
     height: 32,
     borderRadius: radius.pill,

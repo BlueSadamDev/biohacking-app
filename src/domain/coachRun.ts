@@ -6,7 +6,7 @@
 
 import type { CoachContext } from './coachContext';
 import { checkAnswer, describeProblem, type GuardProblem } from './coachGuard';
-import { buildUserMessage, COACH_SYSTEM_PROMPT, factsFor, fallbackAdvice, type CoachTask } from './coachPrompt';
+import { buildUserMessage, COACH_SYSTEM_PROMPT, factLines, fallbackAdvice, type CoachTask } from './coachPrompt';
 import { SETTINGS, type Settings } from './settings';
 
 /** Ce que l'app attend d'un modèle de langage local. */
@@ -40,7 +40,7 @@ export async function runCoach(
   settings: Settings = SETTINGS,
 ): Promise<CoachOutcome> {
   const g = settings.coach.generation;
-  const facts = factsFor(context, task, settings).map((s) => s.line);
+  const facts = factLines(context, task, settings);
   const base = buildUserMessage(context, task, settings);
   const rejections: GuardProblem[][] = [];
   let user = base;

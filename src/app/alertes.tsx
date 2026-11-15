@@ -8,6 +8,8 @@ import { StyleSheet, View } from 'react-native';
 import { AlertHistoryCard } from '@/components/AlertViews';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
+import { WhySheet, type WhyRequest } from '@/components/CoachViews';
+import { getInstalledModel } from '@/coach/modelStore';
 import { BackHeader, Screen } from '@/components/Screen';
 import { ChoiceChips } from '@/components/SettingsControls';
 import { colors } from '@/components/theme';
@@ -32,9 +34,12 @@ export default function AlertsScreen() {
   const [alerts, setAlerts] = useState<StoredAlert[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [quiet, setQuiet] = useState<string | null>(null);
+  const [coach, setCoach] = useState(false);
+  const [why, setWhy] = useState<WhyRequest | null>(null);
 
   useFocusEffect(
     useCallback(() => {
+      setCoach(getInstalledModel() !== null);
       loadAlerts()
         .then(setAlerts)
         .catch(() => setAlerts([]));
@@ -72,7 +77,18 @@ export default function AlertsScreen() {
               </AppText>
             </Card>
           ) : (
-            shown.map((a) => <AlertHistoryCard key={a.id} alert={a} />)
+            shown.map((a) => (
+              <AlertHistoryCard
+                key={a.id}
+                alert={a}
+                // « Pourquoi ? » seulement si le modèle du coach est installé.
+                onWhy={
+                  coach
+                    ? () => setWhy({ task: { kind: 'why-alert', title: a.title, theme: a.theme }, date: a.date, title: a.title })
+                    : undefined
+                }
+              />
+            ))
           )}
         </>
       )}
@@ -85,6 +101,7 @@ export default function AlertsScreen() {
           Ces alertes ne remplacent pas un avis médical.
         </AppText>
       </View>
+      <WhySheet request={why} onClose={() => setWhy(null)} />
     </Screen>
   );
 }

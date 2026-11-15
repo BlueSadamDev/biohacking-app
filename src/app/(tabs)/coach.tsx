@@ -123,7 +123,8 @@ export default function CoachScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+  // Le badge passe sous le titre si la place manque (grands textes du système).
+  header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
   titles: { gap: 2 },
   intro: { gap: 12 },
   writingHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },

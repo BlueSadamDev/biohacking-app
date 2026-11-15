@@ -76,7 +76,7 @@ describe('bilan de la semaine', () => {
     expect(weeklyFacts(ctx, [...stuck, ...worked])).toEqual([
       'charge 1,42',
       'sommeil 6,4 h par nuit',
-      'protéines sous la cible 4 jours sur 7',
+      'protéines dans la cible 3 jours sur 7 avec repas',
       'squat 112 kg, développé couché 84 kg, soulevé de terre 138 kg',
     ]);
   });
@@ -87,6 +87,18 @@ describe('bilan de la semaine', () => {
       actions: ['Couche-toi plus tôt.', 'Allège une séance.'],
     });
     expect(parseWeeklyAnswer('Voici ton bilan :\nSemaine dense.\nAction n°1 : dors.\nAction n°2 : marche.').actions).toEqual(['dors.', 'marche.']);
+  });
+
+  it('ne garde que la première phrase de synthèse, sans phrase d’annonce', () => {
+    const answer =
+      'Ta semaine montre des progrès, mais le sommeil reste à améliorer. Pour la semaine prochaine, fais ceci :\nPour la suite :\n1. Couche-toi plus tôt.\n2. Marche après le dîner.';
+    expect(parseWeeklyAnswer(answer).synthesis).toBe('Ta semaine montre des progrès, mais le sommeil reste à améliorer.');
+  });
+
+  it("ne donne pas de verdict protéines sans assez de jours de repas", () => {
+    const few = buildCoachContext(coachInputs({ nutrition: { ...coachInputs().nutrition!, proteinDaysBelow: 0, proteinDaysKnown: 2 } }));
+    const { worked, stuck } = weekStatus(few);
+    expect([...worked, ...stuck].map((i) => i.section)).not.toContain('nutrition');
   });
 
   it("propose un repli écrit par l'app", () => {

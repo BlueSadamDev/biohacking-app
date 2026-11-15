@@ -58,7 +58,7 @@ describe('résumé chiffré du coach', () => {
   it('dit que les protéines sont sous la cible, avec le compte sur 7 jours', () => {
     const line = lineOf('nutrition');
     expect(line).toContain('protéines hier : 118 g pour une cible de 140 g (sous la cible)');
-    expect(line).toContain('sous la cible de protéines 4 jours sur 7');
+    expect(line).toContain('protéines dans la cible 3 jours sur 7 jours avec repas (7 derniers jours), sous la cible 4 jours');
   });
 
   it('reprend la zone 2, la force, le poids, les alertes et les liens', () => {
@@ -93,10 +93,25 @@ describe('résumé chiffré du coach', () => {
   it('signale un jour sans repas sans écrire 0', () => {
     const ctx = buildCoachContext(
       coachInputs({
-        nutrition: { date: '2026-11-07', day: null, protein: targetProgress(null, 140), calories: targetProgress(null, 2600), proteinDaysBelow: 0 },
+        nutrition: {
+          date: '2026-11-07',
+          day: null,
+          protein: targetProgress(null, 140),
+          calories: targetProgress(null, 2600),
+          proteinDaysBelow: 0,
+          proteinDaysKnown: 0,
+        },
       }),
     );
-    expect(lineOf('nutrition', ctx)).toContain('aucun repas enregistré hier');
+    expect(lineOf('nutrition', ctx)).toContain('aucun repas enregistré sur les 7 derniers jours');
+    expect(ctx.sections.find((s) => s.key === 'nutrition')!.available).toBe(false);
+  });
+
+  it('ne donne pas de verdict protéines sur la semaine avec trop peu de jours de repas', () => {
+    const ctx = buildCoachContext(coachInputs({ nutrition: { ...coachInputs().nutrition!, proteinDaysBelow: 0, proteinDaysKnown: 2 } }));
+    const n = ctx.sections.find((s) => s.key === 'nutrition')!;
+    expect(n.line).toContain('repas enregistrés seulement 2 jours sur 7 : pas de verdict sur la semaine');
+    expect(n.values.proteinDaysBelow7d).toBeNull();
   });
 
   it('signale la calibration en cours et ne juge pas la HRV', () => {

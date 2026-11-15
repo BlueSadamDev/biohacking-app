@@ -28,6 +28,7 @@ export function coachInputs(overrides: Partial<CoachInputs> = {}): CoachInputs {
       protein: targetProgress(118, 140),
       calories: targetProgress(2350, 2600),
       proteinDaysBelow: 4,
+      proteinDaysKnown: 7,
     },
     week: { weekStart: '2026-11-02', sessions: 5, sessionsTarget: 4, zone2Minutes: 45, zone2Target: 120, zone2Reached: false },
     strength: [

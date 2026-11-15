@@ -15,7 +15,8 @@ export type GuardProblem =
   | { kind: 'diagnosis'; text: string }
   | { kind: 'referral'; text: string }
   | { kind: 'action-count'; count: number; max: number }
-  | { kind: 'formal'; text: string };
+  | { kind: 'formal'; text: string }
+  | { kind: 'unsure' };
 
 export type GuardResult = { ok: boolean; text: string; problems: GuardProblem[] };
 
@@ -107,6 +108,8 @@ export function checkAnswer(
     const max = settings.coach.generation.weeklyMaxActions;
     // Le bilan demande exactement `max` actions numérotées.
     if (count !== max) problems.push({ kind: 'action-count', count, max });
+    // Le bilan s'appuie sur des verdicts de l'app : un « je ne sais pas » n'y a pas sa place.
+    if (/je ne sais pas/.test(lower)) problems.push({ kind: 'unsure' });
   }
 
   return { ok: problems.length === 0, text, problems };
@@ -129,5 +132,7 @@ export function describeProblem(p: GuardProblem): string {
       return `${p.count} actions au lieu de ${p.max}`;
     case 'formal':
       return `vouvoiement (« ${p.text} ») : tutoie l'utilisateur`;
+    case 'unsure':
+      return '« je ne sais pas » dans le bilan : ce qui a marché et ce qui coince sont déjà donnés';
   }
 }

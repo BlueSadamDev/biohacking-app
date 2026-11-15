@@ -14,7 +14,10 @@ import { colors, fonts } from '@/components/theme';
 import type { GenResult, LlamaRnEngine } from '@/coach/benchEngines';
 import { BENCH_CONTEXT, BENCH_PROMPTS, countWords, outcomeLine, wordsPerSecond, type BenchPrompt } from '@/coach/benchPrompts';
 import { getInstalledModel, type InstalledModel } from '@/coach/modelStore';
+import { deleteWeeklyReview } from '@/db/coachWeekly';
 import { formatBytes } from '@/domain/coachModel';
+import { dayKey } from '@/domain/dates';
+import { weekToReview } from '@/domain/weeklyReview';
 import { runCoach, type CoachOutcome } from '@/domain/coachRun';
 
 /** Fichiers importés pendant le test de faisabilité (étape C0), à supprimer. */
@@ -72,6 +75,15 @@ export default function CoachBenchScreen() {
       },
     ]);
   }, [leftovers]);
+
+  const redoWeekly = useCallback(async () => {
+    try {
+      await deleteWeeklyReview(weekToReview(dayKey(new Date())).weekStart);
+      setError('Bilan supprimé : ouvre l’onglet Coach pour qu’il soit rédigé de nouveau.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
 
   const release = useCallback(async () => {
     await engineRef.current?.release();
@@ -149,6 +161,13 @@ export default function CoachBenchScreen() {
           <Button title="Supprimer ces fichiers" color={colors.low} onPress={removeLeftovers} disabled={!!running} />
         </View>
       )}
+
+      <View style={styles.block}>
+        <Button title="Refaire le bilan de cette semaine" onPress={redoWeekly} disabled={!!running || busy} />
+        <Text style={styles.muted}>
+          Supprime le bilan de la semaine en cours : il sera rédigé de nouveau à la prochaine ouverture de l’onglet Coach.
+        </Text>
+      </View>
 
       {!model && (
         <View style={styles.card}>

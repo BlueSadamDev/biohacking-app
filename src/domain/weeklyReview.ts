@@ -85,9 +85,12 @@ function shortFact(s: CoachSection): string | null {
     case 'load':
       return typeof v.ratio === 'number' ? `charge ${fr(v.ratio, 2)}` : null;
     case 'zone2':
-      return typeof v.zone2Minutes === 'number' ? `zone 2 ${v.zone2Minutes} min sur ${v.zone2Target}` : null;
-    case 'nutrition':
-      return typeof v.proteinDaysBelow7d === 'number' ? `protéines sous la cible ${v.proteinDaysBelow7d} jours sur 7` : null;
+      return typeof v.zone2Minutes === 'number' ? `zone 2 : ${v.zone2Minutes} min pour ${v.zone2Target} visées` : null;
+    case 'nutrition': {
+      if (typeof v.proteinDaysBelow7d !== 'number' || typeof v.proteinDaysKnown7d !== 'number') return null;
+      const reached = v.proteinDaysKnown7d - v.proteinDaysBelow7d;
+      return `protéines dans la cible ${reached} jour${reached > 1 ? 's' : ''} sur ${v.proteinDaysKnown7d} avec repas`;
+    }
     case 'strength': {
       const parts = (['squat', 'bench', 'deadlift'] as const)
         .filter((e) => typeof v[`${e}Kg`] === 'number')
@@ -110,11 +113,17 @@ export function weeklyFacts(context: CoachContext, items: WeeklyItem[]): string[
 
 const ACTION_LINE = /^\s*(\d+[.)]|action\s*n°?\s*\d+\s*:?)\s*/i;
 
-/** Sépare le conseil du modèle en synthèse et actions numérotées. */
+/**
+ * Sépare le conseil du modèle en synthèse et actions numérotées. Synthèse : la première phrase
+ * hors actions, sans les phrases d'annonce (« Voici… », « … :  »).
+ */
 export function parseWeeklyAnswer(text: string): { synthesis: string; actions: string[] } {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const actions = lines.filter((l) => ACTION_LINE.test(l)).map((l) => l.replace(ACTION_LINE, '').trim());
-  const synthesis = lines.filter((l) => !ACTION_LINE.test(l) && !/^voici\b/i.test(l)).join(' ');
+  const prose = lines.filter((l) => !ACTION_LINE.test(l) && !/^voici\b/i.test(l)).join(' ');
+  // Phrases (terminées par . ! ? ou :) ; les phrases d'annonce finissent par « : ».
+  const sentences = (prose.match(/[^.!?:]+[.!?:]+/g) ?? []).map((s) => s.trim());
+  const synthesis = sentences.find((s) => !s.endsWith(':')) ?? '';
   return { synthesis, actions };
 }
 

@@ -378,6 +378,8 @@ export const SETTINGS = {
       sleepTrendMinutes: 20,
       /** FC au repos « comme d'habitude » si l'écart à la moyenne 30 j est sous N bpm. */
       restingHrUsualBpm: 1,
+      /** Protéines : verdict sur 7 jours seulement avec au moins N jours de repas enregistrés. */
+      minNutritionDays: 4,
     },
     /**
      * Génération (étape C3). Partage des rôles : l'app écrit le constat chiffré (« Chiffres utilisés »),

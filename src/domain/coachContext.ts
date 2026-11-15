@@ -277,19 +277,36 @@ function zone2Section(i: CoachInputs): CoachSection {
 function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
   const n = i.nutrition;
   const title = 'Nutrition';
-  if (!n || !n.day) return section('nutrition', title, n ? "aucun repas enregistré hier dans Suivi macro" : null);
+  if (!n) return section('nutrition', title, null);
+  if (!n.day && n.proteinDaysKnown === 0) {
+    // Rien à commenter, mais on dit pourquoi (plutôt que « non disponible »).
+    const empty = section('nutrition', title, `aucun repas enregistré sur les ${s.nutrition.weekDays} derniers jours dans Suivi macro`);
+    return { ...empty, available: false };
+  }
   const parts: string[] = [];
   const p = n.protein;
-  if (p.value !== null) {
+  if (!n.day) parts.push('aucun repas enregistré hier');
+  else if (p.value !== null) {
     parts.push(
       p.target === null
         ? `protéines hier : ${Math.round(p.value)} g (cible ${NA})`
         : `protéines hier : ${Math.round(p.value)} g pour une cible de ${Math.round(p.target)} g (${p.reached ? 'cible atteinte' : 'sous la cible'})`,
     );
   }
-  parts.push(`sous la cible de protéines ${n.proteinDaysBelow} jour${n.proteinDaysBelow > 1 ? 's' : ''} sur ${s.nutrition.weekDays}`);
+  // Verdict sur la semaine seulement avec assez de jours de repas enregistrés (les autres jours sont inconnus).
+  const known = n.proteinDaysKnown;
+  const weekVerdict = known >= s.coach.context.minNutritionDays;
+  const plural = (x: number) => (x > 1 ? 's' : '');
+  if (weekVerdict) {
+    const reached = known - n.proteinDaysBelow;
+    parts.push(
+      `protéines dans la cible ${reached} jour${plural(reached)} sur ${known} jours avec repas (${s.nutrition.weekDays} derniers jours), sous la cible ${n.proteinDaysBelow} jour${plural(n.proteinDaysBelow)}`,
+    );
+  } else {
+    parts.push(`repas enregistrés seulement ${known} jour${plural(known)} sur ${s.nutrition.weekDays} : pas de verdict sur la semaine`);
+  }
   const k = n.calories;
-  if (k.value !== null) {
+  if (n.day && k.value !== null) {
     parts.push(
       k.target === null
         ? `calories hier : ${Math.round(k.value)} kcal (cible ${NA})`
@@ -300,7 +317,8 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
     proteinG: p.value === null ? null : Math.round(p.value),
     proteinTargetG: p.target === null ? null : Math.round(p.target),
     proteinReached: p.reached,
-    proteinDaysBelow7d: n.proteinDaysBelow,
+    proteinDaysBelow7d: weekVerdict ? n.proteinDaysBelow : null,
+    proteinDaysKnown7d: known,
     caloriesKcal: k.value === null ? null : Math.round(k.value),
     caloriesTargetKcal: k.target === null ? null : Math.round(k.target),
   });

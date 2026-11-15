@@ -72,6 +72,12 @@ describe('contrôle du conseil du coach', () => {
     expect(kinds(three)).toEqual([]);
   });
 
+  it('refuse « je ne sais pas » dans le bilan, pas dans une question', () => {
+    const answer = 'Je ne sais pas si une autre intervention est nécessaire.\n1. Dors plus.\n2. Allège la charge.';
+    expect(kinds(answer, { kind: 'weekly' })).toEqual(['unsure']);
+    expect(kinds('Je ne sais pas : ce point n’est pas dans tes données.')).toEqual([]);
+  });
+
   it('refuse le vouvoiement', () => {
     expect(kinds('Action : augmentez votre apport en protéines.')).toContain('formal');
     expect(describeProblem({ kind: 'formal', text: 'votre' })).toContain('tutoie');

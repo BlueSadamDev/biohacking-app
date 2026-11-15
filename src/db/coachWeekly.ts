@@ -59,6 +59,12 @@ export async function saveWeeklyReview(r: WeeklyReview): Promise<void> {
   );
 }
 
+/** Supprime le bilan d'une semaine (banc d'essai : pour le faire rédiger de nouveau). */
+export async function deleteWeeklyReview(weekStart: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM coach_weekly WHERE week_start = ?', weekStart);
+}
+
 /** Bilans, du plus récent au plus ancien. */
 export async function loadWeeklyReviews(): Promise<WeeklyReview[]> {
   const db = await getDb();

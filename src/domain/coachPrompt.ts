@@ -29,9 +29,9 @@ export const COACH_SYSTEM_PROMPT = [
 function request(task: CoachTask, settings: Settings): string {
   switch (task.kind) {
     case 'weekly':
-      return `Fais le bilan de ma semaine : une phrase de synthèse, puis exactement ${settings.coach.generation.weeklyMaxActions} actions numérotées pour la semaine prochaine${
-        task.stuck?.length ? ', qui visent ce qui coince' : ''
-      }.`;
+      return `Fais le bilan de ma semaine. Commence directement par UNE phrase de synthèse qui s'adresse à moi (par exemple « Ta semaine… »), sans parler du « constat ». Puis écris exactement ${
+        settings.coach.generation.weeklyMaxActions
+      } actions numérotées pour la semaine prochaine, une par ligne${task.stuck?.length ? ', qui visent ce qui coince' : ''}.`;
     case 'why-alert':
       return `Explique simplement pourquoi j'ai reçu l'alerte « ${task.title} », en 2 phrases au plus, puis une ligne « Action : … ».`;
     case 'why-link':

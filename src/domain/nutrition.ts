@@ -81,6 +81,8 @@ export type NutritionDayView = {
   calories: TargetProgress;
   /** Jours sous la cible de protéines sur les 7 jours finissant à `date` (jours avec repas seulement). */
   proteinDaysBelow: number;
+  /** Jours avec une valeur de protéines comparable à la cible, sur les mêmes 7 jours (lot 4 : coach). */
+  proteinDaysKnown: number;
 };
 
 export function nutritionDayView(
@@ -92,9 +94,12 @@ export function nutritionDayView(
 ): NutritionDayView {
   const day = nutrition.get(date) ?? null;
   let proteinDaysBelow = 0;
+  let proteinDaysKnown = 0;
   for (let i = 0; i < settings.nutrition.weekDays; i++) {
     const d = nutrition.get(addDays(date, -i));
-    if (d && targetProgress(d.proteinG, proteinTargetG, settings).reached === false) proteinDaysBelow++;
+    const reached = d ? targetProgress(d.proteinG, proteinTargetG, settings).reached : null;
+    if (reached !== null) proteinDaysKnown++;
+    if (reached === false) proteinDaysBelow++;
   }
   return {
     date,
@@ -102,6 +107,7 @@ export function nutritionDayView(
     protein: targetProgress(day?.proteinG ?? null, proteinTargetG, settings),
     calories: targetProgress(day?.energyKcal ?? null, caloriesTargetKcal, settings),
     proteinDaysBelow,
+    proteinDaysKnown,
   };
 }
 

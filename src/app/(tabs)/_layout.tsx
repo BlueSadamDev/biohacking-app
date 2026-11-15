@@ -37,7 +37,8 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="coach"
-        options={{ title: 'Coach', tabBarIcon: ({ color }) => <CoachIcon color={color} /> }}
+        // Barre d'onglets masquée pendant la saisie : le champ de question reste visible au-dessus du clavier.
+        options={{ title: 'Coach', tabBarHideOnKeyboard: true, tabBarIcon: ({ color }) => <CoachIcon color={color} /> }}
       />
       <Tabs.Screen
         name="reglages"

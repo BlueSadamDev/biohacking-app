@@ -2,6 +2,7 @@
 // (ce qui coince d'abord), nettoyage de la question saisie, échanges de la conversation.
 
 import type { CoachContext } from './coachContext';
+import { focusSections } from './coachPrompt';
 import { SETTINGS, type Settings } from './settings';
 import { weekStatus } from './weeklyReview';
 
@@ -16,12 +17,30 @@ export type CoachExchange = {
   kind: 'answer' | 'fallback' | 'stopped';
 };
 
-/** Questions suggérées : une par point qui coince, complétées par des questions générales. */
-export function suggestedQuestions(context: CoachContext, settings: Settings = SETTINGS): string[] {
+const key = (q: string) => q.toLowerCase().replace(/[^a-zà-ÿ0-9]+/g, ' ').trim();
+
+/**
+ * Questions suggérées. Après un échange : d'abord des relances sur le sujet de la dernière question,
+ * puis une question par point qui coince, puis des questions générales. Jamais une question déjà posée.
+ */
+export function suggestedQuestions(context: CoachContext, exchanges: CoachExchange[] = [], settings: Settings = SETTINGS): string[] {
   const q = settings.coach.questions;
+  const asked = new Set(exchanges.map((e) => key(e.question)));
+  const last = exchanges.length ? exchanges.reduce((a, b) => (b.createdMs > a.createdMs ? b : a)) : null;
+  const followUps = last
+    ? focusSections({ kind: 'question', text: last.question }, settings).flatMap((s) => q.followUps[s] ?? [])
+    : [];
   const { stuck } = weekStatus(context, settings);
   const fromStuck = stuck.map((s) => q.bySection[s.section]).filter((x): x is string => !!x);
-  return [...new Set([...fromStuck, ...q.general])].slice(0, q.maxSuggestions);
+  const seen = new Set<string>();
+  return [...followUps, ...fromStuck, ...q.general]
+    .filter((x) => {
+      const k = key(x);
+      if (asked.has(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, q.maxSuggestions);
 }
 
 /** Question nettoyée (espaces, longueur maximale), ou null si elle est vide. */

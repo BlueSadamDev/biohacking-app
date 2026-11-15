@@ -16,7 +16,9 @@ export type GuardProblem =
   | { kind: 'referral'; text: string }
   | { kind: 'action-count'; count: number; max: number }
   | { kind: 'formal'; text: string }
-  | { kind: 'unsure' };
+  | { kind: 'unsure' }
+  | { kind: 'meta'; text: string }
+  | { kind: 'unmeasured'; text: string };
 
 export type GuardResult = { ok: boolean; text: string; problems: GuardProblem[] };
 
@@ -103,6 +105,13 @@ export function checkAnswer(
   const formal = firstMatch(lower, g.formalYou);
   if (formal) problems.push({ kind: 'formal', text: formal });
 
+  const meta = firstMatch(lower, g.meta);
+  if (meta) problems.push({ kind: 'meta', text: meta });
+
+  // Notion non mesurée par l'app (« qualité du sommeil ») : acceptée seulement si le résumé en parle.
+  const unmeasured = firstMatch(lower, g.unmeasured.filter((p) => !new RegExp(p).test(contextLower)));
+  if (unmeasured) problems.push({ kind: 'unmeasured', text: unmeasured });
+
   if (task?.kind === 'weekly') {
     const count = countActions(text);
     const max = settings.coach.generation.weeklyMaxActions;
@@ -132,6 +141,10 @@ export function describeProblem(p: GuardProblem): string {
       return `${p.count} actions au lieu de ${p.max}`;
     case 'formal':
       return `vouvoiement (« ${p.text} ») : tutoie l'utilisateur`;
+    case 'meta':
+      return `commentaire sur les données (« ${p.text} ») au lieu d'une réponse directe`;
+    case 'unmeasured':
+      return `parle d'une notion que l'app ne mesure pas (« ${p.text} »)`;
     case 'unsure':
       return '« je ne sais pas » dans le bilan : ce qui a marché et ce qui coince sont déjà donnés';
   }

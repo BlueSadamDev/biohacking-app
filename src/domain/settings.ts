@@ -472,6 +472,21 @@ export const SETTINGS = {
         'Comment progresser en force ?',
         'Est-ce que je dors assez ?',
       ] as readonly string[],
+      /**
+       * Questions de relance, proposées après une réponse selon le sujet de la dernière question
+       * (rubriques mises en avant). Une question déjà posée n'est pas reproposée.
+       */
+      followUps: {
+        sleep: ['Comment mieux dormir les jours d’entraînement ?', 'Mon sommeil joue-t-il sur ma récupération ?'],
+        recovery: ['Comment mieux récupérer entre deux séances ?', 'Ma charge d’entraînement pèse-t-elle sur ma récupération ?'],
+        hrv: ['Qu’est-ce qui fait baisser ma HRV ?', 'Comment faire remonter ma HRV ?'],
+        restingHr: ['Que veut dire ma FC au repos cette semaine ?'],
+        load: ['Comment alléger ma semaine sans perdre en forme ?', 'Ma récupération suit-elle ma charge d’entraînement ?'],
+        zone2: ['Quelles activités comptent en zone 2 ?', 'Pourquoi la zone 2 est-elle utile pour moi ?'],
+        nutrition: ['Comment répartir mes protéines dans la journée ?', 'Mes protéines suffisent-elles pour progresser en force ?'],
+        strength: ['Comment relancer un exercice qui stagne ?', 'Mes protéines suffisent-elles pour progresser en force ?'],
+        weight: ['Est-ce que je prends du muscle ou du gras ?', 'Mon poids va-t-il dans le bon sens ?'],
+      } as Readonly<Record<string, readonly string[]>>,
     },
     /** Rubriques liées au thème d'une alerte (« Pourquoi ? »). */
     alertFocus: {
@@ -504,6 +519,13 @@ export const SETTINGS = {
         'avis médical',
         'voir un médecin',
       ] as readonly string[],
+      /** Commentaires sur le résumé au lieu d'une réponse (« le tableau semble… ») : refusés. */
+      meta: ['\\btableau\\b', '\\ble constat\\b', '\\b(les|tes|des) données\\b', '\\brésumé\\b'] as readonly string[],
+      /**
+       * Notions que l'app ne mesure pas (« la qualité reste bonne ») : refusées, sauf si le mot
+       * figure déjà dans le résumé.
+       */
+      unmeasured: ['qualit', 'hydrat', '\\bstress'] as readonly string[],
       /** Vouvoiement : refusé (l'app tutoie). */
       formalYou: ['\\bvous\\b', '\\bvotre\\b', '\\bvos\\b'] as readonly string[],
       /** Noms qui contiennent un chiffre sans en être un (« zone 2 », « 1RM ») : acceptés dans le conseil. */

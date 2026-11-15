@@ -3,10 +3,12 @@
 // Le bilan dû est rédigé à l'ouverture de l'onglet. Pour les questions, le modèle est chargé à la
 // première question et libéré quand on quitte l'onglet. Jamais deux modèles en même temps : pas de
 // question pendant la rédaction du bilan. Sans modèle installé : une carte unique vers l'écran Modèle.
+// Le champ de question reste en bas, au-dessus du clavier ; la conversation défile jusqu'au dernier message.
 
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
 import { PrimaryButton, SecondaryButton } from '@/components/Buttons';
@@ -19,20 +21,21 @@ import {
   SuggestedQuestions,
   WeeklyReviewCard,
 } from '@/components/CoachViews';
-import { Screen } from '@/components/Screen';
-import { colors } from '@/components/theme';
+import { colors, space } from '@/components/theme';
 import { ChatSession } from '@/coach/chatSession';
 import { loadCoachContext } from '@/coach/contextLoader';
 import { getInstalledModel } from '@/coach/modelStore';
 import { generateDueWeeklyReview, type WeeklyJob } from '@/coach/weeklyService';
 import { loadExchanges } from '@/db/coachMessages';
 import { loadLatestWeeklyReview } from '@/db/coachWeekly';
+import type { CoachContext } from '@/domain/coachContext';
 import { normalizeQuestion, suggestedQuestions, type CoachExchange } from '@/domain/coachQuestions';
 import { SETTINGS } from '@/domain/settings';
 import type { WeeklyReview } from '@/domain/weeklyReview';
 
 export default function CoachScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [installed, setInstalled] = useState(() => getInstalledModel() !== null);
   const [latest, setLatest] = useState<WeeklyReview | null>(null);
   const [writing, setWriting] = useState(false);
@@ -47,20 +50,24 @@ export default function CoachScreen() {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<{ question: string; partial: string } | null>(null);
   const session = useRef<ChatSession | null>(null);
+  const context = useRef<CoachContext | null>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
+  /** Suivre le bas de la conversation (après une question, pendant la réponse). */
+  const follow = useRef(false);
 
   const refresh = useCallback(() => {
     const hasModel = getInstalledModel() !== null;
     setInstalled(hasModel);
+    follow.current = false;
     loadLatestWeeklyReview()
       .then(setLatest)
       .catch(() => setLatest(null));
     if (!hasModel) return;
-    loadExchanges()
-      .then(setExchanges)
-      .catch(() => setExchanges([]));
-    loadCoachContext()
-      .then((ctx) => setSuggestions(suggestedQuestions(ctx)))
-      .catch(() => setSuggestions([...SETTINGS.coach.questions.general]));
+    Promise.all([loadExchanges().catch(() => []), loadCoachContext().catch(() => null)]).then(([all, ctx]) => {
+      setExchanges(all);
+      context.current = ctx;
+      setSuggestions(ctx ? suggestedQuestions(ctx, all) : [...SETTINGS.coach.questions.general]);
+    });
     if (busy.current) return;
     // Bilan dû (dimanche, ou premier passage suivant) : rédigé maintenant, modèle libéré ensuite.
     busy.current = true;
@@ -102,20 +109,27 @@ export default function CoachScreen() {
       const question = normalizeQuestion(text);
       if (!question || pending || busy.current) return;
       setDraft('');
+      setError(null);
+      follow.current = true;
       setPending({ question, partial: '' });
       if (!session.current) session.current = new ChatSession();
       try {
         const exchange = await session.current.ask(question, (t) =>
           setPending((p) => (p ? { ...p, partial: t } : p)),
         );
-        if (exchange) setExchanges((all) => [...all, exchange].slice(-SETTINGS.coach.questions.historyShown));
+        if (exchange) {
+          const all = [...exchanges, exchange].slice(-SETTINGS.coach.questions.historyShown);
+          setExchanges(all);
+          // Nouvelles suggestions : relances sur le sujet de cette question.
+          if (context.current) setSuggestions(suggestedQuestions(context.current, all));
+        }
       } catch {
         setError('Le coach n’a pas pu répondre. Réessaie dans un instant.');
       } finally {
         setPending(null);
       }
     },
-    [pending],
+    [pending, exchanges],
   );
 
   const stop = useCallback(() => {
@@ -123,85 +137,97 @@ export default function CoachScreen() {
   }, []);
 
   return (
-    <Screen>
-      <View style={styles.header}>
-        <View style={styles.titles}>
-          <AppText variant="label">Ton coach Aube</AppText>
-          <AppText variant="title">Coach</AppText>
+    <KeyboardAvoidingView style={styles.root} behavior="padding">
+      <ScrollView
+        ref={scroll}
+        style={styles.root}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12 }]}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => follow.current && scroll.current?.scrollToEnd({ animated: true })}>
+        <View style={styles.header}>
+          <View style={styles.titles}>
+            <AppText variant="label">Ton coach Aube</AppText>
+            <AppText variant="title">Coach</AppText>
+          </View>
+          <PrivacyBadge onPress={() => router.push('/coach-modele')} />
         </View>
-        <PrivacyBadge onPress={() => router.push('/coach-modele')} />
-      </View>
 
-      {!installed ? (
-        <Card style={styles.intro}>
-          <AppText variant="strong">Un coach qui explique tes chiffres</AppText>
-          <AppText variant="bodySmall" style={styles.soft}>
-            Chaque semaine, il fait le bilan de ce qui a marché et de ce qui coince, et propose 2 actions. Il répond
-            aussi à tes questions. Il tourne entièrement sur ton téléphone, sans Internet, et n’invente aucun chiffre :
-            les chiffres viennent de l’app.
-          </AppText>
-          <AppText variant="bodySmall" style={styles.soft}>
-            Pour l’activer, installe une fois le fichier du modèle.
-          </AppText>
-          <PrimaryButton title="Installer le modèle du coach" onPress={() => router.push('/coach-modele')} />
-        </Card>
-      ) : (
-        <>
-          {writing && (
-            <Card style={styles.intro}>
-              <View style={styles.writingHead}>
-                <ActivityIndicator color={colors.text} />
-                <AppText variant="strong">Rédaction de ton bilan de la semaine…</AppText>
-              </View>
-              {partial ? (
-                <AppText variant="bodySmall" style={styles.soft}>
-                  {partial}
-                </AppText>
-              ) : null}
-              <SecondaryButton title="Arrêter" onPress={() => job.current?.stop()} />
-            </Card>
-          )}
-          {!writing && latest && <WeeklyReviewCard review={latest} />}
-          {!writing && !latest && !error && (
-            <AppText variant="bodySmall" style={styles.center}>
-              Ton premier bilan arrivera dimanche.
+        {!installed ? (
+          <Card style={styles.intro}>
+            <AppText variant="strong">Un coach qui explique tes chiffres</AppText>
+            <AppText variant="bodySmall" style={styles.soft}>
+              Chaque semaine, il fait le bilan de ce qui a marché et de ce qui coince, et propose 2 actions. Il répond
+              aussi à tes questions. Il tourne entièrement sur ton téléphone, sans Internet, et n’invente aucun
+              chiffre : les chiffres viennent de l’app.
             </AppText>
-          )}
-          {latest && !writing && (
-            <SecondaryButton title="Historique des bilans" onPress={() => router.push('/coach-bilans')} />
-          )}
-
-          <SuggestedQuestions questions={suggestions} onAsk={ask} disabled={writing || !!pending} />
-
-          {exchanges.map((e) => (
-            <View key={e.id} style={styles.exchange}>
-              <QuestionBubble text={e.question} />
-              {e.answer ? (
-                <CoachAnswer text={e.answer} facts={e.facts} />
-              ) : (
-                <AppText variant="small">Réponse arrêtée.</AppText>
-              )}
-            </View>
-          ))}
-          {pending && (
-            <View style={styles.exchange}>
-              <QuestionBubble text={pending.question} />
-              {pending.partial ? (
-                <CoachAnswer text={pending.partial} facts={[]} />
-              ) : (
+            <AppText variant="bodySmall" style={styles.soft}>
+              Pour l’activer, installe une fois le fichier du modèle.
+            </AppText>
+            <PrimaryButton title="Installer le modèle du coach" onPress={() => router.push('/coach-modele')} />
+          </Card>
+        ) : (
+          <>
+            {writing && (
+              <Card style={styles.intro}>
                 <View style={styles.writingHead}>
                   <ActivityIndicator color={colors.text} />
-                  <AppText variant="small">Le coach prépare sa réponse…</AppText>
+                  <AppText variant="strong">Rédaction de ton bilan de la semaine…</AppText>
                 </View>
-              )}
-            </View>
-          )}
-          {error && (
-            <AppText variant="bodySmall" style={[styles.center, styles.soft]}>
-              {error}
-            </AppText>
-          )}
+                {partial ? (
+                  <AppText variant="bodySmall" style={styles.soft}>
+                    {partial}
+                  </AppText>
+                ) : null}
+                <SecondaryButton title="Arrêter" onPress={() => job.current?.stop()} />
+              </Card>
+            )}
+            {!writing && latest && <WeeklyReviewCard review={latest} />}
+            {!writing && !latest && !error && (
+              <AppText variant="bodySmall" style={styles.center}>
+                Ton premier bilan arrivera dimanche.
+              </AppText>
+            )}
+            {latest && !writing && (
+              <SecondaryButton title="Historique des bilans" onPress={() => router.push('/coach-bilans')} />
+            )}
 
+            {exchanges.map((e) => (
+              <View key={e.id} style={styles.exchange}>
+                <QuestionBubble text={e.question} />
+                {e.answer ? (
+                  <CoachAnswer text={e.answer} facts={e.facts} />
+                ) : (
+                  <AppText variant="small">Réponse arrêtée.</AppText>
+                )}
+              </View>
+            ))}
+            {pending && (
+              <View style={styles.exchange}>
+                <QuestionBubble text={pending.question} />
+                {pending.partial ? (
+                  <CoachAnswer text={pending.partial} facts={[]} />
+                ) : (
+                  <View style={styles.writingHead}>
+                    <ActivityIndicator color={colors.text} />
+                    <AppText variant="small">Le coach prépare sa réponse…</AppText>
+                  </View>
+                )}
+              </View>
+            )}
+            {error && (
+              <AppText variant="bodySmall" style={[styles.center, styles.soft]}>
+                {error}
+              </AppText>
+            )}
+
+            {!pending && <SuggestedQuestions questions={suggestions} onAsk={ask} disabled={writing} />}
+            <AppText style={styles.notice}>Il répond à chaque question séparément, sans se souvenir des précédentes.</AppText>
+          </>
+        )}
+      </ScrollView>
+
+      {installed && (
+        <View style={styles.inputBar}>
           <QuestionInput
             value={draft}
             onChange={setDraft}
@@ -213,14 +239,15 @@ export default function CoachScreen() {
           <AppText style={styles.notice}>
             Le coach explique tes chiffres, il n’en invente pas. Ce n’est pas un avis médical.
           </AppText>
-          <AppText style={styles.notice}>Il répond à chaque question séparément, sans se souvenir des précédentes.</AppText>
-        </>
+        </View>
       )}
-    </Screen>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: space.screen, paddingBottom: 16, gap: space.block },
   // Le badge passe sous le titre si la place manque (grands textes du système).
   header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
   titles: { gap: 2 },
@@ -230,4 +257,13 @@ const styles = StyleSheet.create({
   soft: { color: colors.textSoft },
   center: { textAlign: 'center' },
   notice: { fontSize: 11, color: colors.tabInactive, textAlign: 'center' },
+  inputBar: {
+    paddingHorizontal: space.screen,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 6,
+    backgroundColor: colors.bg,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceAlt,
+  },
 });

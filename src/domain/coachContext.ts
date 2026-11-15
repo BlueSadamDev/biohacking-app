@@ -278,7 +278,7 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
   const n = i.nutrition;
   const title = 'Nutrition';
   if (!n) return section('nutrition', title, null);
-  if (!n.day && n.proteinDaysKnown === 0) {
+  if (!n.day && n.proteinDaysKnown === 0 && n.protein.target !== null) {
     // Rien à commenter, mais on dit pourquoi (plutôt que « non disponible »).
     const empty = section('nutrition', title, `aucun repas enregistré sur les ${s.nutrition.weekDays} derniers jours dans Suivi macro`);
     return { ...empty, available: false };
@@ -289,15 +289,17 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
   else if (p.value !== null) {
     parts.push(
       p.target === null
-        ? `protéines hier : ${Math.round(p.value)} g (cible ${NA})`
+        ? `protéines hier : ${Math.round(p.value)} g`
         : `protéines hier : ${Math.round(p.value)} g pour une cible de ${Math.round(p.target)} g (${p.reached ? 'cible atteinte' : 'sous la cible'})`,
     );
   }
-  // Verdict sur la semaine seulement avec assez de jours de repas enregistrés (les autres jours sont inconnus).
+  // Verdict sur la semaine seulement avec une cible (elle dépend du poids) et assez de jours de repas.
   const known = n.proteinDaysKnown;
-  const weekVerdict = known >= s.coach.context.minNutritionDays;
+  const weekVerdict = p.target !== null && known >= s.coach.context.minNutritionDays;
   const plural = (x: number) => (x > 1 ? 's' : '');
-  if (weekVerdict) {
+  if (p.target === null) {
+    parts.push('cible de protéines non calculable : il faut une pesée récente');
+  } else if (weekVerdict) {
     const reached = known - n.proteinDaysBelow;
     parts.push(
       `protéines dans la cible ${reached} jour${plural(reached)} sur ${known} jours avec repas (${s.nutrition.weekDays} derniers jours), sous la cible ${n.proteinDaysBelow} jour${plural(n.proteinDaysBelow)}`,
@@ -309,7 +311,7 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
   if (n.day && k.value !== null) {
     parts.push(
       k.target === null
-        ? `calories hier : ${Math.round(k.value)} kcal (cible ${NA})`
+        ? `calories hier : ${Math.round(k.value)} kcal (cible de calories à définir dans les Réglages)`
         : `calories hier : ${Math.round(k.value)} kcal pour une cible de ${Math.round(k.target)} kcal`,
     );
   }

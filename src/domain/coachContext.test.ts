@@ -107,6 +107,25 @@ describe('résumé chiffré du coach', () => {
     expect(ctx.sections.find((s) => s.key === 'nutrition')!.available).toBe(false);
   });
 
+  it('explique une cible de protéines ou de calories manquante au lieu de compter 0 jour', () => {
+    const ctx = buildCoachContext(
+      coachInputs({
+        nutrition: {
+          ...coachInputs().nutrition!,
+          protein: targetProgress(108, null),
+          calories: targetProgress(2500, null),
+          proteinDaysBelow: 0,
+          proteinDaysKnown: 0,
+        },
+      }),
+    );
+    const n = ctx.sections.find((s) => s.key === 'nutrition')!;
+    expect(n.line).toContain('protéines hier : 108 g, cible de protéines non calculable : il faut une pesée récente');
+    expect(n.line).toContain('cible de calories à définir dans les Réglages');
+    expect(n.line).not.toContain('0 jour');
+    expect(n.values.proteinDaysBelow7d).toBeNull();
+  });
+
   it('ne donne pas de verdict protéines sur la semaine avec trop peu de jours de repas', () => {
     const ctx = buildCoachContext(coachInputs({ nutrition: { ...coachInputs().nutrition!, proteinDaysBelow: 0, proteinDaysKnown: 2 } }));
     const n = ctx.sections.find((s) => s.key === 'nutrition')!;

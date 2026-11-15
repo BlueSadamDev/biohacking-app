@@ -29,6 +29,25 @@ describe('questions libres du coach', () => {
     expect(s).toContain('Est-ce que je récupère bien ?');
   });
 
+  it('propose des relances sur le sujet de la dernière question, sans reproposer une question posée', () => {
+    const ctx = buildCoachContext(coachInputs());
+    const exchange = (question: string, createdMs: number): CoachExchange => ({
+      id: `${createdMs}`,
+      createdMs,
+      question,
+      answer: 'R',
+      facts: [],
+      kind: 'answer',
+    });
+    const afterSleep = suggestedQuestions(ctx, [exchange('Comment améliorer mon sommeil ?', 1)]);
+    expect(afterSleep[0]).toBe('Comment mieux dormir les jours d’entraînement ?');
+    expect(afterSleep).not.toContain('Comment améliorer mon sommeil ?');
+    // La relance suit la question la plus récente.
+    const afterFood = suggestedQuestions(ctx, [exchange('Comment améliorer mon sommeil ?', 1), exchange('Est-ce que je mange bien ?', 2)]);
+    expect(afterFood[0]).toBe('Comment répartir mes protéines dans la journée ?');
+    expect(afterFood).toHaveLength(SETTINGS.coach.questions.maxSuggestions);
+  });
+
   it('oriente chaque question suggérée vers la bonne rubrique', () => {
     for (const [section, question] of Object.entries(SETTINGS.coach.questions.bySection)) {
       expect(focusSections({ kind: 'question', text: question })).toContain(section);

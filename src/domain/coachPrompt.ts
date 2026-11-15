@@ -22,8 +22,17 @@ export const COACH_SYSTEM_PROMPT = [
   'Tu ne parles que du sujet de la demande.',
   "Tu ne poses jamais de diagnostic médical. Tu ne conseilles de consulter que si le constat dit qu'une alerte revient souvent.",
   "Si le constat ne permet pas de répondre, tu dis « je ne sais pas ».",
+  "Tu ne parles jamais du « tableau », du « constat » ni des « données » : tu réponds directement. Tu ne parles pas de ce que l'app ne mesure pas (qualité du sommeil, stress, hydratation).",
   "Pas d'emoji, pas de formule de politesse à la fin.",
-].join(' ');
+  '',
+  'Exemple de bonne réponse.',
+  'Constat : « Sommeil : 6,4 h par nuit en moyenne sur 7 jours, sous la durée visée de 7,5 h, en baisse par rapport à d’habitude. »',
+  'Question : « Est-ce que je dors assez ? »',
+  'Réponse :',
+  'Non, tu dors moins que la durée visée cette semaine, et moins que d’habitude.',
+  'Un sommeil plus court freine ta récupération après les séances.',
+  'Action : couche-toi un peu plus tôt les soirs de semaine.',
+].join('\n');
 
 /** Demande et format attendu, pour chaque tâche. */
 function request(task: CoachTask, settings: Settings): string {
@@ -48,7 +57,11 @@ function request(task: CoachTask, settings: Settings): string {
     case 'why-link':
       return `Explique simplement ce lien observé : « ${task.sentence} », en 2 phrases au plus, en rappelant qu'un lien n'est pas une preuve de cause, puis une ligne « Action : … ».`;
     case 'question':
-      return `${task.text.trim()} Réponds en 2 phrases au plus, puis une ligne « Action : … ».`;
+      return [
+        `« ${task.text.trim()} »`,
+        'Réponds comme dans l’exemple : 1re phrase, une réponse directe (oui, non ou en partie) qui reprend le verdict du constat ;',
+        '2e phrase, pourquoi c’est important pour ta forme ou ta progression ; puis une ligne « Action : … » qui commence par un verbe.',
+      ].join(' ');
   }
 }
 

@@ -75,7 +75,13 @@ describe('contrôle du conseil du coach', () => {
   it('refuse « je ne sais pas » dans le bilan, pas dans une question', () => {
     const answer = 'Je ne sais pas si une autre intervention est nécessaire.\n1. Dors plus.\n2. Allège la charge.';
     expect(kinds(answer, { kind: 'weekly' })).toEqual(['unsure']);
-    expect(kinds('Je ne sais pas : ce point n’est pas dans tes données.')).toEqual([]);
+    expect(kinds('Je ne sais pas : l’app ne suit pas ce point.')).toEqual([]);
+  });
+
+  it('refuse les commentaires sur les données et les notions non mesurées', () => {
+    expect(kinds('Le tableau semble un peu désordonné.')).toContain('meta');
+    expect(kinds('Tu dors un peu moins, mais la qualité reste bonne.')).toContain('unmeasured');
+    expect(describeProblem({ kind: 'meta', text: 'tableau' })).toContain('réponse directe');
   });
 
   it('refuse le vouvoiement', () => {

@@ -1,6 +1,7 @@
 // Écran de diagnostic (accessible depuis l'accueil et les réglages) :
 // inventaire des données Health Connect (30 derniers jours) et synchronisation
-// vers la base locale. Uniquement des comptages, jamais de valeurs de santé.
+// vers la base locale. Des comptages ; seule exception, les points de charge par séance (carte
+// « Charge : séances des 28 derniers jours »), jamais les valeurs de fréquence cardiaque elles-mêmes.
 // Interface volontairement simple.
 
 import { useRouter } from 'expo-router';
@@ -11,7 +12,13 @@ import { AppText as Text } from '@/components/AppText';
 import { BackHeader, Screen } from '@/components/Screen';
 import { colors, fonts } from '@/components/theme';
 
+import { formatDuration } from '@/components/format';
+import { useHealthData } from '@/components/useHealthData';
 import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
+import { loadSessionChecks } from '@/db/loadData';
+import { exerciseTypeLabel } from '@/domain/exerciseTypes';
+import type { SessionCheck } from '@/domain/load';
+import { LOAD_CHECK } from '@/domain/texts/sport';
 import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
 import { computeNights } from '@/domain/nightly';
 import { SOURCES } from '@/domain/texts/reglages';
@@ -123,6 +130,15 @@ export default function InventoryScreen() {
       .catch(() => setTypes(null));
   }, [sync]);
 
+  // Séances des 28 derniers jours et ce que le calcul de charge en fait (relu après chaque synchro).
+  const { nights } = useHealthData();
+  const [checks, setChecks] = useState<SessionCheck[] | null | undefined>(undefined);
+  useEffect(() => {
+    loadSessionChecks(nights, new Date())
+      .then(setChecks)
+      .catch(() => setChecks(undefined));
+  }, [nights, sync]);
+
   return (
     <Screen bottomInset>
       <BackHeader title={SOURCES.dataCheck} onBack={() => router.back()} />
@@ -157,6 +173,7 @@ export default function InventoryScreen() {
         <View style={styles.block}>
           <SyncSection state={sync} onSync={startSync} />
           <SessionTypesSection types={types} />
+          <LoadCheckSection checks={checks} />
           <Text style={styles.section}>Inventaire</Text>
           <Text style={styles.meta}>Lu le {formatDate(state.readAt)}</Text>
           <Button title="Actualiser" onPress={load} />
@@ -222,6 +239,44 @@ const TABLE_LABELS: Record<string, string> = {
   hc_nutrition: 'Repas',
   strength_set: 'Séries de musculation saisies',
 };
+
+/**
+ * Charge : séances des 28 derniers jours, comptées (avec leurs points) ou non, et pourquoi.
+ * Les séances de moins de 20 min sont seulement comptées dans le résumé (elles sont nombreuses).
+ */
+function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefined }) {
+  if (checks === undefined) return null;
+  const listed = checks?.filter((c) => c.reason !== 'short') ?? [];
+  const count = (r: SessionCheck['reason']) => checks?.filter((c) => c.reason === r).length ?? 0;
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{LOAD_CHECK.title}</Text>
+      <Text style={styles.muted}>{LOAD_CHECK.help}</Text>
+      {checks === null && <Text style={styles.block}>{LOAD_CHECK.profileMissing}</Text>}
+      {checks !== null && checks.length === 0 && <Text style={styles.block}>{LOAD_CHECK.none}</Text>}
+      {checks !== null && checks.length > 0 && (
+        <>
+          <Text style={styles.block}>
+            {LOAD_CHECK.summary(count(null), count('short'), count('no-heart-rate'), count('no-resting-hr'))}
+          </Text>
+          {listed.map((c) => (
+            <View key={c.id} style={styles.origin}>
+              <Text style={styles.originName}>
+                {new Date(c.start).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} ·{' '}
+                {exerciseTypeLabel(c.exerciseType)} · {formatDuration(Math.round(c.durationMinutes))}
+              </Text>
+              <Text style={styles.muted}>
+                {LOAD_CHECK.coverage(Math.round(c.coverage * 100), c.samples)} ·{' '}
+                {c.reason === null ? LOAD_CHECK.points(Math.round(c.trimp ?? 0)) : LOAD_CHECK.rejected[c.reason as 'no-heart-rate' | 'no-resting-hr']}
+              </Text>
+            </View>
+          ))}
+          {count('short') > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(count('short'))}</Text>}
+        </>
+      )}
+    </View>
+  );
+}
 
 /** Séances par type : sert à vérifier sous quel type Zepp enregistre chaque sport. */
 function SessionTypesSection({ types }: { types: SessionTypeCount[] | null }) {

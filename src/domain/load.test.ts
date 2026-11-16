@@ -9,6 +9,7 @@ import {
   loadStatus,
   restingHrReference,
   sessionLoads,
+  sessionChecks,
   sessionTrimp,
   type LoadInputs,
 } from './load';
@@ -174,5 +175,58 @@ describe('séances qui comptent', () => {
 
   it('garde toujours la musculation, même courte', () => {
     expect(countedSessions([session('muscu-12', at(2026, 1, 10, 7), 12)]).map((s) => s.id)).toEqual(['muscu-12']);
+  });
+});
+
+describe('contrôle des séances (écran « Contrôle des données »)', () => {
+  const nights = Array.from({ length: 40 }, (_, i) => night(addDays('2026-01-05', i), { restingHr: 60 }));
+  const DAY = '2026-02-10';
+  const t = (hour: number) => at(2026, 2, 10, hour);
+  const other = (id: string, start: number, minutes: number) => ({ ...session(id, start, minutes), exerciseType: 0 });
+
+  const sessions = [
+    other('full', t(8), 40), // FC toutes les minutes : comptée
+    other('sparse', t(12), 40), // FC toutes les 5 min : 40 % de la séance couverte
+    other('short', t(15), 10), // moins de 20 min : ignorée
+    session('strength', t(18), 10), // musculation courte : comptée quand même
+  ];
+  const samples = [
+    ...steadyHr(t(8), 40, 120),
+    ...steadyHr(t(12), 40, 120, 300),
+    ...steadyHr(t(15), 10, 120),
+    ...steadyHr(t(18), 10, 120),
+  ];
+  const checks = sessionChecks(sessions, samples, nights, 180, 1.92);
+  const byId = (id: string) => checks.find((c) => c.id === id)!;
+
+  it('de la plus récente à la plus ancienne', () => {
+    expect(checks.map((c) => c.id)).toEqual(['strength', 'short', 'sparse', 'full']);
+    expect(byId('full').date).toBe(DAY);
+  });
+
+  it('séance bien mesurée : comptée, couverture complète', () => {
+    expect(byId('full')).toMatchObject({ reason: null, samples: 40, durationMinutes: 40 });
+    expect(byId('full').coverage).toBeCloseTo(1, 6);
+  });
+
+  it('mesures trop espacées : non comptée, et la couverture dit pourquoi', () => {
+    // 8 mesures, chacune compte au plus 2 min : 16 min sur 40, soit 40 %.
+    expect(byId('sparse')).toMatchObject({ reason: 'no-heart-rate', trimp: null, samples: 8 });
+    expect(byId('sparse').coverage).toBeCloseTo(0.4, 6);
+  });
+
+  it('moins de 20 min : non comptée (sauf musculation)', () => {
+    expect(byId('short')).toMatchObject({ reason: 'short', trimp: null });
+    expect(byId('strength').reason).toBeNull();
+  });
+
+  it('les points sont exactement ceux du calcul de charge', () => {
+    const loads = sessionLoads(countedSessions(sessions), samples, nights, 180, 1.92);
+    for (const l of loads) expect(byId(l.id).trimp).toBe(l.trimp);
+  });
+
+  it('sans FC au repos de référence : la raison est donnée', () => {
+    const [c] = sessionChecks([other('x', t(8), 40)], steadyHr(t(8), 40, 120), [], 180, 1.92);
+    expect(c.reason).toBe('no-resting-hr');
   });
 });

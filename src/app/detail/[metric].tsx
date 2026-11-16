@@ -13,6 +13,7 @@ import { colors } from '@/components/theme';
 import { TrendChart } from '@/components/TrendChart';
 import { useHealthData } from '@/components/useHealthData';
 import { dayKey } from '@/domain/dates';
+import { SETTINGS } from '@/domain/settings';
 import { chartData, shortMean, type Metric } from '@/domain/recap';
 import type { Effect, Recovery } from '@/domain/recovery';
 
@@ -29,7 +30,7 @@ export default function DetailScreen() {
   const params = useLocalSearchParams<{ metric: string }>();
   const metric: Metric = isMetric(params.metric) ? params.metric : 'hrv';
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>(7);
-  const { recap, nights } = useHealthData();
+  const { recap, nights, periods } = useHealthData();
 
   const view = metricView(recap, metric);
   const today = recap?.date ?? dayKey(new Date());
@@ -58,7 +59,7 @@ export default function DetailScreen() {
       <PeriodTabs options={PERIODS} value={period} onChange={setPeriod} />
 
       <Card>
-        <TrendChart data={chartData(nights, metric, today, period)} unfavorableLabel={UNFAVORABLE_LABEL[metric]} />
+        <TrendChart data={chartData(nights, metric, today, period, SETTINGS, periods)} unfavorableLabel={UNFAVORABLE_LABEL[metric]} />
       </Card>
 
       {recap && <ContributionsCard recovery={recap.recovery} calibrating={!recap.calibration.done} label={recap.calibration.label} />}

@@ -22,6 +22,7 @@ import { buildLoadSummary, type LoadSummary } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
 import { buildRecap, type MorningRecap } from '@/domain/recap';
 import { checkAccess, syncHealthConnect, type AccessState } from '@/sources/healthConnect';
+import { filledJournalDates } from '@/sources/manualEntry';
 
 export type HealthData = {
   loading: boolean;
@@ -37,6 +38,8 @@ export type HealthData = {
   alerts: AlertsOverview | null;
   /** Nutrition d'hier par rapport aux cibles. */
   nutrition: NutritionDayView | null;
+  /** Journal du matin du jour déjà enregistré (lot 5a). */
+  journalFilled: boolean;
   error: string | null;
   /** Première synchro du lancement terminée (l'écran Aube peut disparaître). */
   launched: boolean;
@@ -52,6 +55,7 @@ let state: HealthData = {
   load: null,
   alerts: null,
   nutrition: null,
+  journalFilled: false,
   error: null,
   launched: false,
 };
@@ -70,14 +74,24 @@ export async function reloadFromDb(): Promise<void> {
     const [nights, periods] = await Promise.all([loadNights(), loadPeriods()]);
     const now = new Date();
     const today = dayKey(now);
-    const [load, alerts, nutrition] = await Promise.all([
+    const [load, alerts, nutrition, filled] = await Promise.all([
       loadLoadInputs(nights, today, now)
         .then(buildLoadSummary)
         .catch(() => null),
       loadAlertsOverview(today).catch(() => null),
       loadYesterdayNutrition(today, now).catch(() => null),
+      filledJournalDates([today]).catch(() => new Set<string>()),
     ]);
-    setState({ nights, periods, recap: buildRecap(nights, today, SETTINGS, periods), load, alerts, nutrition, loading: false });
+    setState({
+      nights,
+      periods,
+      recap: buildRecap(nights, today, SETTINGS, periods),
+      load,
+      alerts,
+      nutrition,
+      journalFilled: filled.has(today),
+      loading: false,
+    });
   } catch (e) {
     setState({ loading: false, error: message(e) });
   }

@@ -92,7 +92,7 @@ export default function SettingsScreen() {
   function confirmErase() {
     Alert.alert(
       'Effacer toutes les données ?',
-      'Tes saisies (poids, ressenti, musculation), les bilans et la conversation du coach seront perdus définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
+      'Tes saisies (journal du matin, poids, ressenti, musculation, périodes), les bilans et la conversation du coach seront perdus définitivement. Les données de Health Connect seront relues à la prochaine synchro. Tes réglages sont conservés.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -295,6 +295,7 @@ export default function SettingsScreen() {
 
       <SettingsGroup title="Données" footer={message ?? undefined}>
         <SettingLink label="Sources de données" onPress={() => router.push('/sources')} />
+        <SettingLink label="Mes périodes" onPress={() => router.push('/periodes')} />
         <SettingLink
           label={busy === 'export' ? 'Export en cours…' : 'Exporter mes données (CSV)'}
           onPress={busy ? () => undefined : exportCsv}

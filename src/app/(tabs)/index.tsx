@@ -1,13 +1,18 @@
 // Accueil – récap du matin (DESIGN.md, écran 1 et accueil du lot 2).
 
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, type ComponentProps } from 'react';
+import { useCallback, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { scheduleMorningNotifications } from '@/background/morningNotification';
 import { AccessBanner } from '@/components/AccessBanner';
 import { AppText } from '@/components/AppText';
 import { AlertsButton, TodayAlertCard } from '@/components/AlertViews';
-import { PrimaryButton } from '@/components/Buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/Buttons';
+import { PeriodBanner, PeriodButton, PeriodSheet } from '@/components/PeriodViews';
+import { newPeriodId, savePeriod } from '@/db/periods';
+import { dayKey } from '@/domain/dates';
+import { validatePeriod, type Period, type PeriodType } from '@/domain/periods';
 import { Card, Pill } from '@/components/Card';
 import { formatLongDate } from '@/components/format';
 import { LoadCard } from '@/components/LoadCard';
@@ -25,10 +30,14 @@ import type { Metric, MorningRecap } from '@/domain/recap';
 
 const METRICS: Metric[] = ['hrv', 'restingHr', 'sleep'];
 
-/** Calibration : progression n / 28 (même sans nuit du jour). Sinon le score, ou « — » s'il manque. */
+/**
+ * Calibration : progression n / 28 (même sans nuit du jour). Sinon le score, ou « — » s'il manque.
+ * Pendant une période (lot 5a) : le score reste affiché, en gris, sans jugement de couleur.
+ */
 function ringOf(recap: MorningRecap | null): ComponentProps<typeof RecoveryRing> {
   if (!recap) return { kind: 'empty' };
   const { calibration, recovery, recommendation } = recap;
+  if (recap.period && recovery.score !== null) return { kind: 'score', score: recovery.score, color: colors.paused };
   if (!calibration.done) return { kind: 'calibration', nights: calibration.nights, required: calibration.required };
   if (recovery.score === null) return { kind: 'empty' };
   return { kind: 'score', score: recovery.score, color: zoneColor(recommendation.zone) };
@@ -36,7 +45,38 @@ function ringOf(recap: MorningRecap | null): ComponentProps<typeof RecoveryRing>
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { loading, syncing, access, recap, nights, load, alerts, nutrition, error, sync, reload } = useHealthData();
+  const { loading, syncing, access, recap, nights, periods, load, alerts, nutrition, journalFilled, error, sync, reload } =
+    useHealthData();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const today = dayKey(new Date());
+  const period = recap?.period ?? null;
+
+  /** Nouvelle période : contrôlée (chevauchement, 14 jours au plus), enregistrée, puis tout est recalculé. */
+  async function startPeriod(type: PeriodType, start: string): Promise<string | null> {
+    const candidate = { id: newPeriodId(), type, start, end: null };
+    const error = validatePeriod(candidate, periods, today, { isNew: true });
+    if (error) return error;
+    try {
+      await savePeriod(candidate);
+    } catch (e) {
+      return `L’enregistrement a échoué : ${e instanceof Error ? e.message : String(e)}`;
+    }
+    setSheetOpen(false);
+    await afterPeriodChange();
+    return null;
+  }
+
+  /** « Terminer la période » : la fin est aujourd'hui ; les alertes reprennent demain. */
+  async function endPeriod(p: Period) {
+    await savePeriod({ ...p, end: today }).catch(() => undefined);
+    await afterPeriodChange();
+  }
+
+  async function afterPeriodChange() {
+    await reload();
+    // Le texte des notifications du matin à venir change (en pause ou non).
+    scheduleMorningNotifications().catch(() => undefined);
+  }
 
   // En revenant sur l'accueil (après une saisie par exemple), on relit la base.
   useFocusEffect(
@@ -60,12 +100,16 @@ export default function HomeScreen() {
           </View>
           <AppText variant="title">Ton récap du matin</AppText>
         </View>
-        <AlertsButton
-          unread={alerts?.unread ?? 0}
-          level={alerts?.unreadLevel ?? null}
-          onPress={() => router.push('/alertes')}
-        />
+        <View style={styles.headerButtons}>
+          <PeriodButton onPress={() => setSheetOpen(true)} />
+          <AlertsButton
+            unread={alerts?.unread ?? 0}
+            level={alerts?.unreadLevel ?? null}
+            onPress={() => router.push('/alertes')}
+          />
+        </View>
       </View>
+      <PeriodSheet visible={sheetOpen} today={today} onStart={startPeriod} onClose={() => setSheetOpen(false)} />
 
       <AccessBanner access={access} />
       {error && (
@@ -94,15 +138,20 @@ export default function HomeScreen() {
             {recommendation && (
               <Pill
                 text={recommendation.status}
-                color={recommendation.zone === 'neutral' ? undefined : zoneColor(recommendation.zone)}
+                color={recommendation.zone === 'neutral' || recommendation.zone === 'paused' ? undefined : zoneColor(recommendation.zone)}
               />
             )}
           </View>
 
-          {recommendation && <RecommendationCard recommendation={recommendation} />}
+          {/* Période en cours : le bandeau remplace la recommandation, et la carte alerte est masquée. */}
+          {period ? (
+            <PeriodBanner period={period} today={today} onEnd={() => endPeriod(period)} />
+          ) : (
+            recommendation && <RecommendationCard recommendation={recommendation} />
+          )}
 
-          {/* Alerte du jour : seulement s'il y en a une, jamais pendant la calibration. */}
-          {alerts?.today && recap?.calibration.done && (
+          {/* Alerte du jour : seulement s'il y en a une, jamais pendant la calibration ni pendant une période. */}
+          {!period && alerts?.today && recap?.calibration.done && (
             <TodayAlertCard alert={alerts.today} onPress={() => router.push('/alertes')} />
           )}
 
@@ -130,13 +179,19 @@ export default function HomeScreen() {
         </>
       )}
 
-      <PrimaryButton title="Saisir poids et ressenti" onPress={() => router.push('/saisie')} />
+      {/* Journal du matin : une fois enregistré, bouton secondaire qui permet de le modifier. */}
+      {journalFilled ? (
+        <SecondaryButton title="Journal rempli ✓" onPress={() => router.push('/saisie')} />
+      ) : (
+        <PrimaryButton title="Journal du matin" onPress={() => router.push('/saisie')} />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center' },
+  headerButtons: { flexDirection: 'row', gap: 8 },
   headerText: { flex: 1, gap: 4 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   wordmark: { fontFamily: fonts.display600, fontSize: 15, letterSpacing: 15 * 0.04, color: colors.text },

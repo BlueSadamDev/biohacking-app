@@ -169,6 +169,11 @@ export const SETTINGS = {
     /** Charge aiguë et chronique : moyennes par jour sur N jours (aujourd'hui compris). */
     acuteDays: 7,
     chronicDays: 28,
+    /**
+     * Charge non fiable (ni valeur, ni pastille, ni alerte de charge) quand plus de cette part des
+     * séances comptées des 28 derniers jours n'a pas assez de fréquence cardiaque.
+     */
+    maxUnmeasuredShare: 0.25,
     /** Jours d'historique nécessaires avant d'afficher le ratio. */
     calibrationDays: 28,
     /** Seuils du ratio aigu / chronique. */

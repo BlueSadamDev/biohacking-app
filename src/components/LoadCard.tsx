@@ -62,6 +62,14 @@ export function LoadCard({ load }: { load: LoadSummary | null }) {
         {LOAD.noLoad}
       </AppText>
     );
+  } else if (load.state === 'unreliable') {
+    // Trop de séances sans fréquence cardiaque : ni pourcentage ni pastille (valeur faussée).
+    body = (
+      <>
+        <RichText variant="constat" text={LOAD.unreliable(load.unmeasured, load.total)} />
+        <SecondaryButton title={LOAD.unreliableButton} onPress={() => router.push('/diagnostic')} />
+      </>
+    );
   } else {
     pill = statusView(load.status);
     body = (

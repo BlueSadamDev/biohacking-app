@@ -362,6 +362,11 @@ Ces points remplacent les descriptions plus anciennes ci-dessus. Les règles d'�
   titre (« Équilibrée » `good`, « En hausse » et « En baisse » `mid`, « Trop haute » `low`),
   phrase en style « constat » (« Tu t'entraînes *45 % de plus* que d'habitude cette semaine »),
   jauge bornée « −100 % » / « +100 % », détail en petit (séances, charge par jour).
+- Charge non fiable (plus d'une séance sur 4 des 28 derniers jours sans fréquence cardiaque) : ni
+  pastille ni jauge ; phrase « *6 séances sur 20* des 28 derniers jours n'ont pas de fréquence
+  cardiaque : ta charge serait faussée. » et bouton secondaire « Voir les séances » (ouvre
+  « Contrôle des données », carte « Charge : séances des 28 derniers jours »). Carte Sport :
+  « Non fiable ».
 - Erreur de lecture : message simple (« Tire l'écran vers le bas pour réessayer »), jamais le
   détail technique.
 

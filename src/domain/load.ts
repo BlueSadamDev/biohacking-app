@@ -133,6 +133,8 @@ export type LoadSummary =
   | { state: 'profile-missing'; missing: ('sex' | 'hrMax')[] }
   | { state: 'calibrating'; days: number; required: number }
   | { state: 'no-load'; sessions7d: number; sessionsWithoutHr: number }
+  /** Trop de séances sans fréquence cardiaque sur 28 jours : la charge serait faussée. */
+  | { state: 'unreliable'; unmeasured: number; total: number }
   | {
       state: 'ok';
       acute: number;
@@ -158,6 +160,22 @@ export type LoadInputs = {
   today: string;
 };
 
+/** Séances comptées des `chronicDays` derniers jours, et combien n'ont pas de TRIMP (FC manquante). */
+export function unmeasuredSessions(
+  loads: SessionLoad[],
+  today: string,
+  settings: Settings = SETTINGS,
+): { unmeasured: number; total: number } {
+  const start = addDays(today, -(settings.load.chronicDays - 1));
+  const recent = loads.filter((l) => l.date >= start && l.date <= today);
+  return { unmeasured: recent.filter((l) => l.trimp === null).length, total: recent.length };
+}
+
+/** Charge non fiable : plus de `maxUnmeasuredShare` des séances comptées sans fréquence cardiaque. */
+export function isUnreliable(m: { unmeasured: number; total: number }, settings: Settings = SETTINGS): boolean {
+  return m.total > 0 && m.unmeasured / m.total > settings.load.maxUnmeasuredShare;
+}
+
 /** Résumé de la charge du jour, ou la raison pour laquelle il ne peut pas être calculé. */
 export function buildLoadSummary(input: LoadInputs, settings: Settings = SETTINGS): LoadSummary {
   const missing: ('sex' | 'hrMax')[] = [];
@@ -174,6 +192,10 @@ export function buildLoadSummary(input: LoadInputs, settings: Settings = SETTING
   const week = loads.filter((l) => l.date >= weekStart && l.date <= input.today);
   const sessions7d = week.length;
   const sessionsWithoutHr = week.filter((l) => l.trimp === null).length;
+
+  // Trop de séances sans fréquence cardiaque : la charge serait faussée (aucune valeur affichée).
+  const measure = unmeasuredSessions(loads, input.today, settings);
+  if (isUnreliable(measure, settings)) return { state: 'unreliable', ...measure };
 
   const { acute, chronic, ratio } = loadRatio(dailyLoads(loads), input.today, settings);
   if (ratio === null) return { state: 'no-load', sessions7d, sessionsWithoutHr };

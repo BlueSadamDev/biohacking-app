@@ -261,6 +261,9 @@ function loadSection(i: CoachInputs, s: Settings): CoachSection {
         state: l.state,
         sessions7d: l.sessions7d,
       });
+    case 'unreliable':
+      // Comme « profil incomplet » : aucun chiffre de charge donné au coach, donc aucun verdict de charge.
+      return section('load', title, `${NA} (trop de séances sans fréquence cardiaque)`, { state: l.state });
     case 'ok':
       return section(
         'load',

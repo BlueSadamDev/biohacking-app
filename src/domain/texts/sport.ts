@@ -7,6 +7,7 @@ export const SPORT = {
   loadCalibrating: (days: number, required: number) => `Calibration : ${days} / ${required} jours`,
   loadProfileMissing: 'Complète ton profil cardiaque dans Réglages.',
   loadNoSession: 'Aucune séance avec fréquence cardiaque ces 28 derniers jours.',
+  loadUnreliableValue: 'Non fiable',
   hrMaxMissing: 'Indique ta fréquence cardiaque max ou ton année de naissance dans Réglages pour voir tes zones cardiaques.',
   noSessionThisWeek: 'Aucune séance cette semaine : pas encore de zones cardiaques.',
   notEnoughHr: 'Pas assez de fréquence cardiaque enregistrée pendant tes séances pour calculer les zones.',

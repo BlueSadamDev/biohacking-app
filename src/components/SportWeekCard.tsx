@@ -9,7 +9,7 @@ import type { SportWeek } from '@/db/sportData';
 import type { LoadSummary } from '@/domain/load';
 import { plainText } from '@/domain/texts/markup';
 import { SPORT } from '@/domain/texts/sport';
-import { loadSentence } from '@/domain/texts/today';
+import { LOAD, loadSentence } from '@/domain/texts/today';
 
 import { AppText } from './AppText';
 import { Card } from './Card';
@@ -43,6 +43,8 @@ function loadValue(load: LoadSummary | null): { value: string; note: string | nu
       return { value: '—', note: SPORT.loadProfileMissing };
     case 'no-load':
       return { value: '—', note: SPORT.loadNoSession };
+    case 'unreliable':
+      return { value: SPORT.loadUnreliableValue, note: plainText(LOAD.unreliable(load.unmeasured, load.total)) };
   }
 }
 

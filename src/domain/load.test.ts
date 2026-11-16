@@ -158,6 +158,22 @@ describe('résumé de la charge', () => {
     });
   });
 
+  it('une séance sur 4 sans FC (le seuil) : la charge reste affichée', () => {
+    // Les 7 premières séances (15 au 21 janvier) sans mesure : 7 sur 28 = 25 %.
+    const summary = buildLoadSummary({ ...base, samples: samples.filter((s) => s.time >= at(2026, 1, 22)) });
+    expect(summary.state).toBe('ok');
+  });
+
+  it('plus d’une séance sur 4 sans FC : charge non fiable, aucune valeur', () => {
+    const summary = buildLoadSummary({ ...base, samples: samples.filter((s) => s.time >= at(2026, 1, 23)) });
+    expect(summary).toEqual({ state: 'unreliable', unmeasured: 8, total: 28 });
+  });
+
+  it('seule la dernière semaine mesurée (le cas du +300 %) : non fiable', () => {
+    const summary = buildLoadSummary({ ...base, samples: samples.filter((s) => s.time >= at(2026, 2, 5)) });
+    expect(summary).toEqual({ state: 'unreliable', unmeasured: 21, total: 28 });
+  });
+
   it('compte les séances de la semaine sans FC', () => {
     const summary = buildLoadSummary({ ...base, samples: samples.filter((s) => s.time < at(2026, 2, 10)) });
     expect(summary).toMatchObject({ sessions7d: 7, sessionsWithoutHr: 2 });

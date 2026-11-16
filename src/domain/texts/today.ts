@@ -178,7 +178,9 @@ export const NUTRITION = {
   caloriesNoTarget: 'Indique ta cible de calories dans Réglages.',
   noValue: 'Aucune valeur hier.',
   reached: 'Cible atteinte.',
-  caloriesBelow: 'Sous ta cible.',
+  /** Calories (plafond) : la cible ou moins est respectée ; au-dessus, l'écart en relief. */
+  caloriesWithin: (kcal: number) => (kcal === 0 ? 'Pile sur ta cible.' : `Dans ta cible (${kcal} kcal de marge).`),
+  caloriesAbove: (kcal: number) => `Au-dessus de ta cible : *+${kcal} kcal*.`,
   proteinBelow: (days: number, weekDays: number) => `Sous ta cible *${days} ${pluralWord(days, 'jour')} sur ${weekDays}* cette semaine.`,
   setTargets: 'Indiquer mes cibles',
   others: (carbs: string, fat: string, meals: number) => `Glucides ${carbs} · Lipides ${fat} · ${countOf(meals, 'repas')}`,

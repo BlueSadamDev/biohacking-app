@@ -6,7 +6,7 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations), 4 (coach IA local), 4.1 (fiabilité), 5a (étiquettes de période et journal du matin) et 5a.1 (écriture et relief) terminés. En cours : correction de la charge (rattrapage de la fréquence cardiaque des séances), puis une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes (feuille de route complète dans le cahier des charges, section 7).
+- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations), 4 (coach IA local), 4.1 (fiabilité), 5a (étiquettes de période et journal du matin) et 5a.1 (écriture et relief) terminés, ainsi que la correction de la charge (rattrapage de la fréquence cardiaque des séances, charge « non fiable » si trop de séances manquent de mesures). En cours : une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes. Point ouvert : contrôle qualité des données Zepp (feuille de route complète dans le cahier des charges, sections 7 et 8).
 
 ## Organisation du code
 

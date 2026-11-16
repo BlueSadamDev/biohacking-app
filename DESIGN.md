@@ -106,7 +106,10 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 - **Barre de progression nutrition** : comme la jauge, couleur selon la
   cible : `good` si atteinte (au moins 90 % de la cible), `mid` si en
   dessous, avec une ligne d'état sous la barre (« Dans la cible »,
-  « Sous la cible · n jours sur 7 cette semaine »).
+  « Sous la cible · n jours sur 7 cette semaine »). Calories (depuis le
+  16 novembre 2026) : la cible est un plafond. `good` à la cible ou en
+  dessous (« Dans ta cible (177 kcal de marge) »), `mid` au-dessus, même de
+  peu (« Au-dessus de ta cible : *+177 kcal* »).
 - **Ligne de réglage** : hauteur minimale 52, libellé à gauche (14),
   valeur à droite : champ numérique 96 × 40 (contour `border`, fond `bg`,
   aligné à droite) suivi de l'unité (13, `textMuted`), ou valeur en

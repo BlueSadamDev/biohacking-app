@@ -153,6 +153,7 @@ Tous les indicateurs se comparent à ma propre norme : une valeur n'est « mauva
 | Score de récupération | Combinaison pondérée HRV, FC au repos, sommeil et charge de la veille, sur 0 à 100 | Moins de 40 : recommandation de séance légère |
 | Poids | Moyenne glissante 7 j | Tendance hors de la fourchette cible fixée (prise ou perte trop rapide) sur 3 semaines |
 | Protéines | g/kg/jour depuis les repas Suivi macro (Health Connect) | Sous la cible plus de 3 jours sur 7 |
+| Calories | Total du jour depuis les repas Suivi macro, comparé à la cible des Réglages, qui est un **plafond** : respectée à la cible ou en dessous, dépassée même de peu (décision du 16 novembre 2026) | Pas d'alerte : la veille au-dessus du plafond est signalée dans le récap du matin |
 | Zones cardiaques | Temps passé en zones 1 à 5 par séance et par semaine, à partir de la FC du Helio Strap et de la FC max des Réglages (Z2 = 60 à 70 % de la FC max ; tout ce qui est sous 60 %, échauffement et repos entre les séries compris, compte en zone 1) | Pas d'alerte : temps en zone 2 de la semaine comparé à une cible réglable (minutes par semaine), qui alimente les suggestions de sports |
 | Force (musculation) | 1RM estimé par exercice clé (squat, développé couché, soulevé de terre) à partir de la meilleure série saisie : charge × (1 + répétitions / 30) (formule d'Epley) | Stagnation sur 6 semaines : suggestion de changer de programme |
 

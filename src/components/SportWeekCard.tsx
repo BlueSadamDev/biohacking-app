@@ -22,7 +22,8 @@ function Stat({ label, value, unit, color }: { label: string; value: string; uni
   return (
     <View style={styles.stat}>
       <AppText variant="small">{label}</AppText>
-      <AppText variant="tileValue" style={color ? { color } : undefined}>
+      {/* Une seule ligne : un mot (« Équilibrée ») rétrécit au lieu d'être coupé en deux. */}
+      <AppText variant="tileValue" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={color ? { color } : undefined}>
         {value}
         {unit ? <AppText variant="unit"> {unit}</AppText> : null}
       </AppText>

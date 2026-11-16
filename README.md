@@ -6,7 +6,7 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations), 4 (coach IA local) et 4.1 (fiabilité) terminés. En cours : lot 5a (collecter : étiquettes de période et journal du matin), puis une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes (feuille de route complète dans le cahier des charges, section 7).
+- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations), 4 (coach IA local), 4.1 (fiabilité) et 5a (étiquettes de période et journal du matin) terminés. En cours : une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes (feuille de route complète dans le cahier des charges, section 7).
 
 ## Organisation du code
 

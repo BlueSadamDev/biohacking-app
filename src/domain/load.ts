@@ -180,6 +180,23 @@ export function buildLoadSummary(input: LoadInputs, settings: Settings = SETTING
   return { state: 'ok', acute, chronic, ratio, status: loadStatus(ratio, settings), sessions7d, sessionsWithoutHr };
 }
 
+/**
+ * Séances à relire dans Health Connect (rattrapage de la FC) : séances comptées, terminées depuis
+ * `sinceMs`, sans aucune mesure de FC dans la base ; les plus récentes d'abord, au plus `max`.
+ */
+export function heartRateBackfillTargets(
+  sessions: ExerciseSession[],
+  samplesBySession: Map<string, number>,
+  sinceMs: number,
+  max: number,
+  settings: Settings = SETTINGS,
+): ExerciseSession[] {
+  return countedSessions(sessions, settings)
+    .filter((s) => s.end >= sinceMs && (samplesBySession.get(s.id) ?? 0) === 0)
+    .sort((a, b) => b.start - a.start)
+    .slice(0, max);
+}
+
 // ---------------------------------------------------------------------------
 // Contrôle des séances (écran « Contrôle des données ») : ce que le calcul de charge fait de chaque
 // séance, sans rien changer au calcul. Les points viennent de `sessionLoads` (mêmes règles).

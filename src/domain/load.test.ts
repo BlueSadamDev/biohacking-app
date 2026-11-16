@@ -9,6 +9,7 @@ import {
   loadStatus,
   restingHrReference,
   sessionLoads,
+  heartRateBackfillTargets,
   sessionChecks,
   sessionTrimp,
   type LoadInputs,
@@ -228,5 +229,28 @@ describe('contrôle des séances (écran « Contrôle des données »)', () => {
   it('sans FC au repos de référence : la raison est donnée', () => {
     const [c] = sessionChecks([other('x', t(8), 40)], steadyHr(t(8), 40, 120), [], 180, 1.92);
     expect(c.reason).toBe('no-resting-hr');
+  });
+});
+
+describe('rattrapage de la FC des séances', () => {
+  const t = (day: number, hour: number) => at(2026, 2, day, hour);
+  const other = (id: string, start: number, minutes: number) => ({ ...session(id, start, minutes), exerciseType: 0 });
+  const sessions = [
+    other('old', t(1, 8), 40), // trop ancienne
+    other('measured', t(9, 8), 40), // déjà mesurée
+    other('missing-1', t(9, 12), 40),
+    other('missing-2', t(10, 12), 40),
+    other('short', t(10, 15), 10), // moins de 20 min : pas de rattrapage
+    session('strength', t(10, 18), 10), // musculation courte : rattrapée
+  ];
+  const counts = new Map([['measured', 40]]);
+  const since = t(5, 0);
+
+  it('séances comptées récentes sans aucune mesure, les plus récentes d’abord', () => {
+    expect(heartRateBackfillTargets(sessions, counts, since, 40).map((s) => s.id)).toEqual(['strength', 'missing-2', 'missing-1']);
+  });
+
+  it('au plus N séances par synchro', () => {
+    expect(heartRateBackfillTargets(sessions, counts, since, 2).map((s) => s.id)).toEqual(['strength', 'missing-2']);
   });
 });

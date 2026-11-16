@@ -717,6 +717,12 @@ export const SETTINGS = {
     firstSyncDays: 90,
     /** Recouvrement à chaque synchro, pour rattraper les données arrivées en retard (jours). */
     overlapDays: 2,
+    /**
+     * Rattrapage de la FC des séances : une séance comptée des N derniers jours sans aucune mesure
+     * de FC dans la base est relue dans Health Connect (au plus `heartRateBackfillMax` par synchro).
+     */
+    heartRateBackfillDays: 28,
+    heartRateBackfillMax: 40,
     /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
     launchScreenMaxSeconds: 10,
   },

@@ -7,23 +7,30 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { scheduleMorningNotifications } from '@/background/morningNotification';
 import { runAlertEngine } from '@/background/alertEngine';
+import { runPeriodReminder } from '@/background/periodReminder';
 import { runStrengthReminder } from '@/background/strengthReminder';
 import { loadAlertsOverview, type AlertsOverview } from '@/db/alerts';
 import { loadNights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
 import { loadYesterdayNutrition } from '@/db/nutritionData';
+import { loadPeriods } from '@/db/periods';
+import type { Period } from '@/domain/periods';
+import { SETTINGS } from '@/domain/settings';
 import type { NutritionDayView } from '@/domain/nutrition';
 import { dayKey } from '@/domain/dates';
 import { buildLoadSummary, type LoadSummary } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
 import { buildRecap, type MorningRecap } from '@/domain/recap';
 import { checkAccess, syncHealthConnect, type AccessState } from '@/sources/healthConnect';
+import { filledJournalDates } from '@/sources/manualEntry';
 
 export type HealthData = {
   loading: boolean;
   syncing: boolean;
   access: AccessState | null;
   nights: NightValue[];
+  /** Périodes (lot 5a), de la plus récente à la plus ancienne. */
+  periods: Period[];
   recap: MorningRecap | null;
   /** Charge d'entraînement du jour ; null tant qu'elle n'a pas été calculée. */
   load: LoadSummary | null;
@@ -31,6 +38,8 @@ export type HealthData = {
   alerts: AlertsOverview | null;
   /** Nutrition d'hier par rapport aux cibles. */
   nutrition: NutritionDayView | null;
+  /** Journal du matin du jour déjà enregistré (lot 5a). */
+  journalFilled: boolean;
   error: string | null;
   /** Première synchro du lancement terminée (l'écran Aube peut disparaître). */
   launched: boolean;
@@ -41,10 +50,12 @@ let state: HealthData = {
   syncing: false,
   access: null,
   nights: [],
+  periods: [],
   recap: null,
   load: null,
   alerts: null,
   nutrition: null,
+  journalFilled: false,
   error: null,
   launched: false,
 };
@@ -60,17 +71,27 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 /** Relit la base locale et recalcule le récap du jour (rapide, sans Health Connect). */
 export async function reloadFromDb(): Promise<void> {
   try {
-    const nights = await loadNights();
+    const [nights, periods] = await Promise.all([loadNights(), loadPeriods()]);
     const now = new Date();
     const today = dayKey(now);
-    const [load, alerts, nutrition] = await Promise.all([
+    const [load, alerts, nutrition, filled] = await Promise.all([
       loadLoadInputs(nights, today, now)
         .then(buildLoadSummary)
         .catch(() => null),
       loadAlertsOverview(today).catch(() => null),
       loadYesterdayNutrition(today, now).catch(() => null),
+      filledJournalDates([today]).catch(() => new Set<string>()),
     ]);
-    setState({ nights, recap: buildRecap(nights, today), load, alerts, nutrition, loading: false });
+    setState({
+      nights,
+      periods,
+      recap: buildRecap(nights, today, SETTINGS, periods),
+      load,
+      alerts,
+      nutrition,
+      journalFilled: filled.has(today),
+      loading: false,
+    });
   } catch (e) {
     setState({ loading: false, error: message(e) });
   }
@@ -90,6 +111,7 @@ export async function syncNow(): Promise<void> {
     // Alertes calculées sur les données fraîches (sans effet pendant la calibration).
     await runAlertEngine().catch(() => undefined);
     await runStrengthReminder().catch(() => undefined);
+    await runPeriodReminder().catch(() => undefined);
     await reloadFromDb();
     setState({ syncing: false, launched: true });
     // Le texte de la notification du matin suit les dernières données.

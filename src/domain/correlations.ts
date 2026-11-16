@@ -16,6 +16,8 @@ import { addDays, dayKey } from './dates';
 import type { ExerciseSession } from './load';
 import type { NightValue } from './nightly';
 import type { DayNutrition } from './nutrition';
+import { behaviorStatus, type Behavior, type BehaviorLog } from './journal';
+import { isTaggedDay, withoutTaggedNights, type Period } from './periods';
 import { averageWeight, proteinTargetGrams } from './profile';
 import { computeRecovery } from './recovery';
 import { SETTINGS, type Settings } from './settings';
@@ -32,6 +34,11 @@ export type CorrelationInputs = {
   nutrition: Map<string, DayNutrition>;
   weights: Map<string, DailyWeight>;
   proteinGPerKg: number;
+  /** Périodes (lot 5a) : jours étiquetés et nuits qui s'y terminent exclus de toutes les paires. */
+  periods?: readonly Period[];
+  /** Comportements affichés du journal (lot 5a) : chacun devient 3 paires testées. */
+  behaviors?: readonly Pick<Behavior, 'id' | 'name'>[];
+  behaviorLog?: BehaviorLog;
   today: string;
 };
 
@@ -51,6 +58,11 @@ type Pair = {
   /** Phrase : `higher` = la situation étudiée donne un résultat plus haut. */
   sentence: (higher: boolean, pct: number, detail?: string) => string;
   action: (favorable: boolean) => string;
+  /**
+   * Règles strictes contre les faux liens (paires de comportements, lot 5a) : lien au moins
+   * `behaviorMinEffect` et au moins `behaviorMinPerGroupPerHalf` jours par groupe dans chaque moitié.
+   */
+  strict?: boolean;
 };
 
 const median = (values: number[]) => {
@@ -167,6 +179,55 @@ export const PAIRS: readonly Pair[] = [
   },
 ];
 
+/** « Alcool » → « alcool » (sauf sigle, « HRV »). */
+const lowerFirst = (text: string) => (/^[A-ZÀ-Ý]{2}/.test(text) ? text : text.charAt(0).toLocaleLowerCase('fr') + text.slice(1));
+
+type Outcome = { key: 'hrv' | 'sleep' | 'score'; kind: ValueKind; value: (ctx: Context, nextDay: string) => number | null | undefined };
+
+const BEHAVIOR_OUTCOMES: readonly Outcome[] = [
+  { key: 'hrv', kind: 'ms', value: (ctx, next) => ctx.nightByDate.get(next)?.hrvMs },
+  { key: 'sleep', kind: 'minutes', value: (ctx, next) => ctx.nightByDate.get(next)?.asleepMinutes },
+  { key: 'score', kind: 'score', value: (ctx, next) => computeRecovery(ctx.nights, next, ctx.settings).score },
+];
+
+/**
+ * Paires d'un comportement du journal (lot 5a) : comportement du jour J → HRV et durée du sommeil
+ * de la nuit suivante (celle qui porte la date J+1), score de récupération de J+1.
+ * Jours « inconnus » (sans journal) et jours étiquetés exclus. Règles strictes (`strict`).
+ */
+export function behaviorPairs(behaviors: readonly Pick<Behavior, 'id' | 'name'>[]): Pair[] {
+  return behaviors.flatMap((b) => {
+    const name = lowerFirst(b.name.trim());
+    return BEHAVIOR_OUTCOMES.map(
+      (o): Pair => ({
+        id: `behavior:${b.id}:${o.key}`,
+        kind: o.kind,
+        strict: true,
+        observe: (ctx) => {
+          const log = ctx.behaviorLog ?? new Map();
+          const observations: Observation[] = [];
+          for (const day of ctx.days) {
+            const status = behaviorStatus(log, day, b.id);
+            const next = addDays(day, 1);
+            if (status === 'unknown' || next > ctx.today) continue;
+            const value = o.value(ctx, next);
+            if (value == null) continue;
+            observations.push({ date: day, study: status === 'yes', value });
+          }
+          return { observations, studyLabel: `Avec ${name}`, refLabel: `Sans ${name}` };
+        },
+        sentence: (higher, pct) => {
+          if (o.key === 'hrv') return `Les jours avec ${name}, ta HRV de la nuit suivante est ${higher ? 'supérieure' : 'inférieure'} de ${pct} % en moyenne.`;
+          if (o.key === 'sleep') return `Les jours avec ${name}, tu dors ${pct} % de ${higher ? 'plus' : 'moins'} la nuit suivante.`;
+          return `Le lendemain d’un jour avec ${name}, ton score de récupération est ${higher ? 'supérieur' : 'inférieur'} de ${pct} % en moyenne.`;
+        },
+        action: (fav) =>
+          fav ? `« ${b.name.trim()} » semble te réussir : garde-le si ça te convient.` : `Essaie de t’en passer quelques jours et regarde si tes nuits changent.`,
+      }),
+    );
+  });
+}
+
 export type Strength = 'strong' | 'moderate' | 'weak';
 
 export type Link = {
@@ -213,13 +274,17 @@ export function strengthOf(effect: number, settings: Settings = SETTINGS): Stren
 }
 
 /** Même sens dans la 1re et la 2e moitié de la période (assez de jours par groupe dans chaque moitié) ? */
-export function isRegular(observations: Observation[], overallSign: number, settings: Settings = SETTINGS): boolean {
+export function isRegular(
+  observations: Observation[],
+  overallSign: number,
+  settings: Settings = SETTINGS,
+  min: number = settings.correlations.minPerGroupPerHalf,
+): boolean {
   const sorted = [...observations].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const half = Math.floor(sorted.length / 2);
   return [sorted.slice(0, half), sorted.slice(half)].every((part) => {
     const s = part.filter((o) => o.study).map((o) => o.value);
     const r = part.filter((o) => !o.study).map((o) => o.value);
-    const min = settings.correlations.minPerGroupPerHalf;
     if (s.length < min || r.length < min) return false;
     return Math.sign(mean(s) - mean(r)) === overallSign;
   });
@@ -229,7 +294,7 @@ export type PairStatus = 'shown' | 'not-enough-days' | 'too-weak' | 'irregular';
 
 /** Évalue une paire à partir de ses observations ; renvoie le lien s'il est affichable, sinon la raison. */
 export function evaluatePair(
-  pair: Pick<Pair, 'id' | 'kind' | 'sentence' | 'action'>,
+  pair: Pick<Pair, 'id' | 'kind' | 'sentence' | 'action' | 'strict'>,
   result: PairResult,
   settings: Settings = SETTINGS,
 ): { status: PairStatus; link: Link | null } {
@@ -242,7 +307,10 @@ export function evaluatePair(
   const effect = cohenD(study, reference);
   const strength = effect === null ? null : strengthOf(effect, settings);
   if (effect === null || strength === null) return { status: 'too-weak', link: null };
-  if (!isRegular(result.observations, Math.sign(effect), settings)) return { status: 'irregular', link: null };
+  // Comportements : seuil plus strict (beaucoup de paires testées → plus de liens dus au hasard).
+  if (pair.strict && Math.abs(effect) < c.behaviorMinEffect) return { status: 'too-weak', link: null };
+  const perHalf = pair.strict ? c.behaviorMinPerGroupPerHalf : c.minPerGroupPerHalf;
+  if (!isRegular(result.observations, Math.sign(effect), settings, perHalf)) return { status: 'irregular', link: null };
 
   const ms = mean(study);
   const mr = mean(reference);
@@ -275,15 +343,21 @@ export type CorrelationReport = {
 /** Teste toutes les paires sur les 90 derniers jours. */
 export function findLinks(input: CorrelationInputs, settings: Settings = SETTINGS): CorrelationReport {
   const c = settings.correlations;
+  const periods = input.periods ?? [];
+  // Jours étiquetés retirés avant tout calcul : ni comme jour J, ni comme nuit suivante.
+  const nights = withoutTaggedNights(input.nights, periods);
   const ctx: Context = {
     ...input,
+    nights,
     settings,
-    nightByDate: new Map(input.nights.map((n) => [n.date, n])),
-    days: Array.from({ length: c.windowDays }, (_, i) => addDays(input.today, -(c.windowDays - 1 - i))),
+    nightByDate: new Map(nights.map((n) => [n.date, n])),
+    days: Array.from({ length: c.windowDays }, (_, i) => addDays(input.today, -(c.windowDays - 1 - i))).filter(
+      (day) => !isTaggedDay(day, periods),
+    ),
   };
   const statuses: Record<string, PairStatus> = {};
   const links: Link[] = [];
-  for (const pair of PAIRS) {
+  for (const pair of [...PAIRS, ...behaviorPairs(input.behaviors ?? [])]) {
     const { status, link } = evaluatePair(pair, pair.observe(ctx), settings);
     statuses[pair.id] = status;
     if (link) links.push(link);

@@ -32,8 +32,11 @@ export function nextOccurrences(now: Date, time: TimeOfDay, count: number): Date
 
 export type NotificationText = { title: string; body: string };
 
-/** Compléments du récap : rappel nutrition de la veille, titres des alertes non urgentes regroupées. */
-export type RecapExtras = { nutritionReminder?: string | null; watchAlerts?: string[] };
+/**
+ * Compléments du récap : rappel nutrition de la veille, titres des alertes non urgentes regroupées,
+ * rappel du journal du matin (lot 5a) quand il n'est pas rempli.
+ */
+export type RecapExtras = { nutritionReminder?: string | null; watchAlerts?: string[]; journalMissing?: boolean };
 
 /** Texte de la notification pour le récap d'un jour (null = nuit pas encore connue). */
 export function notificationText(
@@ -43,7 +46,10 @@ export function notificationText(
 ): NotificationText {
   const title = 'Récap du matin';
   let body: string;
-  if (!recap || recap.recovery.score === null) {
+  if (recap?.period) {
+    // Période en cours : ni score jugé ni recommandation chiffrée.
+    body = `Période ${settings.periods.labels[recap.period.type].toLowerCase()} : tes normes et tes alertes sont en pause. ${recap.recommendation.action}`;
+  } else if (!recap || recap.recovery.score === null) {
     body = 'Ouvre l’app pour synchroniser ta nuit et voir ta recommandation du jour.';
   } else if (!recap.calibration.done) {
     body = `${recap.calibration.label}. ${recap.recommendation.action}.`;
@@ -52,6 +58,7 @@ export function notificationText(
   }
   if (extras.watchAlerts?.length) body += ` À surveiller : ${extras.watchAlerts.join(', ')}.`;
   if (extras.nutritionReminder) body += ` ${extras.nutritionReminder}`;
+  if (extras.journalMissing) body += ` ${settings.journal.reminder}`;
   return { title, body };
 }
 

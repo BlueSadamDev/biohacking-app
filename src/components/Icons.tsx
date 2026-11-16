@@ -88,6 +88,16 @@ export function PulseIcon(props: IconProps) {
   );
 }
 
+/** Signaler une période (lot 5a) : drapeau. */
+export function FlagIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Line x1="5" y1="21" x2="5" y2="4" />
+      <Path d="M5 4h11l-2 4 2 4H5" />
+    </Icon>
+  );
+}
+
 /** Alertes : cloche. */
 export function BellIcon(props: IconProps) {
   return (

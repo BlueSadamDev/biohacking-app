@@ -300,6 +300,13 @@ export const SETTINGS = {
     maxShown: 3,
     /** Séance « du soir » : commencée à partir de cette heure. */
     lateSessionHour: 20,
+    /**
+     * Comportements du journal (lot 5a) : beaucoup plus de paires testées, donc règles plus strictes
+     * contre les faux liens : lien au moins « modéré » (d ≥ `moderate`) et au moins N jours « oui »
+     * et N jours « non » dans chaque moitié de la période.
+     */
+    behaviorMinEffect: 0.5,
+    behaviorMinPerGroupPerHalf: 3,
   },
 
   /** Nutrition : une cible est « atteinte » à partir de cette part (DESIGN.md : 90 %). */
@@ -712,6 +719,53 @@ export const SETTINGS = {
     overlapDays: 2,
     /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
     launchScreenMaxSeconds: 10,
+  },
+
+  /**
+   * Étiquettes de période (lot 5a, F7) : les jours étiquetés sont exclus des normes, de la calibration,
+   * des liens observés et des suggestions ; les alertes sont en pause (cahier des charges, section 5).
+   */
+  periods: {
+    /** Ordre d'affichage des types (panneau « Signaler une période »). */
+    types: ['sick', 'injury', 'travel', 'holiday', 'other'] as readonly ('sick' | 'injury' | 'travel' | 'holiday' | 'other')[],
+    labels: { sick: 'Malade', injury: 'Blessure', travel: 'Voyage', holiday: 'Vacances', other: 'Autre' },
+    /** Phrase du jour pendant une période (remplace la recommandation). Jamais de vocabulaire médical. */
+    advice: {
+      sick: 'Priorité au repos : pas de séance tant que tu ne te sens pas mieux.',
+      injury: 'Évite les séances qui sollicitent la zone blessée.',
+      travel: 'Garde des heures de coucher et de lever régulières.',
+      holiday: 'Profite : tes normes t’attendront au retour.',
+      other: 'Écoute tes sensations aujourd’hui.',
+    },
+    /** Date de début : au plus N jours en arrière à la création. */
+    maxStartDaysBack: 14,
+    /** Rappel « Ta période est-elle terminée ? » quand elle est ouverte depuis N jours (une seule fois). */
+    reminderAfterDays: 14,
+    /** Fenêtres des suggestions : on remonte au plus N jours pour trouver assez de jours non étiquetés. */
+    maxLookbackDays: 120,
+  },
+
+  /** Journal du matin (lot 5a, F8) : comportements de la veille. */
+  journal: {
+    /** Liste par défaut (créée au premier usage, et après un effacement des données). */
+    defaultBehaviors: [
+      { id: 'magnesium', name: 'Magnésium le soir' },
+      { id: 'alcohol', name: 'Alcool' },
+      { id: 'caffeine', name: 'Caféine après 14 h' },
+      { id: 'screen', name: 'Écran au lit' },
+      { id: 'late-meal', name: 'Repas tardif' },
+      { id: 'nap', name: 'Sieste' },
+      { id: 'sauna', name: 'Sauna' },
+      { id: 'meditation', name: 'Méditation' },
+    ] as readonly { id: string; name: string }[],
+    /** Longueur maximale du nom d'un comportement. */
+    maxNameLength: 40,
+    /** Corrections possibles : aujourd'hui et les N jours précédents. */
+    editableDays: 7,
+    /** Résumé du coach : comportements des N derniers jours. */
+    coachDays: 7,
+    /** Phrase ajoutée à la notification du matin quand le journal n'est pas rempli. */
+    reminder: 'Pense à ton journal du matin.',
   },
 
   /** Base de données locale. */

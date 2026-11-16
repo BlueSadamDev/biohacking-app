@@ -1,21 +1,27 @@
-// Saisie du matin (DESIGN.md, écran 3) : poids + énergie, courbatures, humeur (1 à 5), note.
-// Le poids saisi fait foi : il remplace la pesée Zepp du jour.
+// Journal du matin (DESIGN.md, « Écrans du lot 5a ») : remplace l'écran Saisie du matin.
+// Comportements de la veille (pastilles), puis poids, ressenti et note libre.
+// Sélecteur du jour : aujourd'hui et les 7 jours précédents, pour corriger un jour passé.
+// Les comportements cochés sont enregistrés pour la veille du jour choisi.
 
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { scheduleMorningNotifications } from '@/background/morningNotification';
 import { AppText } from '@/components/AppText';
 import { PrimaryButton } from '@/components/Buttons';
 import { RatingSelector } from '@/components/Controls';
-import { formatDecimal, formatLongDate } from '@/components/format';
+import { dateFromKey, formatDecimal } from '@/components/format';
+import { BehaviorChips, DayPicker, journalDayLabel } from '@/components/JournalViews';
 import { BackHeader, Screen } from '@/components/Screen';
 import { colors, fonts, radius } from '@/components/theme';
 import { reloadFromDb } from '@/components/useHealthData';
+import { loadBehaviors } from '@/db/behaviors';
 import { parseWeight } from '@/domain/daily';
-import { dayKey } from '@/domain/dates';
+import { addDays, dayKey } from '@/domain/dates';
+import { behaviorDayOf, editableJournalDates, type Behavior } from '@/domain/journal';
 import { SETTINGS } from '@/domain/settings';
-import { loadMorningEntry, saveMorningEntry } from '@/sources/manualEntry';
+import { loadJournal, saveJournal } from '@/sources/manualEntry';
 
 type Ratings = { energy: number | null; soreness: number | null; mood: number | null };
 
@@ -25,9 +31,12 @@ const FEELINGS: { key: keyof Ratings; label: string; hint: string }[] = [
   { key: 'mood', label: 'Humeur', hint: '1 = mauvaise · 5 = excellente' },
 ];
 
-export default function MorningEntryScreen() {
+export default function JournalScreen() {
   const router = useRouter();
-  const date = dayKey(new Date());
+  const today = dayKey(new Date());
+  const [date, setDate] = useState(today);
+  const [behaviors, setBehaviors] = useState<Behavior[]>([]);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
   const [weight, setWeight] = useState('');
   const [ratings, setRatings] = useState<Ratings>({ energy: null, soreness: null, mood: null });
   const [note, setNote] = useState('');
@@ -35,18 +44,45 @@ export default function MorningEntryScreen() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Si une saisie existe déjà aujourd'hui, on la reprend pour la corriger.
+  // Liste des comportements : relue au retour de « Gérer la liste ».
+  useFocusEffect(
+    useCallback(() => {
+      loadBehaviors()
+        .then(setBehaviors)
+        .catch(() => setBehaviors([]));
+    }, []),
+  );
+
+  // Journal du jour choisi : on reprend ce qui est déjà enregistré pour le corriger.
   useEffect(() => {
-    loadMorningEntry(date).then((e) => {
-      if (e.weightKg !== null) setWeight(formatDecimal(e.weightKg));
-      setRatings({ energy: e.energy, soreness: e.soreness, mood: e.mood });
-      setNote(e.note);
+    let active = true;
+    loadJournal(date).then((j) => {
+      if (!active) return;
+      setWeight(j.weightKg !== null ? formatDecimal(j.weightKg) : '');
+      setRatings({ energy: j.energy, soreness: j.soreness, mood: j.mood });
+      setNote(j.note);
+      setChecked(j.checked);
+      setSaved(j.saved);
     });
+    return () => {
+      active = false;
+    };
   }, [date]);
 
+  const touched = () => setSaved(false);
   const edit = <T,>(setter: (v: T) => void) => (v: T) => {
-    setSaved(false);
+    touched();
     setter(v);
+  };
+
+  const toggle = (id: string) => {
+    touched();
+    setChecked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   async function save() {
@@ -58,9 +94,12 @@ export default function MorningEntryScreen() {
     setError(null);
     setSaving(true);
     try {
-      await saveMorningEntry({ date, weightKg: kg, ...ratings, note });
+      const visible = behaviors.filter((b) => b.visible);
+      await saveJournal({ date, weightKg: kg, ...ratings, note }, visible, checked);
       await reloadFromDb();
       setSaved(true);
+      // Le rappel « Pense à ton journal » disparaît de la notification du matin.
+      scheduleMorningNotifications().catch(() => undefined);
     } catch (e) {
       setError(`L’enregistrement a échoué : ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -68,10 +107,44 @@ export default function MorningEntryScreen() {
     }
   }
 
+  const visible = behaviors.filter((b) => b.visible);
+  const yesterday = addDays(today, -1);
+  const eve = behaviorDayOf(date);
+  const eveLabel =
+    date === today
+      ? 'Hier, tu as…'
+      : `Le ${dateFromKey(eve).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}, tu as…`;
+
   return (
     <Screen bottomInset>
-      <BackHeader title="Saisie du matin" onBack={() => router.back()} />
-      <AppText variant="small">{formatLongDate(new Date())}</AppText>
+      <BackHeader title="Journal du matin" onBack={() => router.back()} />
+      <AppText variant="bodySmall" style={styles.muted}>
+        15 secondes pour comprendre ta nuit
+      </AppText>
+
+      <DayPicker
+        dates={editableJournalDates(today)}
+        value={date}
+        label={(d) => journalDayLabel(d, today, yesterday)}
+        onChange={setDate}
+      />
+
+      <View style={styles.field}>
+        <View style={styles.rowBetween}>
+          <AppText style={styles.question}>{eveLabel}</AppText>
+          <Pressable accessibilityRole="link" hitSlop={10} onPress={() => router.push('/comportements')}>
+            <AppText style={styles.link}>Gérer la liste</AppText>
+          </Pressable>
+        </View>
+        {visible.length > 0 ? (
+          <BehaviorChips items={visible} checked={checked} onToggle={toggle} />
+        ) : (
+          <AppText variant="bodySmall" style={styles.muted}>
+            Aucun comportement affiché : ajoute-en depuis « Gérer la liste ».
+          </AppText>
+        )}
+        <AppText variant="small">Rien coché = rien de particulier.</AppText>
+      </View>
 
       <View style={styles.field}>
         <AppText variant="label">Poids (kg)</AppText>
@@ -100,7 +173,7 @@ export default function MorningEntryScreen() {
       ))}
 
       <View style={styles.field}>
-        <AppText variant="label">Note (facultatif)</AppText>
+        <AppText variant="label">Autre chose à noter ?</AppText>
         <TextInput
           value={note}
           onChangeText={edit(setNote)}
@@ -125,6 +198,10 @@ export default function MorningEntryScreen() {
 
 const styles = StyleSheet.create({
   field: { gap: 8 },
+  muted: { color: colors.textMuted },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  question: { fontFamily: fonts.body600, fontSize: 16, color: colors.text, flex: 1 },
+  link: { fontFamily: fonts.body600, fontSize: 13, color: colors.infoText },
   input: {
     minHeight: 52,
     borderWidth: 1,

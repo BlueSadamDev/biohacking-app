@@ -178,7 +178,44 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX coach_message_created ON coach_message (created_ms);
   `,
+  // 7 – Lot 5a : étiquettes de période, comportements du journal du matin.
+  // Ajouts seulement : les saisies du matin existantes sont conservées telles quelles.
+  `
+  -- Période particulière (malade, blessure, voyage, vacances, autre). Fin NULL = en cours.
+  CREATE TABLE period (
+    id TEXT PRIMARY KEY NOT NULL,
+    type TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    created_ms INTEGER NOT NULL,
+    reminded_ms INTEGER
+  );
+
+  -- Liste des comportements (jamais supprimés : masqués, ils gardent leur historique).
+  CREATE TABLE behavior (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    visible INTEGER NOT NULL DEFAULT 1,
+    position INTEGER NOT NULL,
+    created_ms INTEGER NOT NULL
+  );
+
+  -- Comportement d'un jour (la veille du journal). Une ligne par comportement affiché
+  -- au moment de l'enregistrement : done = 1 « oui », done = 0 « non » ; pas de ligne = « inconnu ».
+  CREATE TABLE behavior_entry (
+    day TEXT NOT NULL,
+    behavior_id TEXT NOT NULL,
+    done INTEGER NOT NULL,
+    PRIMARY KEY (day, behavior_id)
+  );
+
+  -- Journal du matin enregistré (heure) ; NULL pour les saisies d'avant le lot 5a.
+  ALTER TABLE morning_entry ADD COLUMN journal_ms INTEGER;
+  `,
 ];
+
+/** Évolutions du schéma, exportées pour les tests de migration (base SQLite en mémoire). */
+export const SCHEMA_MIGRATIONS: readonly string[] = MIGRATIONS;
 
 // Base occupée (« database is locked ») : la synchro du lancement et la tâche de fond
 // peuvent écrire en même temps. Deux protections :

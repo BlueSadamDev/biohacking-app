@@ -83,6 +83,8 @@ export function metricView(recap: MorningRecap | null, metric: Metric): MetricVi
     return { label, ...shown, note: component?.explanation ?? '', tone: 'neutral', status: 'Norme indisponible' };
   }
   const gap = deviation(recap, metric, raw);
+  // Période en cours (lot 5a) : écart à la norme affiché, mais sans jugement de couleur.
+  if (recap.period) return { label, ...shown, ...gap, tone: 'neutral', status: 'En pause' };
   if (component.effect === 'up') return { label, ...shown, ...gap, tone: 'good', status: 'Favorable', statusColor: colors.good };
   if (component.effect === 'down') return { label, ...shown, ...gap, tone: 'bad', status: 'À surveiller', statusColor: colors.mid };
   return { label, ...shown, ...gap, tone: 'neutral', status: 'Dans ta norme' };

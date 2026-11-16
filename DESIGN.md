@@ -293,6 +293,57 @@ Health Connect est accordé et que l'app Zepp est installée. Carte `surface`
 phrase d'explication (13, `textSoft`), puis un bouton secondaire « Ouvrir
 Zepp ». Il ouvre Zepp ; au retour dans Aube, la synchro se relance.
 
+## Écrans du lot 5a
+
+### Nouveaux composants
+- **Bouton Période (en-tête de l'accueil)** : rond 44 × 44, fond `surface`,
+  icône drapeau en trait, à côté du bouton Alertes.
+  aria-label « Signaler une période ».
+- **Panneau « Signaler une période »** : panneau du bas, fond `surface`,
+  rayon 20 en haut, poignée 40 × 4 `border`, voile `rgba(0,0,0,0.55)`.
+  Titre (Space Grotesk 18/600), phrase « Ces jours seront exclus de tes
+  normes, et les alertes seront mises en pause. » (13, `textMuted`),
+  grille de 2 colonnes de boutons de 48 px (contour `border`) : Malade,
+  Blessure, Voyage, Vacances, Autre. Puis la date de début (aujourd'hui
+  par défaut, modifiable jusqu'à 14 jours en arrière), un bouton
+  principal « Commencer la période » et un bouton « Annuler ».
+- **Bandeau de période** (accueil) : fond `info` à 10 %, bordure `info`,
+  rayon 16. « Période · <type> » (12/600, `#7DB8FF`, majuscules) et
+  « depuis n jours » à droite ; « Tes normes et tes alertes sont en
+  pause. » (14/600) ; une phrase propre au type (13, `textSoft`) ;
+  bouton pilule « Terminer la période » (contour `info`). Pendant une
+  période, l'anneau de récupération passe en `#4A5A6E` et sa pastille
+  affiche « En pause » : pas de jugement de couleur.
+- **Pastilles de comportement** (journal) : hauteur 40, rayon pilule.
+  Cochée : fond `text`, texte `bg`. Non cochée : contour `border`, texte
+  `textSoft`.
+
+### Accueil (lot 5a)
+En-tête : boutons Période et Alertes. Sous l'anneau, le bandeau de période
+s'il y en a une ouverte (la carte alerte du jour est alors masquée). Le
+bouton « Saisir poids et ressenti » devient « Journal du matin » ; une
+fois le journal du jour enregistré, il devient un bouton secondaire
+« Journal rempli ✓ » (qui permet de le modifier).
+
+### Journal du matin (remplace l'écran Saisie du matin)
+Retour + titre « Journal du matin » + « 15 secondes pour comprendre ta
+nuit ». « Hier, tu as… » + lien « Gérer la liste », pastilles de
+comportement, puis « Rien coché = rien de particulier. » Puis les champs
+existants : poids, ressenti (énergie, courbatures, humeur), note libre
+« Autre chose à noter ? ». Bouton « Enregistrer ». Sélecteur de jour en
+haut (« Aujourd'hui » et les 7 jours précédents) pour corriger un jour
+passé.
+
+### Gérer la liste des comportements
+Liste en lignes de réglage : nom, interrupteur « Affiché », possibilité de
+renommer. Bouton « Ajouter un comportement » (40 caractères au plus).
+Pas de suppression : un comportement masqué garde son historique.
+
+### Mes périodes (Réglages > Données)
+Liste des périodes, de la plus récente à la plus ancienne : type, dates,
+nombre de jours. Toucher une période permet de modifier ses dates ou de
+la supprimer (avec confirmation).
+
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.
 - **Donnée manquante** (nuit non synchronisée, Health Connect absent, permission refusée) : message clair et action proposée, jamais une valeur inventée.

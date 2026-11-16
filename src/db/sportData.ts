@@ -3,16 +3,17 @@
 
 import { bodyComposition, type BodyComposition } from '@/domain/bodyComposition';
 import { weightByDay } from '@/domain/daily';
-import { dayKey, startOfWeek } from '@/domain/dates';
+import { dayKey, daysBetween, startOfWeek } from '@/domain/dates';
 import { nutritionByDay } from '@/domain/nutrition';
 import { effectiveHrMax } from '@/domain/profile';
 import { SETTINGS } from '@/domain/settings';
 import type { ExerciseProgress } from '@/domain/strength';
-import { weeklySuggestions, type WeeklySuggestions } from '@/domain/suggestions';
+import { weeklySuggestions, windowDays, type WeeklySuggestions } from '@/domain/suggestions';
 import { weekActivity, type WeekActivity } from '@/domain/zones';
 
 import { getUserSettings } from './appSettings';
 import { loadCountedExercises, loadExerciseHeartRate, loadMeals, loadWeights } from './healthData';
+import { loadPeriods } from './periods';
 
 export type SportWeek = WeekActivity & {
   /** Séances visées par semaine (Réglages). */
@@ -45,9 +46,16 @@ export async function loadBodyComposition(strength: ExerciseProgress[], now: Dat
 /** Suggestions d'autres sports de la semaine (manques repérés sur les séances locales). */
 export async function loadSuggestions(now: Date = new Date()): Promise<WeeklySuggestions> {
   const s = SETTINGS.suggestions;
+  const today = dayKey(now);
+  const periods = await loadPeriods();
+  // Les fenêtres sautent les jours étiquetés : on lit depuis le plus ancien jour retenu.
+  const daysBack = (count: number) => {
+    const days = [...windowDays(today, count, periods)];
+    return days.length ? daysBetween(days[days.length - 1], today) + 1 : count;
+  };
   const [sessions, samples, user] = await Promise.all([
-    loadCountedExercises(now.getTime() - (s.mobilityWindowDays + 1) * DAY_MS),
-    loadExerciseHeartRate(now.getTime() - (s.zone2WindowDays + 1) * DAY_MS),
+    loadCountedExercises(now.getTime() - (daysBack(s.mobilityWindowDays) + 1) * DAY_MS),
+    loadExerciseHeartRate(now.getTime() - (daysBack(s.zone2WindowDays) + 1) * DAY_MS),
     getUserSettings(),
   ]);
   return weeklySuggestions({
@@ -55,7 +63,8 @@ export async function loadSuggestions(now: Date = new Date()): Promise<WeeklySug
     samples,
     hrMax: effectiveHrMax(user, now)?.bpm ?? null,
     zone2Target: user.zone2TargetMinutes,
-    today: dayKey(now),
+    today,
+    periods,
   });
 }
 

@@ -5,9 +5,10 @@
 // Une suggestion principale (premier manque selon `gapPriority`) et au plus une secondaire.
 // L'activité proposée pour un manque change chaque semaine (rotation dans le catalogue).
 
-import { addDays, dayKey, daysBetween, startOfWeek } from './dates';
+import { dayKey, daysBetween, startOfWeek } from './dates';
 import type { ExerciseSession } from './load';
 import type { Sample } from './nightly';
+import { isTaggedDay, untaggedDaysBack, type Period } from './periods';
 import { SETTINGS, type Settings } from './settings';
 import { CATALOG, type Activity, type Gap } from './sportCatalog';
 import { sessionZones } from './zones';
@@ -25,19 +26,26 @@ export type SuggestionInputs = {
   today: string;
   /** Catalogue (par défaut celui de sportCatalog.ts). */
   catalog?: readonly Activity[];
+  /**
+   * Périodes (lot 5a) : aucune suggestion pendant une période ; ensuite, les fenêtres (7 et 21 jours)
+   * ne comptent que des jours non étiquetés (elles remontent plus loin pour les trouver).
+   */
+  periods?: readonly Period[];
 };
 
-const inWindow = (session: ExerciseSession, from: string, to: string) => {
-  const day = dayKey(session.start);
-  return day >= from && day <= to;
-};
+/** Jours (non étiquetés) de la fenêtre de N jours qui se termine aujourd'hui. */
+export function windowDays(today: string, count: number, periods: readonly Period[] = [], settings: Settings = SETTINGS): Set<string> {
+  return new Set(untaggedDaysBack(today, count, periods, settings));
+}
 
-/** Minutes de zone 2 sur les N derniers jours ; null si la FC max est inconnue. */
+const inWindow = (session: ExerciseSession, days: Set<string>) => days.has(dayKey(session.start));
+
+/** Minutes de zone 2 sur les N derniers jours (non étiquetés) ; null si la FC max est inconnue. */
 export function recentZone2Minutes(input: SuggestionInputs, settings: Settings = SETTINGS): number | null {
   if (input.hrMax === null) return null;
-  const from = addDays(input.today, -(settings.suggestions.zone2WindowDays - 1));
+  const days = windowDays(input.today, settings.suggestions.zone2WindowDays, input.periods, settings);
   let total = 0;
-  for (const s of input.sessions.filter((x) => inWindow(x, from, input.today))) {
+  for (const s of input.sessions.filter((x) => inWindow(x, days))) {
     const zones = sessionZones(s, input.samples, input.hrMax, settings);
     if (zones) total += zones[1];
   }
@@ -57,8 +65,8 @@ export function findGaps(input: SuggestionInputs, settings: Settings = SETTINGS)
     });
   }
 
-  const from = addDays(input.today, -(s.mobilityWindowDays - 1));
-  const mobility = input.sessions.some((x) => s.mobilityTypes.includes(x.exerciseType) && inWindow(x, from, input.today));
+  const days = windowDays(input.today, s.mobilityWindowDays, input.periods, settings);
+  const mobility = input.sessions.some((x) => s.mobilityTypes.includes(x.exerciseType) && inWindow(x, days));
   if (!mobility) {
     gaps.push({ gap: 'mobility', reason: `Aucune séance de mobilité, yoga ou étirements depuis ${Math.round(s.mobilityWindowDays / 7)} semaines.` });
   }
@@ -76,6 +84,8 @@ export function activityFor(gap: Gap, today: string, catalog: readonly Activity[
 
 /** Suggestion principale et secondaire de la semaine ; null s'il n'y a aucun manque. */
 export function weeklySuggestions(input: SuggestionInputs, settings: Settings = SETTINGS): WeeklySuggestions {
+  // Période en cours : pas de suggestion (les manques d'une semaine de maladie ou de vacances ne disent rien).
+  if (isTaggedDay(input.today, input.periods ?? [])) return null;
   const suggestions = findGaps(input, settings)
     .map(({ gap, reason }) => {
       const activity = activityFor(gap, input.today, input.catalog);

@@ -13,6 +13,7 @@ import { addDays } from './dates';
 import type { LoadStatus, LoadSummary } from './load';
 import type { NightValue } from './nightly';
 import { mean, nightsBetween, type NormPosition } from './norms';
+import { behaviorFactText, type BehaviorFact } from './journal';
 import { periodLength, periodOn, taggedDaysBetween, type Period } from './periods';
 import type { NutritionDayView } from './nutrition';
 import { computeRecovery } from './recovery';
@@ -36,6 +37,8 @@ export type CoachInputs = {
   links: Pick<Link, 'strength' | 'favorable' | 'days' | 'sentence' | 'action'>[];
   /** Périodes (lot 5a) : période en cours et jours exclus des 7 derniers jours. */
   periods?: readonly Period[];
+  /** Journal du matin (lot 5a) : comportements des 7 derniers jours, déjà comptés par l'app. */
+  behaviors?: BehaviorFact[];
 };
 
 export type SectionKey =
@@ -51,7 +54,8 @@ export type SectionKey =
   | 'weight'
   | 'alerts'
   | 'links'
-  | 'period';
+  | 'period'
+  | 'behaviors';
 
 export type CoachSection = {
   key: SectionKey;
@@ -417,6 +421,19 @@ function periodSection(i: CoachInputs, s: Settings): CoachSection {
   });
 }
 
+/** Comportements du journal (lot 5a), sous forme de faits : « Alcool : 2 jours sur 7 ». */
+function behaviorsSection(i: CoachInputs, s: Settings): CoachSection {
+  const title = `Comportements notés dans le journal (${s.journal.coachDays} derniers jours)`;
+  const facts = i.behaviors ?? [];
+  if (facts.length === 0 || facts.every((f) => f.known === 0)) return section('behaviors', title, 'aucun journal rempli', { known: 0 });
+  const values: CoachSection['values'] = {};
+  for (const f of facts) {
+    values[`${f.id}Yes`] = f.yes;
+    values[`${f.id}Known`] = f.known;
+  }
+  return section('behaviors', title, facts.map(behaviorFactText).join(' ; '), values);
+}
+
 /** Construit le résumé chiffré du coach à partir des résultats de l'app. */
 export function buildCoachContext(i: CoachInputs, settings: Settings = SETTINGS): CoachContext {
   const cal = i.recap.calibration;
@@ -441,6 +458,7 @@ export function buildCoachContext(i: CoachInputs, settings: Settings = SETTINGS)
     alertsSection(i, settings),
     linksSection(i),
     periodSection(i, settings),
+    behaviorsSection(i, settings),
   ];
   const text = [`Résumé de mes données calculé par l'app Aube (au ${i.today}) :`, ...sections.map((s) => `- ${s.line}`)].join('\n');
   return { date: i.today, calibrating: !cal.done, sections, text, numbers: [...new Set(extractNumbers(text))] };

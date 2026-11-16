@@ -13,6 +13,7 @@ import { getNotificationTime } from '@/db/appSettings';
 import { loadNights } from '@/db/healthData';
 import { loadNutritionView } from '@/db/nutritionData';
 import { loadPeriods } from '@/db/periods';
+import { filledJournalDates } from '@/sources/manualEntry';
 import { addDays, dayKey } from '@/domain/dates';
 import { nextOccurrences, notificationText } from '@/domain/notification';
 import { nutritionReminder } from '@/domain/nutrition';
@@ -77,8 +78,11 @@ async function schedule(now: Date): Promise<void> {
     loadAlerts().catch(() => []),
     loadPeriods().catch(() => []),
   ]);
+  const mornings = nextOccurrences(now, time, SETTINGS.notification.daysAhead);
+  // Journal du matin déjà rempli (on reprogramme aussi après chaque enregistrement du journal).
+  const filled = await filledJournalDates(mornings.map((d) => dayKey(d))).catch(() => new Set<string>());
   await Notifications.cancelAllScheduledNotificationsAsync();
-  for (const date of nextOccurrences(now, time, SETTINGS.notification.daysAhead)) {
+  for (const date of mornings) {
     const key = dayKey(date);
     // Une période en cours couvre aussi les matins à venir : texte « en pause » jusqu'à sa fin.
     const recap = buildRecap(nights, key, SETTINGS, periods);
@@ -94,6 +98,7 @@ async function schedule(now: Date): Promise<void> {
       content: notificationText(recap, {
         watchAlerts,
         nutritionReminder: nutrition ? nutritionReminder(nutrition) : null,
+        journalMissing: !filled.has(key),
       }),
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL_ID },
     });

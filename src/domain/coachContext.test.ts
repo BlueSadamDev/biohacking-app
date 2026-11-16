@@ -23,6 +23,7 @@ describe('résumé chiffré du coach', () => {
       'alerts',
       'links',
       'period',
+      'behaviors',
     ]);
     expect(ctx.text.startsWith(`Résumé de mes données calculé par l'app Aube (au ${COACH_TODAY})`)).toBe(true);
   });
@@ -157,7 +158,7 @@ describe('résumé chiffré du coach', () => {
     const ctx = buildCoachContext(coachInputs());
     const nutrition = ctx.sections.find((s) => s.key === 'nutrition')!;
     expect(nutrition.values).toMatchObject({ proteinG: 118, proteinTargetG: 140, proteinReached: false, proteinDaysBelow7d: 4 });
-    expect(JSON.parse(JSON.stringify(ctx)).sections).toHaveLength(13);
+    expect(JSON.parse(JSON.stringify(ctx)).sections).toHaveLength(14);
     expect(COACH_NIGHTS).toHaveLength(60);
   });
 });

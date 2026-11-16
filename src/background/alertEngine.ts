@@ -21,6 +21,7 @@ import { nutritionByDay } from '@/domain/nutrition';
 import { isTaggedDay, withoutTaggedNights } from '@/domain/periods';
 import { loadPeriods } from '@/db/periods';
 import { SETTINGS } from '@/domain/settings';
+import { plainText } from '@/domain/texts/markup';
 
 import { getNotificationPermission } from './morningNotification';
 
@@ -37,7 +38,8 @@ async function notify(alerts: SelectedAlert[]): Promise<void> {
   });
   for (const a of alerts) {
     await Notifications.scheduleNotificationAsync({
-      content: { title: `${LEVEL_LABEL[a.level]} · ${a.title}`, body: `${a.finding} ${a.action}` },
+      // Une notification n'a pas de relief : texte nu.
+      content: { title: `${LEVEL_LABEL[a.level]} · ${a.title}`, body: plainText(`${a.finding} ${a.action}`) },
       trigger: { channelId: CHANNEL_ID },
     });
   }

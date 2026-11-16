@@ -28,13 +28,13 @@ describe('score de récupération', () => {
     const rhr = part(r, 'restingHr');
     expect(rhr.subScore).toBe(30);
     expect(rhr.effect).toBe('down');
-    expect(rhr.explanation).toBe('FC au repos 5 bpm au-dessus de ta moyenne');
+    expect(rhr.explanation).toBe('FC au repos 5 bpm au-dessus de ta moyenne sur 30 jours');
   });
 
   it('HRV très basse, FC haute et nuit courte : score faible (≤ 33)', () => {
     const r = computeRecovery([...history, night(TODAY, { hrvMs: 20, restingHr: 58, asleepMinutes: 240 })], TODAY);
     expect(part(r, 'hrv').effect).toBe('down');
-    expect(part(r, 'hrv').explanation).toBe('HRV de la nuit sous ta plage habituelle');
+    expect(part(r, 'hrv').explanation).toBe('HRV de la nuit sous ta norme');
     expect(r.score!).toBeLessThanOrEqual(33);
   });
 
@@ -49,13 +49,13 @@ describe('score de récupération', () => {
   it('nuit non synchronisée : pas de score, raison affichée', () => {
     const r = computeRecovery(history, TODAY);
     expect(r.score).toBeNull();
-    expect(r.missing).toContain('HRV : Nuit non synchronisée');
+    expect(r.missing).toEqual(['Ta nuit n’est pas encore arrivée.']);
   });
 
   it('HRV non calculable : pas de score', () => {
     const r = computeRecovery([...history, night(TODAY, { hrvMs: null })], TODAY);
     expect(r.score).toBeNull();
-    expect(r.missing).toEqual(['HRV : Aucune mesure HRV pendant le sommeil']);
+    expect(r.missing).toEqual(['Aucune mesure de variabilité cardiaque (HRV) pendant ton sommeil.']);
   });
 
   it('sans norme (premiers jours) : pas de score', () => {

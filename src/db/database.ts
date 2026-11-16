@@ -212,6 +212,11 @@ const MIGRATIONS: string[] = [
   -- Journal du matin enregistré (heure) ; NULL pour les saisies d'avant le lot 5a.
   ALTER TABLE morning_entry ADD COLUMN journal_ms INTEGER;
   `,
+  // 8 – Lot 5a.1 : forme « en phrase » facultative d'un comportement (liens observés).
+  // Ajout seulement : NULL = phrase par défaut ou tournure générique (src/domain/texts/journal.ts).
+  `
+  ALTER TABLE behavior ADD COLUMN phrase TEXT;
+  `,
 ];
 
 /** Évolutions du schéma, exportées pour les tests de migration (base SQLite en mémoire). */

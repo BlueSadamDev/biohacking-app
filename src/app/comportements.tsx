@@ -1,5 +1,6 @@
 // Gérer la liste des comportements (DESIGN.md, « Écrans du lot 5a ») : lignes de réglage avec
-// le nom (touchable pour renommer) et l'interrupteur « Affiché ». Bouton « Ajouter un comportement ».
+// le nom (touchable pour le modifier, avec sa forme « en phrase » depuis le lot 5a.1) et l'interrupteur
+// « Affiché ». Bouton « Ajouter un comportement ».
 // Pas de suppression : un comportement masqué garde son historique.
 
 import { useRouter } from 'expo-router';
@@ -11,28 +12,40 @@ import { PrimaryButton, SecondaryButton } from '@/components/Buttons';
 import { BackHeader, Screen } from '@/components/Screen';
 import { SettingsGroup, Switch } from '@/components/SettingsControls';
 import { colors, fonts, radius } from '@/components/theme';
-import { addBehavior, loadBehaviors, renameBehavior, setBehaviorVisible } from '@/db/behaviors';
+import { RichText } from '@/components/RichText';
+import { addBehavior, loadBehaviors, renameBehavior, setBehaviorPhrase, setBehaviorVisible } from '@/db/behaviors';
 import { newBehaviorId, validateBehaviorName, type Behavior } from '@/domain/journal';
 import { SETTINGS } from '@/domain/settings';
+import { ERRORS } from '@/domain/texts/common';
+import { BEHAVIOR_LIST, behaviorPhrase } from '@/domain/texts/journal';
 
-/** Champ de nom (ajout ou renommage) : 40 caractères au plus. */
+/**
+ * Champ de nom (ajout ou renommage) : 40 caractères au plus. Lot 5a.1 : forme « en phrase »
+ * facultative, utilisée par les liens observés (vide = phrase par défaut ou tournure générique).
+ */
 function NameField({
   initial,
+  initialPhrase,
+  phraseHint,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   initial: string;
+  initialPhrase: string;
+  /** Phrase utilisée aujourd'hui si le champ reste vide (affichée en exemple). */
+  phraseHint: string;
   submitLabel: string;
-  onSubmit: (name: string) => Promise<string | null>;
+  onSubmit: (name: string, phrase: string) => Promise<string | null>;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial);
+  const [phrase, setPhrase] = useState(initialPhrase);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   async function submit() {
     setBusy(true);
-    const e = await onSubmit(name);
+    const e = await onSubmit(name, phrase).catch(() => ERRORS.save);
     setBusy(false);
     setError(e);
   }
@@ -54,11 +67,21 @@ function NameField({
       <AppText variant="small">
         {name.trim().length} / {SETTINGS.journal.maxNameLength} caractères
       </AppText>
-      {error && (
-        <AppText variant="bodySmall" style={{ color: colors.low }}>
-          {error}
-        </AppText>
-      )}
+      <AppText variant="label">{BEHAVIOR_LIST.phraseLabel}</AppText>
+      <TextInput
+        value={phrase}
+        onChangeText={(t) => {
+          setPhrase(t);
+          setError(null);
+        }}
+        maxLength={SETTINGS.journal.maxPhraseLength}
+        placeholder={phraseHint}
+        placeholderTextColor={colors.textMuted}
+        style={styles.input}
+        accessibilityLabel={BEHAVIOR_LIST.phraseA11y(name.trim() || initial)}
+      />
+      <AppText variant="small">{BEHAVIOR_LIST.phraseHelp}</AppText>
+      {error && <RichText variant="bodySmall" text={error} style={{ color: colors.low }} />}
       <PrimaryButton title={submitLabel} busy={busy} onPress={submit} />
       <SecondaryButton title="Annuler" onPress={onCancel} />
     </View>
@@ -83,19 +106,22 @@ export default function BehaviorsScreen() {
     await setBehaviorVisible(b.id, visible).catch(reload);
   }
 
-  async function rename(b: Behavior, name: string): Promise<string | null> {
+  async function rename(b: Behavior, name: string, phrase: string): Promise<string | null> {
     const error = validateBehaviorName(name, behaviors, b.id);
     if (error) return error;
     await renameBehavior(b.id, name);
+    await setBehaviorPhrase(b.id, phrase);
     setEditing(null);
     reload();
     return null;
   }
 
-  async function add(name: string): Promise<string | null> {
+  async function add(name: string, phrase: string): Promise<string | null> {
     const error = validateBehaviorName(name, behaviors);
     if (error) return error;
-    await addBehavior(newBehaviorId(), name);
+    const id = newBehaviorId();
+    await addBehavior(id, name);
+    await setBehaviorPhrase(id, phrase);
     setEditing(null);
     reload();
     return null;
@@ -105,18 +131,26 @@ export default function BehaviorsScreen() {
     <Screen bottomInset>
       <BackHeader title="Comportements" onBack={() => router.back()} />
       <AppText variant="bodySmall" style={styles.muted}>
-        Touche un nom pour le renommer. Un comportement masqué n’apparaît plus dans le journal, mais garde son historique.
+        Touche un nom pour le modifier. Un comportement masqué n’apparaît plus dans le journal, mais garde son historique.
       </AppText>
 
       <SettingsGroup title="Ta liste">
         {behaviors.map((b) =>
           editing === b.id ? (
-            <NameField key={b.id} initial={b.name} submitLabel="Renommer" onSubmit={(n) => rename(b, n)} onCancel={() => setEditing(null)} />
+            <NameField
+              key={b.id}
+              initial={b.name}
+              initialPhrase={b.phrase ?? ''}
+              phraseHint={behaviorPhrase({ ...b, phrase: null })}
+              submitLabel="Enregistrer"
+              onSubmit={(n, p) => rename(b, n, p)}
+              onCancel={() => setEditing(null)}
+            />
           ) : (
             <View key={b.id} style={styles.row}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Renommer ${b.name}`}
+                accessibilityLabel={`Modifier ${b.name}`}
                 onPress={() => setEditing(b.id)}
                 style={styles.name}>
                 <AppText style={[styles.nameText, !b.visible && styles.hidden]}>{b.name}</AppText>
@@ -130,7 +164,14 @@ export default function BehaviorsScreen() {
 
       {editing === 'new' ? (
         <View style={styles.card}>
-          <NameField initial="" submitLabel="Ajouter" onSubmit={add} onCancel={() => setEditing(null)} />
+          <NameField
+            initial=""
+            initialPhrase=""
+            phraseHint={BEHAVIOR_LIST.phrasePlaceholder}
+            submitLabel="Ajouter"
+            onSubmit={add}
+            onCancel={() => setEditing(null)}
+          />
         </View>
       ) : (
         <SecondaryButton title="Ajouter un comportement" onPress={() => setEditing('new')} />

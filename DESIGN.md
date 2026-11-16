@@ -17,7 +17,7 @@ Référence visuelle : les maquettes du lot 1 et la rangée « Aube · identité
 ## Principes
 - **Sombre, sobre, orienté données** : fond presque noir, cartes anthracite, peu de couleurs. Inspiration Whoop pour l'ambiance, sans reprendre ses éléments propres (logo, noms, icônes).
 - **Une information principale par écran** (sur l'accueil : le score de récupération), le reste en cartes secondaires.
-- **La couleur porte un sens, jamais seule** : chaque couleur d'état est accompagnée d'un libellé texte (« Bonne récupération », « reçue », « absente »…).
+- **La couleur porte un sens, jamais seule** : chaque couleur d'état est accompagnée d'un libellé texte (« En forme », « reçue », « absente »…).
 - **Pas d'emoji, pas de dégradés décoratifs, pas d'ombres.** Icônes en trait fin (2 px), couleur du texte.
 - Thème sombre uniquement.
 
@@ -345,6 +345,41 @@ Pas de suppression : un comportement masqué garde son historique.
 Liste des périodes, de la plus récente à la plus ancienne : type, dates,
 nombre de jours. Toucher une période permet de modifier ses dates ou de
 la supprimer (avec confirmation).
+
+## Écrans du lot 5a.1 (écriture et relief)
+Ces points remplacent les descriptions plus anciennes ci-dessus. Les règles d'écriture sont dans
+« Textes », en fin de fichier ; les textes eux-mêmes dans `src/domain/texts/`.
+
+### Accueil
+- Pastille sous l'anneau, sans répéter « Récupération » (déjà au centre de l'anneau) :
+  « En forme », « Forme moyenne », « Corps fatigué » ; « Norme en construction » pendant la
+  calibration ; « Nuit manquante » ou « Récap incomplet » sans score ; aucune pastille pendant
+  une période (le bandeau dit déjà « en pause »).
+- Carte « Recommandation du jour » : le pourquoi en petit (`textSoft`), puis l'action en dernière
+  ligne, style « constat » avec relief. Nuit absente : pas de raison (la carte « Ouvrir Zepp »
+  l'explique déjà).
+- Carte « Charge de la semaine » (au lieu de « Charge 7 j / 28 j ») : pastille d'état à droite du
+  titre (« Équilibrée » `good`, « En hausse » et « En baisse » `mid`, « Trop haute » `low`),
+  phrase en style « constat » (« Tu t'entraînes *45 % de plus* que d'habitude cette semaine »),
+  jauge bornée « −100 % » / « +100 % », détail en petit (séances, charge par jour).
+- Erreur de lecture : message simple (« Tire l'écran vers le bas pour réessayer »), jamais le
+  détail technique.
+
+### Alertes
+Carte de l'historique : titre (15/600), constat (15/400, chiffre en relief), pourquoi en petit
+(`textSoft`), action en dernière ligne (14/500, relief en gras). Plus de libellés « Constat · » ni
+« Cause probable · ». Les alertes enregistrées avant le lot 5a.1 gardent leur texte d'origine.
+
+### Journal du matin et « Gérer la liste »
+- Chaque ressenti a son échelle en phrase sous les boutons 1 à 5 (« De 1 (aucune) à 5 (très
+  fortes) : plus la note est haute, plus tu as mal »).
+- « Gérer la liste » : en modifiant ou en ajoutant un comportement, champ facultatif « En phrase »
+  (80 caractères au plus) ; vide, l'exemple affiché est la phrase utilisée.
+
+### Liens observés
+En-tête en mots : « Effet marqué | net | léger », suivi de « qui t'aide » ou « qui te dessert »
+(sauf effet léger). La phrase passe en style « constat » avec l'écart en relief et son repère
+(« que les autres nuits »).
 
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.

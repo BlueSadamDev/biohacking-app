@@ -55,3 +55,17 @@ maybe('migration 7 (lot 5a)', () => {
     expect(db.prepare('SELECT day, behavior_id, done FROM behavior_entry').all()).toEqual([{ day: '2026-11-11', behavior_id: 'alcohol', done: 0 }]);
   });
 });
+
+maybe('migration 8 (lot 5a.1)', () => {
+  it('ajoute la forme « en phrase » sans toucher aux comportements existants', () => {
+    const db = new DatabaseSync!(':memory:');
+    for (const sql of SCHEMA_MIGRATIONS.slice(0, 7)) db.exec(sql);
+    db.prepare('INSERT INTO behavior (id, name, visible, position, created_ms) VALUES (?, ?, ?, ?, ?)').run('alcohol', 'Alcool', 1, 1, 1);
+
+    db.exec(SCHEMA_MIGRATIONS[7]);
+
+    expect(db.prepare('SELECT id, name, visible, position, phrase FROM behavior').all()).toEqual([
+      { id: 'alcohol', name: 'Alcool', visible: 1, position: 1, phrase: null },
+    ]);
+  });
+});

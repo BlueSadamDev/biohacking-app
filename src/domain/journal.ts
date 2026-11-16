@@ -10,7 +10,8 @@
 import { addDays } from './dates';
 import { SETTINGS, type Settings } from './settings';
 
-export type Behavior = { id: string; name: string; visible: boolean; position: number };
+/** `phrase` (lot 5a.1) : forme « en phrase » saisie par l'utilisateur, facultative (liens observés). */
+export type Behavior = { id: string; name: string; visible: boolean; position: number; phrase?: string | null };
 
 /** Comportements notés : jour (où le comportement a eu lieu) → comportement → oui (true) / non (false). */
 export type BehaviorLog = Map<string, Map<string, boolean>>;

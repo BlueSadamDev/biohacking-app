@@ -20,6 +20,7 @@ import { computeRecovery } from './recovery';
 import type { MorningRecap } from './recap';
 import { SETTINGS, type Settings } from './settings';
 import { EXERCISE_LABEL, type ExerciseProgress, type StrengthTrend } from './strength';
+import { plainText } from './texts/markup';
 import type { WeekActivity } from './zones';
 
 /** Ce que le coach reçoit : uniquement des résultats déjà calculés par l'app. */
@@ -374,10 +375,11 @@ function alertsSection(i: CoachInputs, s: Settings): CoachSection {
   const line = recent
     .map(
       (a) =>
-        `« ${a.title} » (${LEVEL_LABEL[a.level]}, le ${a.date}) : observé : ${a.finding.replace(/\.$/, '')} ; cause probable : ${a.cause.replace(
+        // Texte nu : le modèle ne doit pas voir (ni recopier) le balisage du relief.
+        `« ${a.title} » (${LEVEL_LABEL[a.level]}, le ${a.date}) : observé : ${plainText(a.finding).replace(/\.$/, '')} ; cause probable : ${a.cause.replace(
           /\.$/,
           '',
-        )} ; action proposée : ${a.action.replace(/\.$/, '')}${a.persistent ? ' ; cette alerte revient souvent : un avis médical peut être utile' : ''}`,
+        )} ; action proposée : ${plainText(a.action).replace(/\.$/, '')}${a.persistent ? ' ; cette alerte revient souvent : un avis médical peut être utile' : ''}`,
     )
     .join(' | ');
   return section('alerts', title, line, { count: recent.length, persistent: recent.filter((a) => a.persistent).length });
@@ -388,7 +390,7 @@ function linksSection(i: CoachInputs): CoachSection {
   if (i.links.length === 0) return section('links', title, 'aucun lien assez régulier', { count: 0 });
   const STRENGTH: Record<Link['strength'], string> = { strong: 'fort', moderate: 'modéré', weak: 'faible' };
   const line = i.links
-    .map((l) => `lien ${STRENGTH[l.strength]} (${l.days} jours comparés) : ${l.sentence.replace(/\.$/, '')} ; action : ${l.action.replace(/\.$/, '')}`)
+    .map((l) => `lien ${STRENGTH[l.strength]} (${l.days} jours comparés) : ${plainText(l.sentence).replace(/\.$/, '')} ; action : ${plainText(l.action).replace(/\.$/, '')}`)
     .join(' | ');
   return section('links', title, line, { count: i.links.length });
 }

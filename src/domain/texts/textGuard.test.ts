@@ -32,15 +32,6 @@ const IGNORED = new Set([
  * réécriture retire ses fichiers ; à la fin du lot, la liste doit être vide.
  */
 const PENDING = new Set<string>([
-  // Groupe A : écrans lus chaque jour.
-  'app/(tabs)/index.tsx',
-  'app/saisie.tsx',
-  'components/LoadCard.tsx',
-  'components/NutritionCard.tsx',
-  'components/metricView.ts',
-  'components/useHealthData.ts',
-  'domain/alerts.ts',
-  'domain/recovery.ts',
   // Groupe B : coach, sport, écrans de détail.
   'app/(tabs)/coach.tsx',
   'app/coach-modele.tsx',
@@ -64,7 +55,11 @@ const PENDING = new Set<string>([
 const RULE_BLOCKS = new Set(['guard', 'focus']);
 
 /** Fichiers dont les erreurs techniques ne vont qu'à l'écran de diagnostic (champ errorMessage). */
-const TECHNICAL_OK = new Set(['sources/healthConnect.ts']);
+const TECHNICAL_OK = new Set([
+  'sources/healthConnect.ts',
+  // Erreur gardée dans l'état de l'app, jamais affichée : l'accueil montre un message simple.
+  'components/useHealthData.ts',
+]);
 
 type Finding = { line: number; text: string; problem: string };
 

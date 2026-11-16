@@ -6,10 +6,23 @@ import { AppText } from './AppText';
 import { colors, fonts, radius, TOUCH } from './theme';
 
 /** Jauge : 8 px, piste `track`, remplissage `info`, bornes en 11 px. */
-export function Gauge({ value, max, minLabel, maxLabel }: { value: number; max: number; minLabel: string; maxLabel: string }) {
+export function Gauge({
+  value,
+  max,
+  minLabel,
+  maxLabel,
+  accessibilityLabel,
+}: {
+  value: number;
+  max: number;
+  minLabel: string;
+  maxLabel: string;
+  /** Texte lu par le lecteur d'écran (par défaut « valeur sur maximum »). */
+  accessibilityLabel?: string;
+}) {
   const fraction = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   return (
-    <View accessible accessibilityLabel={`${value} sur ${max}`}>
+    <View accessible accessibilityLabel={accessibilityLabel ?? `${value} sur ${max}`}>
       <View style={styles.gaugeTrack}>
         <View style={[styles.gaugeFill, { width: `${fraction * 100}%` }]} />
       </View>

@@ -3,6 +3,8 @@
 
 import type { MorningRecap } from './recap';
 import { SETTINGS, type Settings } from './settings';
+import { plainText } from './texts/markup';
+import { NOTIFICATION } from './texts/today';
 
 export type TimeOfDay = { hour: number; minute: number };
 
@@ -44,19 +46,21 @@ export function notificationText(
   extras: RecapExtras = {},
   settings: Settings = SETTINGS,
 ): NotificationText {
-  const title = 'Récap du matin';
+  const title = NOTIFICATION.title;
+  // Une notification n'a pas de relief : texte nu.
+  const action = recap ? plainText(recap.recommendation.action) : '';
   let body: string;
   if (recap?.period) {
     // Période en cours : ni score jugé ni recommandation chiffrée.
-    body = `Période ${settings.periods.labels[recap.period.type].toLowerCase()} : tes normes et tes alertes sont en pause. ${recap.recommendation.action}`;
+    body = NOTIFICATION.period(settings.periods.labels[recap.period.type], action);
   } else if (!recap || recap.recovery.score === null) {
-    body = 'Ouvre l’app pour synchroniser ta nuit et voir ta recommandation du jour.';
+    body = NOTIFICATION.noNight;
   } else if (!recap.calibration.done) {
-    body = `${recap.calibration.label}. ${recap.recommendation.action}.`;
+    body = NOTIFICATION.calibration(recap.calibration.label, action);
   } else {
-    body = `Récupération ${recap.recovery.score} % · ${recap.recommendation.status}. ${recap.recommendation.action}.`;
+    body = NOTIFICATION.score(recap.recovery.score, recap.recommendation.status, action);
   }
-  if (extras.watchAlerts?.length) body += ` À surveiller : ${extras.watchAlerts.join(', ')}.`;
+  if (extras.watchAlerts?.length) body += ` ${NOTIFICATION.watch(extras.watchAlerts)}`;
   if (extras.nutritionReminder) body += ` ${extras.nutritionReminder}`;
   if (extras.journalMissing) body += ` ${settings.journal.reminder}`;
   return { title, body };

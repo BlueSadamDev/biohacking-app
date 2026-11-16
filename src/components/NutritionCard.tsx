@@ -7,9 +7,11 @@ import { StyleSheet, View } from 'react-native';
 
 import type { NutritionDayView, TargetProgress } from '@/domain/nutrition';
 import { SETTINGS } from '@/domain/settings';
+import { NUTRITION } from '@/domain/texts/today';
 
 import { AppText } from './AppText';
 import { Card } from './Card';
+import { RichText } from './RichText';
 import { colors, fonts } from './theme';
 
 function ProgressRow({
@@ -43,15 +45,17 @@ function ProgressRow({
         style={styles.track}
         accessible
         accessibilityLabel={
-          fraction === null ? `${label} : ${valueText} ${unit}` : `${label} : ${Math.round(fraction * 100)} % de la cible`
+          fraction === null ? `${label} : ${valueText} ${unit}` : NUTRITION.barLabel(label, Math.round(fraction * 100))
         }>
         {fraction !== null && (
           <View style={[styles.fill, { width: `${Math.min(1, fraction) * 100}%`, backgroundColor: color }]} />
         )}
       </View>
-      <AppText variant="small" style={reached === null ? null : { color }}>
-        {target === null ? missingTarget : value === null ? 'Aucune valeur hier' : reached ? 'Dans la cible' : stateBelow}
-      </AppText>
+      <RichText
+        variant="small"
+        style={reached === null ? undefined : { color }}
+        text={target === null ? missingTarget : value === null ? NUTRITION.noValue : reached ? NUTRITION.reached : stateBelow}
+      />
     </View>
   );
 }
@@ -66,39 +70,39 @@ export function NutritionCard({ view }: { view: NutritionDayView | null }) {
     <Card style={styles.card}>
       <View style={styles.head}>
         <AppText variant="label" style={styles.flex}>
-          Nutrition d’hier
+          {NUTRITION.title}
         </AppText>
-        <AppText variant="small">via Suivi macro</AppText>
+        <AppText variant="small">{NUTRITION.source}</AppText>
       </View>
 
       {day === null ? (
         <AppText variant="bodySmall" style={styles.soft}>
-          Aucun repas enregistré hier. Vérifie que Suivi macro synchronise vers Health Connect.
+          {NUTRITION.noMeal}
         </AppText>
       ) : (
         <>
           <ProgressRow
-            label="Protéines"
+            label={NUTRITION.protein}
             unit="g"
             progress={view.protein}
-            missingTarget="Ajoute une pesée pour calculer ta cible."
-            stateBelow={`Sous la cible · ${view.proteinDaysBelow} jour${view.proteinDaysBelow > 1 ? 's' : ''} sur ${SETTINGS.nutrition.weekDays} cette semaine`}
+            missingTarget={NUTRITION.proteinNoTarget}
+            stateBelow={NUTRITION.proteinBelow(view.proteinDaysBelow, SETTINGS.nutrition.weekDays)}
           />
           <ProgressRow
-            label="Calories"
+            label={NUTRITION.calories}
             unit="kcal"
             progress={view.calories}
-            missingTarget="Cible à définir dans Réglages."
-            stateBelow="Sous la cible"
+            missingTarget={NUTRITION.caloriesNoTarget}
+            stateBelow={NUTRITION.caloriesBelow}
           />
           <AppText variant="small">
-            Glucides {fmt(day.carbsG)} · Lipides {fmt(day.fatG)} · {day.meals} repas
+            {NUTRITION.others(fmt(day.carbsG), fmt(day.fatG), day.meals)}
           </AppText>
         </>
       )}
       {day !== null && view.calories.target === null && (
         <AppText variant="small" style={styles.link} onPress={() => router.push('/reglages')} accessibilityRole="link">
-          Définir mes cibles
+          {NUTRITION.setTargets}
         </AppText>
       )}
     </Card>

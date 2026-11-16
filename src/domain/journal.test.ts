@@ -134,7 +134,7 @@ describe('paires de comportements (liens observés)', () => {
     const link = report.links.find((l) => l.id === 'behavior:alcohol:hrv');
     expect(link).toBeDefined();
     expect(link!.favorable).toBe(false);
-    expect(link!.sentence).toMatch(/^Les jours avec alcool, ta HRV de la nuit suivante est inférieure de \d+ % en moyenne\.$/);
+    expect(link!.sentence).toMatch(/^Les soirs où tu bois de l’alcool, ta HRV de la nuit suivante est \*\d+ % plus basse\* que les autres nuits\.$/);
     expect(link!.study.label).toBe('Avec alcool');
   });
 

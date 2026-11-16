@@ -13,6 +13,7 @@ import { PrimaryButton } from '@/components/Buttons';
 import { RatingSelector } from '@/components/Controls';
 import { dateFromKey, formatDecimal } from '@/components/format';
 import { BehaviorChips, DayPicker, journalDayLabel } from '@/components/JournalViews';
+import { RichText } from '@/components/RichText';
 import { BackHeader, Screen } from '@/components/Screen';
 import { colors, fonts, radius } from '@/components/theme';
 import { reloadFromDb } from '@/components/useHealthData';
@@ -21,14 +22,16 @@ import { parseWeight } from '@/domain/daily';
 import { addDays, dayKey } from '@/domain/dates';
 import { behaviorDayOf, editableJournalDates, type Behavior } from '@/domain/journal';
 import { SETTINGS } from '@/domain/settings';
+import { ERRORS } from '@/domain/texts/common';
+import { JOURNAL } from '@/domain/texts/journal';
 import { loadJournal, saveJournal } from '@/sources/manualEntry';
 
 type Ratings = { energy: number | null; soreness: number | null; mood: number | null };
 
 const FEELINGS: { key: keyof Ratings; label: string; hint: string }[] = [
-  { key: 'energy', label: 'Énergie', hint: '1 = très basse · 5 = excellente' },
-  { key: 'soreness', label: 'Courbatures', hint: '1 = aucune · 5 = très fortes' },
-  { key: 'mood', label: 'Humeur', hint: '1 = mauvaise · 5 = excellente' },
+  { key: 'energy', ...JOURNAL.feelings.energy },
+  { key: 'soreness', ...JOURNAL.feelings.soreness },
+  { key: 'mood', ...JOURNAL.feelings.mood },
 ];
 
 export default function JournalScreen() {
@@ -88,7 +91,7 @@ export default function JournalScreen() {
   async function save() {
     const kg = parseWeight(weight);
     if (kg === 'invalid') {
-      setError(`Poids non reconnu : tape un nombre entre ${SETTINGS.entry.weightMinKg} et ${SETTINGS.entry.weightMaxKg} kg (ex. 78,4).`);
+      setError(JOURNAL.weightInvalid(SETTINGS.entry.weightMinKg, SETTINGS.entry.weightMaxKg));
       return;
     }
     setError(null);
@@ -100,8 +103,8 @@ export default function JournalScreen() {
       setSaved(true);
       // Le rappel « Pense à ton journal » disparaît de la notification du matin.
       scheduleMorningNotifications().catch(() => undefined);
-    } catch (e) {
-      setError(`L’enregistrement a échoué : ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      setError(ERRORS.save);
     } finally {
       setSaving(false);
     }
@@ -112,14 +115,14 @@ export default function JournalScreen() {
   const eve = behaviorDayOf(date);
   const eveLabel =
     date === today
-      ? 'Hier, tu as…'
-      : `Le ${dateFromKey(eve).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}, tu as…`;
+      ? JOURNAL.eveToday
+      : JOURNAL.eveOther(dateFromKey(eve).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
 
   return (
     <Screen bottomInset>
-      <BackHeader title="Journal du matin" onBack={() => router.back()} />
+      <BackHeader title={JOURNAL.title} onBack={() => router.back()} />
       <AppText variant="bodySmall" style={styles.muted}>
-        15 secondes pour comprendre ta nuit
+        {JOURNAL.subtitle}
       </AppText>
 
       <DayPicker
@@ -133,31 +136,31 @@ export default function JournalScreen() {
         <View style={styles.rowBetween}>
           <AppText style={styles.question}>{eveLabel}</AppText>
           <Pressable accessibilityRole="link" hitSlop={10} onPress={() => router.push('/comportements')}>
-            <AppText style={styles.link}>Gérer la liste</AppText>
+            <AppText style={styles.link}>{JOURNAL.manageList}</AppText>
           </Pressable>
         </View>
         {visible.length > 0 ? (
           <BehaviorChips items={visible} checked={checked} onToggle={toggle} />
         ) : (
           <AppText variant="bodySmall" style={styles.muted}>
-            Aucun comportement affiché : ajoute-en depuis « Gérer la liste ».
+            {JOURNAL.noBehavior}
           </AppText>
         )}
-        <AppText variant="small">Rien coché = rien de particulier.</AppText>
+        <AppText variant="small">{JOURNAL.nothingChecked}</AppText>
       </View>
 
       <View style={styles.field}>
-        <AppText variant="label">Poids (kg)</AppText>
+        <AppText variant="label">{JOURNAL.weightLabel}</AppText>
         <TextInput
           value={weight}
           onChangeText={edit(setWeight)}
           keyboardType="decimal-pad"
-          placeholder="ex. 78,4"
+          placeholder={JOURNAL.weightPlaceholder}
           placeholderTextColor={colors.textMuted}
           style={styles.input}
-          accessibilityLabel="Poids en kilos"
+          accessibilityLabel={JOURNAL.weightA11y}
         />
-        <AppText variant="small">Le matin à jeun. Ta saisie remplace la pesée Zepp du jour.</AppText>
+        <AppText variant="small">{JOURNAL.weightHelp}</AppText>
       </View>
 
       {FEELINGS.map((f) => (
@@ -173,25 +176,21 @@ export default function JournalScreen() {
       ))}
 
       <View style={styles.field}>
-        <AppText variant="label">Autre chose à noter ?</AppText>
+        <AppText variant="label">{JOURNAL.noteLabel}</AppText>
         <TextInput
           value={note}
           onChangeText={edit(setNote)}
           multiline
-          placeholder="Mal dormi, séance tardive…"
+          placeholder={JOURNAL.notePlaceholder}
           placeholderTextColor={colors.textMuted}
           style={[styles.input, styles.note]}
-          accessibilityLabel="Note libre"
+          accessibilityLabel={JOURNAL.noteA11y}
         />
       </View>
 
-      {error && (
-        <AppText variant="bodySmall" style={{ color: colors.low }}>
-          {error}
-        </AppText>
-      )}
+      {error && <RichText variant="bodySmall" text={error} style={{ color: colors.low }} />}
 
-      <PrimaryButton title={saved ? 'Enregistré ✓' : 'Enregistrer'} done={saved} busy={saving} onPress={save} />
+      <PrimaryButton title={saved ? JOURNAL.saved : JOURNAL.save} done={saved} busy={saving} onPress={save} />
     </Screen>
   );
 }

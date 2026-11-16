@@ -760,6 +760,8 @@ export const SETTINGS = {
     ] as readonly { id: string; name: string }[],
     /** Longueur maximale du nom d'un comportement. */
     maxNameLength: 40,
+    /** Longueur maximale de la forme « en phrase » d'un comportement (lot 5a.1). */
+    maxPhraseLength: 80,
     /** Corrections possibles : aujourd'hui et les N jours précédents. */
     editableDays: 7,
     /** Résumé du coach : comportements des N derniers jours. */

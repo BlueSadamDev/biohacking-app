@@ -32,18 +32,6 @@ const IGNORED = new Set([
  * réécriture retire ses fichiers ; à la fin du lot, la liste doit être vide.
  */
 const PENDING = new Set<string>([
-  // Groupe B : coach, sport, écrans de détail.
-  'app/(tabs)/coach.tsx',
-  'app/coach-modele.tsx',
-  'app/detail/[metric].tsx',
-  'app/seance.tsx',
-  'components/BodyCompositionCard.tsx',
-  'components/SportWeekCard.tsx',
-  'components/StrengthControls.tsx',
-  'components/TrendChart.tsx',
-  'domain/coachContext.ts',
-  'domain/coachModel.ts',
-  'domain/settings.ts',
   // Groupe C : sources, réglages, périodes.
   'app/(tabs)/reglages.tsx',
   'app/periodes.tsx',

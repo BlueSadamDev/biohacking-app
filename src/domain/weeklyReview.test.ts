@@ -50,11 +50,11 @@ describe('bilan de la semaine', () => {
     const { worked, stuck } = weekStatus(ctx);
     // Au plus 3 points, dans l'ordre de priorité : charge, sommeil, protéines (puis zone 2, HRV…).
     expect(stuck.map((s) => s.text)).toEqual([
-      'Charge d’entraînement en hausse',
-      'Sommeil sous la durée visée',
-      'Protéines souvent sous la cible',
+      'ta charge d’entraînement augmente',
+      'ton sommeil reste sous la durée visée',
+      'tes protéines restent souvent sous ta cible',
     ]);
-    expect(worked.map((w) => w.text)).toEqual(['Squat en hausse']);
+    expect(worked.map((w) => w.text)).toEqual(['ton squat progresse']);
   });
 
   it('suit les verdicts quand la semaine va bien', () => {
@@ -66,15 +66,15 @@ describe('bilan de la semaine', () => {
       }),
     );
     const { worked, stuck } = weekStatus(good);
-    expect(worked.map((w) => w.text)).toContain('Charge d’entraînement équilibrée');
-    expect(worked.map((w) => w.text)).toContain('Cible de zone 2 atteinte');
-    expect(stuck.map((s) => s.text)).not.toContain('Charge d’entraînement en hausse');
+    expect(worked.map((w) => w.text)).toContain('ta charge d’entraînement suit ton rythme habituel');
+    expect(worked.map((w) => w.text)).toContain('ta cible d’endurance douce (zone 2) est atteinte');
+    expect(stuck.map((s) => s.text)).not.toContain('ta charge d’entraînement augmente');
   });
 
   it('écrit les chiffres utilisés à partir du résumé', () => {
     const { worked, stuck } = weekStatus(ctx);
     expect(weeklyFacts(ctx, [...stuck, ...worked])).toEqual([
-      'charge 1,42',
+      'charge de la semaine : 42 % de plus que d’habitude',
       'sommeil 6,4 h par nuit',
       'protéines dans la cible 3 jours sur 7 avec repas',
       'squat 112 kg, développé couché 84 kg, soulevé de terre 138 kg',
@@ -105,21 +105,21 @@ describe('bilan de la semaine', () => {
     const { worked, stuck } = weekStatus(ctx);
     const f = fallbackWeekly(worked, stuck);
     expect(f.synthesis).toBe(
-      'Bon point de la semaine : squat en hausse. À travailler : charge d’entraînement en hausse, sommeil sous la durée visée et protéines souvent sous la cible.',
+      'Ton squat progresse. En revanche, ta charge d’entraînement augmente, ton sommeil reste sous la durée visée et tes protéines restent souvent sous ta cible.',
     );
     expect(f.actions).toHaveLength(2);
   });
 
   it('complète avec une action pour garder ce qui a marché, et garde les sigles', () => {
     const worked = [
-      { section: 'load', text: 'Charge d’entraînement équilibrée', action: 'Garde le même volume.' },
-      { section: 'hrv', text: 'HRV dans ta plage normale', action: 'Garde l’alternance.' },
+      { section: 'hrv', text: 'HRV dans ta norme toute la semaine', action: 'Garde l’alternance.' },
+      { section: 'load', text: 'ta charge d’entraînement suit ton rythme habituel', action: 'Garde le même volume.' },
     ];
-    const stuck = [{ section: 'sleep', text: 'Sommeil sous la durée visée', action: 'Couche-toi plus tôt.' }];
+    const stuck = [{ section: 'sleep', text: 'ton sommeil reste sous la durée visée', action: 'Couche-toi plus tôt.' }];
     expect(fallbackWeekly(worked, stuck)).toEqual({
       synthesis:
-        'Bons points de la semaine : charge d’entraînement équilibrée et HRV dans ta plage normale. À travailler : sommeil sous la durée visée.',
-      actions: ['Couche-toi plus tôt.', 'Garde le même volume.'],
+        'HRV dans ta norme toute la semaine et ta charge d’entraînement suit ton rythme habituel. En revanche, ton sommeil reste sous la durée visée.',
+      actions: ['Couche-toi plus tôt.', 'Garde l’alternance.'],
     });
     expect(fallbackWeekly(worked, []).synthesis).toContain('Rien ne coince');
   });
@@ -136,7 +136,7 @@ describe('bilan de la semaine', () => {
       source: 'model',
       createdMs: 1000,
     });
-    expect(model.calls[0]).toContain("Ce qui coince (décidé par l'app) : Charge d’entraînement en hausse ; Sommeil sous la durée visée");
+    expect(model.calls[0]).toContain("Ce qui coince (décidé par l'app) : ta charge d’entraînement augmente ; ton sommeil reste sous la durée visée");
     expect(model.calls[0]).toContain('qui visent ce qui coince');
   });
 
@@ -160,7 +160,7 @@ describe('bilan de la semaine', () => {
     expect(model.calls).toHaveLength(3);
     expect(outcome.rejections).toHaveLength(3);
     expect(review.source).toBe('app');
-    expect(review.synthesis).toContain('À travailler');
+    expect(review.synthesis).toContain('En revanche');
     expect(review.actions).toHaveLength(2);
   });
 });

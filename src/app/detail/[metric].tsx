@@ -14,16 +14,13 @@ import { TrendChart } from '@/components/TrendChart';
 import { useHealthData } from '@/components/useHealthData';
 import { dayKey } from '@/domain/dates';
 import { SETTINGS } from '@/domain/settings';
+import { DETAIL } from '@/domain/texts/sport';
 import { chartData, shortMean, type Metric } from '@/domain/recap';
 import type { Effect, Recovery } from '@/domain/recovery';
 
 const PERIODS = [7, 30, 90] as const;
 
-const UNFAVORABLE_LABEL: Record<Metric, string> = {
-  hrv: 'Sous la plage',
-  restingHr: 'Au-dessus de la moyenne',
-  sleep: 'Nuit courte',
-};
+const UNFAVORABLE_LABEL: Record<Metric, string> = DETAIL.unfavorable;
 
 export default function DetailScreen() {
   const router = useRouter();

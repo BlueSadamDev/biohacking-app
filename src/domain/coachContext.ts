@@ -20,8 +20,16 @@ import { computeRecovery } from './recovery';
 import type { MorningRecap } from './recap';
 import { SETTINGS, type Settings } from './settings';
 import { EXERCISE_LABEL, type ExerciseProgress, type StrengthTrend } from './strength';
+import { countOf } from './texts/common';
 import { plainText } from './texts/markup';
+import { loadComparison, loadPercent } from './texts/today';
 import type { WeekActivity } from './zones';
+
+/** Écart signé au rythme habituel : 0,8 → « −20 % », 1,3 → « +30 % ». */
+const signedPct = (ratio: number) => {
+  const p = loadPercent(ratio);
+  return `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p)} %`;
+};
 
 /** Ce que le coach reçoit : uniquement des résultats déjà calculés par l'app. */
 export type CoachInputs = {
@@ -96,13 +104,13 @@ function trendWord(diff: number, margin: number): 'en hausse' | 'en baisse' | 's
 }
 
 const POSITION: Record<NormPosition, string> = {
-  below: 'sous ta plage normale',
-  within: 'dans ta plage normale',
-  above: 'au-dessus de ta plage normale',
+  below: 'sous ta norme',
+  within: 'dans ta norme',
+  above: 'au-dessus de ta norme',
 };
 
 const LOAD_STATUS: Record<LoadStatus, string> = {
-  under: 'sous-charge',
+  under: 'en baisse',
   balanced: 'équilibrée',
   rising: 'en hausse',
   high: 'trop élevée',
@@ -152,8 +160,8 @@ function recoverySection(i: CoachInputs, s: Settings): CoachSection {
   if (score !== null) {
     parts.push(
       i.recap.calibration.done
-        ? `score de ${score} sur 100 aujourd'hui (${i.recap.recommendation.status.toLowerCase()})`
-        : `score de ${score} sur 100 aujourd'hui (calibration en cours : pas encore comparé à ta norme)`,
+        ? `score de ${score} sur 100 aujourd’hui (${i.recap.recommendation.status.toLowerCase()})`
+        : `score de ${score} sur 100 aujourd’hui (calibration en cours : pas encore comparé à ta norme)`,
     );
   }
   if (short.mean !== null) parts.push(`moyenne ${Math.round(short.mean)} sur ${c.shortDays} jours`);
@@ -190,7 +198,7 @@ function sleepSection(i: CoachInputs, s: Settings): CoachSection {
       : `durée visée de ${hours(s.recovery.sleepTargetMinutes)} h atteinte`,
   );
   const trend = longMean !== null ? trendWord(shortMean - longMean, c.sleepTrendMinutes) : null;
-  if (trend) parts.push(`${trend} par rapport à d'habitude`);
+  if (trend) parts.push(`${trend} par rapport à d’habitude`);
   return section('sleep', 'Sommeil', parts.join(', '), {
     hours7d: Number(hours(shortMean).replace(',', '.')),
     hours30d: longMean === null ? null : Number(hours(longMean).replace(',', '.')),
@@ -206,13 +214,13 @@ function hrvSection(i: CoachInputs, s: Settings): CoachSection {
   const ms = Math.round(Math.exp(h.shortMean));
   const parts = [`${ms} ms en moyenne sur ${s.norms.hrvShortWindowDays} jours`];
   const values: CoachSection['values'] = { ms7d: ms, low: null, high: null, position: null };
-  // Pendant la calibration, la plage normale repose sur trop peu de nuits : ni plage ni jugement.
+  // Pendant la calibration, la norme repose sur trop peu de nuits : ni norme ni jugement.
   if (!i.recap.calibration.done) {
-    parts.push('calibration en cours : pas encore de plage normale ni de jugement');
+    parts.push('calibration en cours : pas encore de norme ni de jugement');
   } else if (h.baseline) {
     const low = Math.round(Math.exp(h.baseline.low));
     const high = Math.round(Math.exp(h.baseline.high));
-    parts.push(`plage normale de ${low} à ${high} ms`);
+    parts.push(`norme de ${low} à ${high} ms`);
     Object.assign(values, { low, high });
     if (h.position) {
       parts.push(POSITION[h.position]);
@@ -229,8 +237,8 @@ function restingHrSection(i: CoachInputs, s: Settings): CoachSection {
   if (r.baselineMean !== null && r.delta !== null) {
     parts.push(`moyenne ${Math.round(r.baselineMean)} bpm sur ${s.norms.restingHrBaselineDays} jours`);
     const d = Math.round(r.delta);
-    if (Math.abs(r.delta) < s.coach.context.restingHrUsualBpm) parts.push("comme d'habitude");
-    else parts.push(`${Math.abs(d)} bpm ${d > 0 ? 'au-dessus' : 'en dessous'} de ta moyenne`);
+    if (Math.abs(r.delta) < s.coach.context.restingHrUsualBpm) parts.push('comme d’habitude');
+    else parts.push(`${Math.abs(d)} bpm ${d > 0 ? 'au-dessus' : 'en dessous'} de ta moyenne sur ${s.norms.restingHrBaselineDays} jours`);
   }
   return section('restingHr', 'FC au repos', parts.join(', '), {
     tonight: Math.round(r.tonight),
@@ -241,7 +249,7 @@ function restingHrSection(i: CoachInputs, s: Settings): CoachSection {
 
 function loadSection(i: CoachInputs, s: Settings): CoachSection {
   const l = i.load;
-  const title = "Charge d'entraînement";
+  const title = 'Charge d’entraînement';
   if (!l) return section('load', title, null);
   switch (l.state) {
     case 'profile-missing':
@@ -249,7 +257,7 @@ function loadSection(i: CoachInputs, s: Settings): CoachSection {
     case 'calibrating':
       return section('load', title, `calibration en cours (${l.days} jours sur ${l.required})`, { state: l.state });
     case 'no-load':
-      return section('load', title, `aucune séance avec fréquence cardiaque sur les 7 derniers jours (${l.sessions7d} séance(s) au total)`, {
+      return section('load', title, `aucune séance avec fréquence cardiaque sur les 7 derniers jours (${countOf(l.sessions7d, 'séance')} au total)`, {
         state: l.state,
         sessions7d: l.sessions7d,
       });
@@ -257,10 +265,12 @@ function loadSection(i: CoachInputs, s: Settings): CoachSection {
       return section(
         'load',
         title,
-        `ratio 7 jours / 28 jours de ${fr(l.ratio, 2)}, charge ${LOAD_STATUS[l.status]} (équilibrée entre ${fr(s.load.underMax, 2)} et ${fr(
-          s.load.balancedMax,
-          2,
-        )}, trop élevée au-dessus de ${fr(s.load.highMin, 2)}), ${l.sessions7d} séance${l.sessions7d > 1 ? 's' : ''} sur les 7 derniers jours`,
+        `cette semaine, tu t’entraînes ${plainText(loadComparison(l.ratio))}, charge ${LOAD_STATUS[l.status]} (équilibrée entre ${signedPct(
+          s.load.underMax,
+        )} et ${signedPct(s.load.balancedMax)} par rapport à ton rythme habituel, trop élevée au-delà de ${signedPct(s.load.highMin)}), ${countOf(
+          l.sessions7d,
+          'séance',
+        )} sur les 7 derniers jours`,
         { ratio: Number(l.ratio.toFixed(2)), status: l.status, sessions7d: l.sessions7d },
       );
   }
@@ -322,7 +332,7 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
   if (n.day && k.value !== null) {
     parts.push(
       k.target === null
-        ? `calories hier : ${Math.round(k.value)} kcal (cible de calories à définir dans les Réglages)`
+        ? `calories hier : ${Math.round(k.value)} kcal (cible de calories pas encore indiquée dans les Réglages)`
         : `calories hier : ${Math.round(k.value)} kcal pour une cible de ${Math.round(k.target)} kcal`,
     );
   }
@@ -359,7 +369,7 @@ function weightSection(i: CoachInputs): CoachSection {
   const parts = [`${fr(b.average7d, 1)} kg en moyenne sur 7 jours`];
   if (b.trendKgPerWeek !== null && b.trend) parts.push(`${WEIGHT_TREND[b.trend]} (${fr(b.trendKgPerWeek, 2)} kg par semaine)`);
   if (b.targetKg !== null && b.gapToTarget !== null) parts.push(`poids visé ${fr(b.targetKg, 1)} kg`);
-  if (b.sentence) parts.push(`lecture de l'app : ${b.sentence.replace(/\.$/, '')}`);
+  if (b.sentence) parts.push(`lecture de l’app : ${b.sentence.replace(/\.$/, '')}`);
   return section('weight', 'Poids', parts.join(', '), {
     kg7d: Number(b.average7d.toFixed(1)),
     trendKgPerWeek: b.trendKgPerWeek === null ? null : Number(b.trendKgPerWeek.toFixed(2)),
@@ -462,6 +472,6 @@ export function buildCoachContext(i: CoachInputs, settings: Settings = SETTINGS)
     periodSection(i, settings),
     behaviorsSection(i, settings),
   ];
-  const text = [`Résumé de mes données calculé par l'app Aube (au ${i.today}) :`, ...sections.map((s) => `- ${s.line}`)].join('\n');
+  const text = [`Résumé de mes données calculé par l’app Aube (au ${i.today}) :`, ...sections.map((s) => `- ${s.line}`)].join('\n');
   return { date: i.today, calibrating: !cal.done, sections, text, numbers: [...new Set(extractNumbers(text))] };
 }

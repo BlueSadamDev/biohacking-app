@@ -128,6 +128,11 @@ function comparedToUsual(pct: number): string {
   return `*${Math.abs(pct)} % de ${pct > 0 ? 'plus' : 'moins'}* que d’habitude`;
 }
 
+/** Le rapport de charge en mots (« *45 % de plus* que d’habitude »), pour toutes les cartes. */
+export function loadComparison(ratio: number): string {
+  return comparedToUsual(loadPercent(ratio));
+}
+
 export function loadSentence(status: 'balanced' | 'rising' | 'under' | 'high', ratio: number): string {
   const cmp = comparedToUsual(loadPercent(ratio));
   switch (status) {

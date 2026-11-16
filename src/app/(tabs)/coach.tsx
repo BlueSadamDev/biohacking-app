@@ -33,6 +33,7 @@ import { loadLatestWeeklyReview } from '@/db/coachWeekly';
 import type { CoachContext } from '@/domain/coachContext';
 import { normalizeQuestion, suggestedQuestions, type CoachExchange } from '@/domain/coachQuestions';
 import { SETTINGS } from '@/domain/settings';
+import { COACH } from '@/domain/texts/coach';
 import type { WeeklyReview } from '@/domain/weeklyReview';
 
 export default function CoachScreen() {
@@ -87,7 +88,7 @@ export default function CoachScreen() {
       .then((review) => {
         if (review) setLatest(review);
       })
-      .catch(() => setError("Le bilan de la semaine n'a pas pu être rédigé. Il sera réessayé à ta prochaine visite."))
+      .catch(() => setError(COACH.weeklyFailed))
       .finally(() => {
         busy.current = false;
         job.current = null;

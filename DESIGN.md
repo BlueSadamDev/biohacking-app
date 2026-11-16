@@ -376,6 +376,20 @@ Carte de l'historique : titre (15/600), constat (15/400, chiffre en relief), pou
 - « Gérer la liste » : en modifiant ou en ajoutant un comportement, champ facultatif « En phrase »
   (80 caractères au plus) ; vide, l'exemple affiché est la phrase utilisée.
 
+### Coach
+- Carte « Bilan de la semaine » : « Ce qui a marché : … » et « Ce qui coince : … » en phrases
+  (propositions reliées par « et »). Le bilan écrit par l'app quand le modèle n'a pas pu formuler de
+  conseil sûr se lit comme les autres (« … En revanche, … ») : plus de mention « Rédigé par l'app ».
+- Modèle du coach : « Le coach est *prêt*. » (style « constat ») au-dessus du groupe « Modèle
+  installé », à la place de la ligne « État · Installé · prêt ».
+
+### Sport et écrans de détail
+- Carte « Cette semaine » : la case « Charge » affiche l'état en mots (« En hausse », couleur
+  d'état) et la ligne dessous la phrase de l'accueil (« Tu t'entraînes 45 % de plus… »).
+- Graphique de tendance : la bande s'appelle « Ta norme » ; les barres défavorables « Sous ta
+  norme » (HRV), « Au-dessus de ta moyenne » (FC au repos), « Nuit courte » (sommeil).
+- Composition corporelle sans poids visé : « Indique ton poids visé dans Réglages. »
+
 ### Liens observés
 En-tête en mots : « Effet marqué | net | léger », suivi de « qui t'aide » ou « qui te dessert »
 (sauf effet léger). La phrase passe en style « constat » avec l'écart en relief et son repère

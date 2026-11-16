@@ -6,14 +6,15 @@
 - Règles de travail : [CLAUDE.md](CLAUDE.md)
 - Charte graphique et identité : [DESIGN.md](DESIGN.md)
 - Technologie : Expo (React Native, TypeScript), Expo Router.
-- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations), 4 (coach IA local), 4.1 (fiabilité) et 5a (étiquettes de période et journal du matin) terminés. En cours : une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes (feuille de route complète dans le cahier des charges, section 7).
+- État : lots 1 (récap du matin), 2 (alertes, charge, nutrition), 3 (progression et corrélations), 4 (coach IA local), 4.1 (fiabilité) et 5a (étiquettes de période et journal du matin) terminés. En cours : lot 5a.1 (écriture et relief : textes de l'app réécrits selon la charte de DESIGN.md), puis une pause d'usage de 3 à 4 semaines pour terminer la calibration des normes (feuille de route complète dans le cahier des charges, section 7).
 
 ## Organisation du code
 
-- `src/app/` : les écrans. Onglets : Aujourd'hui, Tendances, Sport, Coach (lot 4), Réglages. Autres écrans : Détail (HRV, FC au repos, Sommeil, Poids), Journal du matin (lot 5a, remplace la saisie du matin ; fichier `saisie.tsx`), Gérer la liste des comportements, Mes périodes, Saisie de séance de musculation, Sources de données, Alertes, Diagnostic, Modèle du coach, Bilans de la semaine.
+- `src/app/` : les écrans. Onglets : Aujourd'hui, Tendances, Sport, Coach (lot 4), Réglages. Autres écrans : Détail (HRV, FC au repos, Sommeil, Poids), Journal du matin (lot 5a, remplace la saisie du matin ; fichier `saisie.tsx`), Gérer la liste des comportements, Mes périodes, Saisie de séance de musculation, Sources de données, Alertes, Contrôle des données (fichier `diagnostic.tsx`), Modèle du coach, Bilans de la semaine.
 - `src/coach/` : coach IA local (lot 4) : installation et vérification du fichier du modèle, moteur local, gardien de la mémoire, bilan de la semaine, « Pourquoi ? » et questions.
 - `src/sources/` : lecture de Health Connect (dont les repas de Suivi macro et les séances) et saisie manuelle (journal du matin : comportements de la veille, poids, ressenti).
 - `src/domain/` : calculs purs (valeurs par nuit, normes, calibration, score de récupération, recommandation, charge d'entraînement, nutrition, alertes, zones cardiaques, musculation et 1RM, composition corporelle, liens observés, suggestions de sports et leur catalogue, export CSV, étiquettes de période et journal du matin). Réglages dans `src/domain/settings.ts`, tests à côté de chaque fichier, données fictives dans `src/domain/__fixtures__/`.
+- `src/domain/texts/` (lot 5a.1) : les textes affichés, un fichier par domaine (accueil, alertes, journal, liens observés, sport, coach, réglages), avec le relief balisé par astérisques (`*45 % de plus*`, affiché par le composant `RichText`). Le test `textGuard.test.ts` relit tous les textes des écrans et échoue sur une apostrophe droite, « (s) », « à définir », un mot médical ou un mot abandonné du glossaire (DESIGN.md, « Textes »).
 - `src/db/` : base de données locale (SQLite), réglages de l'utilisateur, historique des alertes, saisies de musculation, périodes, liste des comportements, export CSV et effacement. Les écritures passent une par une (file d'attente) et attendent quelques secondes si la base est occupée.
 - `src/components/` : composants d'interface réutilisables.
 - `src/background/` : synchro en arrière-plan, moteur d'alertes, rappels (saisie de musculation, période ouverte depuis 14 jours) et notification du récap du matin.

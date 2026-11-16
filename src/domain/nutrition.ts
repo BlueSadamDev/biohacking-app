@@ -63,14 +63,25 @@ export type TargetProgress = {
   target: number | null;
   /** value / target ; null si l'un des deux manque. */
   fraction: number | null;
-  /** Cible atteinte (au moins 90 %) ; null si non calculable. */
+  /**
+   * Cible respectée ; null si non calculable. Protéines (« minimum ») : au moins 90 % de la cible.
+   * Calories (« plafond ») : la cible ou moins ; au-dessus, même de peu, elle n'est pas respectée.
+   */
   reached: boolean | null;
 };
 
-export function targetProgress(value: number | null, target: number | null, settings: Settings = SETTINGS): TargetProgress {
+export type TargetKind = 'minimum' | 'ceiling';
+
+export function targetProgress(
+  value: number | null,
+  target: number | null,
+  settings: Settings = SETTINGS,
+  kind: TargetKind = 'minimum',
+): TargetProgress {
   if (value === null || target === null || target <= 0) return { value, target, fraction: null, reached: null };
   const fraction = value / target;
-  return { value, target, fraction, reached: fraction >= settings.nutrition.reachedFraction };
+  const reached = kind === 'ceiling' ? value <= target : fraction >= settings.nutrition.reachedFraction;
+  return { value, target, fraction, reached };
 }
 
 export type NutritionDayView = {
@@ -105,7 +116,8 @@ export function nutritionDayView(
     date,
     day,
     protein: targetProgress(day?.proteinG ?? null, proteinTargetG, settings),
-    calories: targetProgress(day?.energyKcal ?? null, caloriesTargetKcal, settings),
+    // Les calories sont un plafond (décision du 16 novembre 2026) : à respecter, pas à atteindre.
+    calories: targetProgress(day?.energyKcal ?? null, caloriesTargetKcal, settings, 'ceiling'),
     proteinDaysBelow,
     proteinDaysKnown,
   };
@@ -113,15 +125,13 @@ export function nutritionDayView(
 
 /**
  * Rappel du récap du matin (cahier des charges, F1) : protéines de la veille sous la cible,
- * ou calories qui s'écartent de la cible de plus de ±10 %. null s'il n'y a rien à signaler.
+ * ou calories au-dessus de la cible (plafond). null s'il n'y a rien à signaler.
  */
-export function nutritionReminder(view: NutritionDayView, settings: Settings = SETTINGS): string | null {
+export function nutritionReminder(view: NutritionDayView): string | null {
   const parts: string[] = [];
   const p = view.protein;
   if (p.reached === false) parts.push(`protéines ${Math.round(p.value!)} g sur ${Math.round(p.target!)} g`);
   const c = view.calories;
-  if (c.fraction !== null && Math.abs(c.fraction - 1) > settings.nutrition.caloriesToleranceFraction) {
-    parts.push(`${Math.round(c.value!)} kcal pour une cible de ${Math.round(c.target!)}`);
-  }
+  if (c.reached === false) parts.push(`${Math.round(c.value!)} kcal pour un plafond de ${Math.round(c.target!)}`);
   return parts.length ? `Hier : ${parts.join(', ')}.` : null;
 }

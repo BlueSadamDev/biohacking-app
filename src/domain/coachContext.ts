@@ -336,7 +336,9 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
     parts.push(
       k.target === null
         ? `calories hier : ${Math.round(k.value)} kcal (cible de calories pas encore indiquée dans les Réglages)`
-        : `calories hier : ${Math.round(k.value)} kcal pour une cible de ${Math.round(k.target)} kcal`,
+        : `calories hier : ${Math.round(k.value)} kcal pour un plafond de ${Math.round(k.target)} kcal (${
+            k.reached ? 'plafond respecté' : 'au-dessus du plafond'
+          })`,
     );
   }
   const result = section('nutrition', title, parts.join(', '), {
@@ -347,6 +349,7 @@ function nutritionSection(i: CoachInputs, s: Settings): CoachSection {
     proteinDaysKnown7d: known,
     caloriesKcal: k.value === null ? null : Math.round(k.value),
     caloriesTargetKcal: k.target === null ? null : Math.round(k.target),
+    caloriesWithinCeiling: k.reached,
   });
   // Sans cible de protéines, pas de verdict : l'app le dit elle-même au lieu de faire répondre le modèle.
   return p.target === null ? { ...result, missing: 'il faut une pesée récente pour calculer ta cible de protéines' } : result;

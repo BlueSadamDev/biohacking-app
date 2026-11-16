@@ -87,11 +87,18 @@ describe('nutrition par rapport aux cibles', () => {
     const view = nutritionDayView(days([[10, 100, 2500]]), '2026-01-10', 144, 2500);
     expect(nutritionReminder(view)).toBe('Hier : protéines 100 g sur 144 g.');
   });
-  it('rappel du matin : calories à plus de 10 % de la cible, au-dessus ou en dessous', () => {
-    expect(nutritionReminder(nutritionDayView(days([[10, 150, 2900]]), '2026-01-10', 144, 2500))).toBe(
-      'Hier : 2900 kcal pour une cible de 2500.',
+  it('calories = plafond : respecté à la cible ou en dessous, dépassé même de peu', () => {
+    expect(targetProgress(2500, 2500, undefined, 'ceiling').reached).toBe(true);
+    expect(targetProgress(1200, 2500, undefined, 'ceiling').reached).toBe(true);
+    expect(targetProgress(2501, 2500, undefined, 'ceiling').reached).toBe(false);
+    // Les protéines gardent leur règle (au moins 90 %).
+    expect(targetProgress(2600, 2500).reached).toBe(true);
+  });
+  it('rappel du matin : calories au-dessus du plafond seulement', () => {
+    expect(nutritionReminder(nutritionDayView(days([[10, 150, 2600]]), '2026-01-10', 144, 2500))).toBe(
+      'Hier : 2600 kcal pour un plafond de 2500.',
     );
-    expect(nutritionReminder(nutritionDayView(days([[10, 150, 2000]]), '2026-01-10', 144, 2500))).toContain('2000 kcal');
-    expect(nutritionReminder(nutritionDayView(days([[10, 150, 2600]]), '2026-01-10', 144, 2500))).toBeNull();
+    expect(nutritionReminder(nutritionDayView(days([[10, 150, 2000]]), '2026-01-10', 144, 2500))).toBeNull();
+    expect(nutritionReminder(nutritionDayView(days([[10, 150, 2500]]), '2026-01-10', 144, 2500))).toBeNull();
   });
 });

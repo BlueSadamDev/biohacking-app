@@ -20,14 +20,17 @@ function ProgressRow({
   progress,
   missingTarget,
   stateBelow,
+  stateReached = NUTRITION.reached,
 }: {
   label: string;
   unit: string;
   progress: TargetProgress;
   /** Texte quand la cible n'est pas connue. */
   missingTarget: string;
-  /** Ligne d'état quand la cible n'est pas atteinte. */
+  /** Ligne d'état quand la cible n'est pas respectée. */
   stateBelow: string;
+  /** Ligne d'état quand la cible est respectée. */
+  stateReached?: string;
 }) {
   const { value, target, fraction, reached } = progress;
   const color = reached === null ? colors.textMuted : reached ? colors.good : colors.mid;
@@ -54,7 +57,7 @@ function ProgressRow({
       <RichText
         variant="small"
         style={reached === null ? undefined : { color }}
-        text={target === null ? missingTarget : value === null ? NUTRITION.noValue : reached ? NUTRITION.reached : stateBelow}
+        text={target === null ? missingTarget : value === null ? NUTRITION.noValue : reached ? stateReached : stateBelow}
       />
     </View>
   );
@@ -93,7 +96,9 @@ export function NutritionCard({ view }: { view: NutritionDayView | null }) {
             unit="kcal"
             progress={view.calories}
             missingTarget={NUTRITION.caloriesNoTarget}
-            stateBelow={NUTRITION.caloriesBelow}
+            // Plafond (décision du 16 novembre 2026) : à la cible ou en dessous = respecté.
+            stateBelow={NUTRITION.caloriesAbove(Math.round((view.calories.value ?? 0) - (view.calories.target ?? 0)))}
+            stateReached={NUTRITION.caloriesWithin(Math.round((view.calories.target ?? 0) - (view.calories.value ?? 0)))}
           />
           <AppText variant="small">
             {NUTRITION.others(fmt(day.carbsG), fmt(day.fatG), day.meals)}

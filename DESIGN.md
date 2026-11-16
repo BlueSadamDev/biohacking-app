@@ -350,5 +350,59 @@ la supprimer (avec confirmation).
 - **Valeurs fictives** : uniquement dans les tests et les maquettes, jamais dans l'app livrée.
 
 ## Textes
-- Français, tutoiement, phrases courtes et actionnables (« Séance lourde OK », « Journée légère : mobilité ou marche »).
-- Jamais de vocabulaire de diagnostic médical.
+
+Aube parle comme un coach qui te connaît : une phrase complète, un fait, une
+action. Français, tutoiement.
+
+### Règles
+1. Une phrase avec un verbe, pas une étiquette. Les étiquettes courtes
+   restent permises pour les titres de carte et les pastilles.
+2. Constat, puis pourquoi, puis action, dans cet ordre ; l'action toujours
+   en dernière ligne.
+3. Un seul élément en relief par phrase : le chiffre qui compte ou
+   l'action (composant d'emphase, voir « Relief »).
+4. Le nom en clair d'abord, le sigle ensuite, à sa première apparition sur
+   un écran : « variabilité cardiaque (HRV) ».
+5. Ratios et écarts traduits en mots : « 45 % de plus que d'habitude »
+   plutôt que « ratio 1,45 ».
+6. Parler du signal, jamais d'une cause médicale : « ton corps montre des
+   signes de fatigue », pas « infection qui commence ». Jamais de
+   vocabulaire de diagnostic.
+7. Pas de machinerie visible : vrais pluriels (jamais « (s) »), aucun
+   message d'erreur technique (réservé à l'écran de diagnostic), pas de
+   « à définir » mais une invitation (« Indique ton poids visé »).
+8. Typographie française : apostrophe ’, guillemets « », espace insécable
+   avant : ; ! ?
+
+### Glossaire (un mot par notion)
+| Notion | Mot retenu | À abandonner |
+| --- | --- | --- |
+| Plage de valeurs habituelle calculée sur tes nuits | ta norme (« dans ta norme », « sous ta norme ») | plage, plage normale, plage habituelle |
+| Moyenne simple sur une période | ta moyenne sur N jours (toujours avec la durée) | « ta moyenne » seule |
+| HRV | variabilité cardiaque (HRV), puis HRV | — |
+| FC au repos | fréquence cardiaque au repos, puis FC au repos | FC seule |
+| Charge aiguë / chronique | ta charge de la semaine comparée à ton rythme habituel | 7 j / 28 j, ratio |
+| 1RM | force estimée (1RM), puis 1RM | — |
+| Plage silencieuse | heures de silence | silence à partir de / jusqu'à |
+| Poids | kg partout | kilos |
+
+### Relief
+- Trois étages par carte : le constat en style « constat » (15–16 px),
+  le chiffre clé ou l'action en relief, le détail en petit gris.
+- Relief = gras (Inter 600) pour une action, police des chiffres
+  (Space Grotesk 600) pour un chiffre, dans la couleur du texte principal.
+  Jamais plus d'un élément en relief par phrase.
+- Un même message n'apparaît qu'une fois par écran (pas d'état répété
+  entre la pastille, la carte et le libellé).
+
+### Exemples avant / après (le relief est entre astérisques)
+| Avant | Après |
+| --- | --- |
+| Séance lourde OK | *Feu vert* pour une séance lourde aujourd'hui. |
+| Récap incomplet · Synchronise ta nuit pour obtenir ton récap | Ta nuit n'est pas encore arrivée. *Ouvre Zepp* pour l'envoyer. |
+| Pic de charge (au-dessus de 1,5) | Tu t'entraînes *45 % de plus* que d'habitude cette semaine. |
+| Ta FC au repos est à +6 bpm de ta moyenne depuis 2 jours. Fatigue accumulée ou infection qui débute. | Ta fréquence cardiaque au repos est *6 battements au-dessus* de ta moyenne sur 30 jours depuis 2 jours : ton corps récupère moins bien. *Évite l'intensité aujourd'hui.* |
+| Les jours avec alcool, tu dors 12 % de moins la nuit suivante. | Les soirs où tu bois de l'alcool, tu dors *12 % de moins*. |
+| Bons points de la semaine : récupération 64 sur 100 en moyenne, zone 2 : 45 min pour 90 visées. | Ta récupération a tenu à *64 en moyenne*. En revanche, l'endurance douce manque : *45 min sur les 90 visées*. |
+| Installé · prêt | Le coach est *prêt*. |
+| L'enregistrement a échoué : <erreur technique> | Pas enregistré. *Réessaie dans un instant.* |

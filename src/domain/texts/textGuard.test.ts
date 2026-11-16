@@ -31,13 +31,7 @@ const IGNORED = new Set([
  * Fichiers pas encore réécrits (étape 3 du lot 5a.1) : sautés pour l'instant. Chaque groupe de
  * réécriture retire ses fichiers ; à la fin du lot, la liste doit être vide.
  */
-const PENDING = new Set<string>([
-  // Groupe C : sources, réglages, périodes.
-  'app/(tabs)/reglages.tsx',
-  'app/periodes.tsx',
-  'app/sources.tsx',
-  'sources/healthConnect.ts',
-]);
+const PENDING = new Set<string>([]);
 
 /** Blocs de settings.ts qui sont des règles (expressions régulières du coach), pas des textes. */
 const RULE_BLOCKS = new Set(['guard', 'focus']);
@@ -104,7 +98,9 @@ function findings(rel: string): Finding[] {
 
   const visit = (node: ts.Node) => {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      if (!isSkipped(node) && !insideRuleBlock(node)) add(node, node.text);
+      // Chemin d'écran (« /diagnostic », « /detail/[metric] ») : pas un texte affiché.
+      const isRoute = /^\/[\w\-/[\]()]*$/.test(node.text);
+      if (!isRoute && !isSkipped(node) && !insideRuleBlock(node)) add(node, node.text);
     } else if (ts.isTemplateExpression(node)) {
       if (!isSkipped(node) && !insideRuleBlock(node)) {
         add(node, [node.head.text, ...node.templateSpans.map((s) => s.literal.text)].join(' … '));

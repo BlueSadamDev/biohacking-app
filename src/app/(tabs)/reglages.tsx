@@ -38,6 +38,7 @@ import {
   type UserSettings,
 } from '@/domain/profile';
 import { SETTINGS } from '@/domain/settings';
+import { REGLAGES } from '@/domain/texts/reglages';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SEX_OPTIONS = [
@@ -83,7 +84,7 @@ export default function SettingsScreen() {
       const n = await exportAllToCsv();
       setMessage(n === null ? 'Export annulé.' : `${n} fichiers CSV enregistrés dans le dossier choisi.`);
     } catch {
-      setMessage("L'export a échoué : choisis un autre dossier et réessaie.");
+      setMessage(REGLAGES.exportFailed);
     } finally {
       setBusy(null);
     }
@@ -106,7 +107,7 @@ export default function SettingsScreen() {
               setMessage('Données effacées.');
               refresh();
             } catch {
-              setMessage("L'effacement a échoué.");
+              setMessage(REGLAGES.eraseFailed);
             } finally {
               setBusy(null);
             }
@@ -128,7 +129,7 @@ export default function SettingsScreen() {
           onPress: () => {
             clearConversation()
               .then(() => setCoachMessage('Conversation effacée.'))
-              .catch(() => setCoachMessage("L'effacement de la conversation a échoué."));
+              .catch(() => setCoachMessage(REGLAGES.clearConversationFailed));
           },
         },
       ],
@@ -163,9 +164,9 @@ export default function SettingsScreen() {
         }>
         <SettingRow label="Poids visé">
           <NumberField
-            label="Poids visé en kilos"
+            label={REGLAGES.targetWeightA11y}
             value={user.targetWeightKg}
-            placeholder="à définir"
+            placeholder={REGLAGES.empty}
             unit="kg"
             parse={(s) => parseNumber(s, SETTINGS.entry.weightMinKg, SETTINGS.entry.weightMaxKg, 1)}
             format={asDecimal}
@@ -174,7 +175,7 @@ export default function SettingsScreen() {
         </SettingRow>
         <SettingRow label="Protéines">
           <NumberField
-            label="Protéines en grammes par kilo"
+            label={REGLAGES.proteinA11y}
             value={user.proteinGPerKg}
             unit="g/kg"
             parse={(s) => parseNumber(s, t.proteinGPerKgMin, t.proteinGPerKgMax, 1)}
@@ -186,7 +187,7 @@ export default function SettingsScreen() {
           <NumberField
             label="Calories par jour"
             value={user.caloriesKcal}
-            placeholder="à définir"
+            placeholder={REGLAGES.empty}
             unit="kcal"
             parse={(s) => parseNumber(s, t.caloriesMin, t.caloriesMax)}
             format={asInt}
@@ -222,14 +223,14 @@ export default function SettingsScreen() {
           <NumberField
             label="Année de naissance"
             value={user.birthYear}
-            placeholder="à définir"
+            placeholder={REGLAGES.empty}
             unit=""
             parse={(s) => parseBirthYear(s, now)}
             format={asInt}
             onCommit={(v) => save('birthYear', v)}
           />
         </SettingRow>
-        <SettingRow label="Sexe" hint={user.sex === null ? 'à définir' : undefined}>
+        <SettingRow label="Sexe" hint={user.sex === null ? REGLAGES.choose : undefined}>
           <ChoiceChips<Sex> label="Sexe" options={SEX_OPTIONS} value={user.sex} onChange={(v) => save('sex', v)} />
         </SettingRow>
         <SettingRow
@@ -246,7 +247,7 @@ export default function SettingsScreen() {
           <NumberField
             label="Fréquence cardiaque maximale"
             value={user.hrMaxBpm}
-            placeholder={estimated === null ? 'à définir' : String(estimated)}
+            placeholder={estimated === null ? REGLAGES.empty : String(estimated)}
             unit="bpm"
             parse={(s) => parseNumber(s, p.hrMaxMin, p.hrMaxMax)}
             format={asInt}
@@ -264,17 +265,17 @@ export default function SettingsScreen() {
             onPlus={() => shift('notificationTime', 1)}
           />
         </SettingRow>
-        <SettingRow label="Silence à partir de">
+        <SettingRow label={REGLAGES.quietStart}>
           <TimeStepper
-            label="Début de la plage silencieuse"
+            label={REGLAGES.quietStartA11y}
             text={formatTime(user.quietStart)}
             onMinus={() => shift('quietStart', -1)}
             onPlus={() => shift('quietStart', 1)}
           />
         </SettingRow>
-        <SettingRow label="Silence jusqu’à">
+        <SettingRow label={REGLAGES.quietEnd}>
           <TimeStepper
-            label="Fin de la plage silencieuse"
+            label={REGLAGES.quietEndA11y}
             text={formatTime(user.quietEnd)}
             onMinus={() => shift('quietEnd', -1)}
             onPlus={() => shift('quietEnd', 1)}

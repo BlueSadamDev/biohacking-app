@@ -12,6 +12,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/Buttons';
 import { Card } from '@/components/Card';
 import { dateFromKey } from '@/components/format';
 import { DateStepper } from '@/components/PeriodViews';
+import { RichText } from '@/components/RichText';
 import { BackHeader, Screen } from '@/components/Screen';
 import { Switch } from '@/components/SettingsControls';
 import { colors, fonts } from '@/components/theme';
@@ -20,6 +21,7 @@ import { deletePeriod, savePeriod } from '@/db/periods';
 import { dayKey } from '@/domain/dates';
 import { periodLength, validatePeriod, type Period } from '@/domain/periods';
 import { SETTINGS } from '@/domain/settings';
+import { ERRORS } from '@/domain/texts/common';
 
 const longDate = (key: string) => dateFromKey(key).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -57,8 +59,8 @@ function PeriodEditor({
     try {
       await savePeriod(candidate);
       onDone();
-    } catch (err) {
-      setError(`L’enregistrement a échoué : ${err instanceof Error ? err.message : String(err)}`);
+    } catch {
+      setError(ERRORS.save);
     } finally {
       setBusy(false);
     }
@@ -96,11 +98,7 @@ function PeriodEditor({
           <DateStepper value={end} min={start} max={today} today={today} label="Date de fin" onChange={setEnd} />
         </>
       )}
-      {error && (
-        <AppText variant="bodySmall" style={{ color: colors.low }}>
-          {error}
-        </AppText>
-      )}
+      {error && <RichText variant="bodySmall" text={error} style={{ color: colors.low }} />}
       <PrimaryButton title="Enregistrer" busy={busy} onPress={save} />
       <SecondaryButton title="Supprimer la période" color={colors.low} onPress={confirmDelete} />
     </View>

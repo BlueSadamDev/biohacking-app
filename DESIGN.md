@@ -390,6 +390,12 @@ Carte de l'historique : titre (15/600), constat (15/400, chiffre en relief), pou
   norme » (HRV), « Au-dessus de ta moyenne » (FC au repos), « Nuit courte » (sommeil).
 - Composition corporelle sans poids visé : « Indique ton poids visé dans Réglages. »
 
+### Réglages, Sources, Mes périodes
+- Notifications : « Heures de silence : début » et « Heures de silence : fin ».
+- Champ vide : « à indiquer » (au lieu de « à définir ») ; Sexe non choisi : « Choisis ».
+- L'écran technique « Diagnostic » s'appelle « Contrôle des données » (titre et bouton de Sources).
+- Erreur d'enregistrement : « Pas enregistré. *Réessaie dans un instant.* », jamais le détail technique.
+
 ### Liens observés
 En-tête en mots : « Effet marqué | net | léger », suivi de « qui t'aide » ou « qui te dessert »
 (sauf effet léger). La phrase passe en style « constat » avec l'écart en relief et son repère

@@ -6,6 +6,7 @@ import { Directory } from 'expo-file-system';
 
 import { toCsv, type Row } from '@/domain/csv';
 import { dayKey } from '@/domain/dates';
+import { plainText } from '@/domain/texts/markup';
 
 import { getDb, writeTransaction } from './database';
 
@@ -52,6 +53,11 @@ const ERASE_TABLES = [
   'sync_state',
 ];
 
+/** Texte nu (sans astérisques de relief) pour chaque colonne de texte d'une ligne. */
+function withoutEmphasis(row: Row): Row {
+  return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, typeof v === 'string' ? plainText(v) : v])) as Row;
+}
+
 async function tableColumns(table: string): Promise<string[]> {
   const db = await getDb();
   const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
@@ -72,7 +78,9 @@ export async function exportAllToCsv(now: Date = new Date()): Promise<number | n
   const db = await getDb();
   const stamp = dayKey(now);
   for (const { table, file } of EXPORT_TABLES) {
-    const rows = await db.getAllAsync<Row>(`SELECT * FROM ${table}`);
+    const raw = await db.getAllAsync<Row>(`SELECT * FROM ${table}`);
+    // Lot 5a.1 : le texte des alertes porte le balisage du relief (*…*) ; le fichier exporté n'en a pas.
+    const rows = table === 'alert' ? raw.map(withoutEmphasis) : raw;
     const csv = toCsv(rows, await tableColumns(table));
     const out = dir.createFile(`aube-${stamp}-${file}.csv`, 'text/csv');
     // BOM UTF-8 : Excel affiche alors correctement les accents.

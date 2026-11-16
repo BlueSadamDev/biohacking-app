@@ -53,6 +53,8 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 | Titre d'écran | Space Grotesk | 20–22 / 600 |
 | Valeur d'indicateur (tuile) | Space Grotesk | 22 / 600 (unité en 13, `textMuted`) |
 | Texte important (recommandation) | Inter | 16 / 600 |
+| Constat d'une carte (style « constat », lot 5a.1) | Inter | 16 / 500, interligne 22 |
+| Passage en relief dans une phrase (lot 5a.1) | chiffre : Space Grotesk ; action : Inter | 600, couleur `text`, taille de la phrase |
 | Texte courant | Inter | 13–15 / 400 |
 | Libellé de section | Inter | 12 / 500, MAJUSCULES, espacement 0,08 em, `textMuted` |
 | Petites mentions | Inter | 11–12 / 400 |

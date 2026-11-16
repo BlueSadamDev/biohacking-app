@@ -133,6 +133,8 @@ export type LoadSummary =
   | { state: 'profile-missing'; missing: ('sex' | 'hrMax')[] }
   | { state: 'calibrating'; days: number; required: number }
   | { state: 'no-load'; sessions7d: number; sessionsWithoutHr: number }
+  /** Trop de séances sans fréquence cardiaque sur 28 jours : la charge serait faussée. */
+  | { state: 'unreliable'; unmeasured: number; total: number }
   | {
       state: 'ok';
       acute: number;
@@ -158,6 +160,22 @@ export type LoadInputs = {
   today: string;
 };
 
+/** Séances comptées des `chronicDays` derniers jours, et combien n'ont pas de TRIMP (FC manquante). */
+export function unmeasuredSessions(
+  loads: SessionLoad[],
+  today: string,
+  settings: Settings = SETTINGS,
+): { unmeasured: number; total: number } {
+  const start = addDays(today, -(settings.load.chronicDays - 1));
+  const recent = loads.filter((l) => l.date >= start && l.date <= today);
+  return { unmeasured: recent.filter((l) => l.trimp === null).length, total: recent.length };
+}
+
+/** Charge non fiable : plus de `maxUnmeasuredShare` des séances comptées sans fréquence cardiaque. */
+export function isUnreliable(m: { unmeasured: number; total: number }, settings: Settings = SETTINGS): boolean {
+  return m.total > 0 && m.unmeasured / m.total > settings.load.maxUnmeasuredShare;
+}
+
 /** Résumé de la charge du jour, ou la raison pour laquelle il ne peut pas être calculé. */
 export function buildLoadSummary(input: LoadInputs, settings: Settings = SETTINGS): LoadSummary {
   const missing: ('sex' | 'hrMax')[] = [];
@@ -175,7 +193,109 @@ export function buildLoadSummary(input: LoadInputs, settings: Settings = SETTING
   const sessions7d = week.length;
   const sessionsWithoutHr = week.filter((l) => l.trimp === null).length;
 
+  // Trop de séances sans fréquence cardiaque : la charge serait faussée (aucune valeur affichée).
+  const measure = unmeasuredSessions(loads, input.today, settings);
+  if (isUnreliable(measure, settings)) return { state: 'unreliable', ...measure };
+
   const { acute, chronic, ratio } = loadRatio(dailyLoads(loads), input.today, settings);
   if (ratio === null) return { state: 'no-load', sessions7d, sessionsWithoutHr };
   return { state: 'ok', acute, chronic, ratio, status: loadStatus(ratio, settings), sessions7d, sessionsWithoutHr };
+}
+
+/**
+ * Séances à relire dans Health Connect (rattrapage de la FC) : séances comptées, terminées depuis
+ * `sinceMs`, sans aucune mesure de FC dans la base ; les plus récentes d'abord, au plus `max`.
+ */
+export function heartRateBackfillTargets(
+  sessions: ExerciseSession[],
+  samplesBySession: Map<string, number>,
+  sinceMs: number,
+  max: number,
+  settings: Settings = SETTINGS,
+): ExerciseSession[] {
+  return countedSessions(sessions, settings)
+    .filter((s) => s.end >= sinceMs && (samplesBySession.get(s.id) ?? 0) === 0)
+    .sort((a, b) => b.start - a.start)
+    .slice(0, max);
+}
+
+// ---------------------------------------------------------------------------
+// Contrôle des séances (écran « Contrôle des données ») : ce que le calcul de charge fait de chaque
+// séance, sans rien changer au calcul. Les points viennent de `sessionLoads` (mêmes règles).
+// ---------------------------------------------------------------------------
+
+/** Mesures de FC d'une séance et part de sa durée qu'elles couvrent (même règle que `sessionTrimp`). */
+export function heartRateCoverage(
+  session: Pick<ExerciseSession, 'start' | 'end'>,
+  samples: Sample[],
+  settings: Settings = SETTINGS,
+): { count: number; coverage: number } {
+  const points = samples
+    .filter((p) => p.time >= session.start && p.time <= session.end)
+    .sort((a, b) => a.time - b.time);
+  const durationMs = session.end - session.start;
+  if (points.length === 0 || durationMs <= 0) return { count: points.length, coverage: 0 };
+  let covered = 0;
+  points.forEach((p, i) => {
+    const next = i + 1 < points.length ? points[i + 1].time : session.end;
+    covered += Math.min(next - p.time, settings.load.maxSampleGapSeconds * 1000);
+  });
+  return { count: points.length, coverage: Math.min(1, covered / durationMs) };
+}
+
+export type SessionCheck = {
+  id: string;
+  start: number;
+  date: string;
+  exerciseType: number;
+  durationMinutes: number;
+  /** Mesures de FC pendant la séance et part de la durée couverte (0 à 1). */
+  samples: number;
+  coverage: number;
+  /** Points comptés dans la charge ; null si la séance ne compte pas. */
+  trimp: number | null;
+  /** Pourquoi la séance ne compte pas (null si elle compte). */
+  reason: 'short' | 'no-heart-rate' | 'no-resting-hr' | null;
+};
+
+/**
+ * Chaque séance de la période, de la plus récente à la plus ancienne : comptée (avec ses points)
+ * ou non (trop courte, fréquence cardiaque insuffisante, pas de FC au repos de référence).
+ */
+export function sessionChecks(
+  sessions: ExerciseSession[],
+  samples: Sample[],
+  nights: NightValue[],
+  hrMax: number,
+  k: number,
+  settings: Settings = SETTINGS,
+): SessionCheck[] {
+  const counted = new Set(countedSessions(sessions, settings).map((s) => s.id));
+  const loads = new Map(
+    sessionLoads(
+      sessions.filter((s) => counted.has(s.id)),
+      samples,
+      nights,
+      hrMax,
+      k,
+      settings,
+    ).map((l) => [l.id, l]),
+  );
+  return [...sessions]
+    .sort((a, b) => b.start - a.start)
+    .map((s) => {
+      const { count, coverage } = heartRateCoverage(s, samples, settings);
+      const load = loads.get(s.id);
+      return {
+        id: s.id,
+        start: s.start,
+        date: dayKey(s.start),
+        exerciseType: s.exerciseType,
+        durationMinutes: (s.end - s.start) / 60000,
+        samples: count,
+        coverage,
+        trimp: load?.trimp ?? null,
+        reason: !load ? 'short' : load.trimp === null ? (load.reason ?? 'no-heart-rate') : null,
+      };
+    });
 }

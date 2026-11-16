@@ -114,6 +114,18 @@ export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]>
   );
 }
 
+/** Nombre de mesures de FC enregistrées pendant chaque séance terminée après `sinceMs`. */
+export async function countExerciseHeartRate(sinceMs: number): Promise<Map<string, number>> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ id: string; n: number }>(
+    `SELECT e.id AS id, COUNT(h.time_ms) AS n
+     FROM hc_exercise e LEFT JOIN hc_heart_rate h ON h.time_ms BETWEEN e.start_ms AND e.end_ms
+     WHERE e.end_ms >= ? GROUP BY e.id`,
+    sinceMs,
+  );
+  return new Map(rows.map((r) => [r.id, r.n]));
+}
+
 /** Séances qui comptent dans les calculs (sans les courtes activités détectées automatiquement). */
 export async function loadCountedExercises(sinceMs: number): Promise<ExerciseSession[]> {
   return countedSessions(await loadExercises(sinceMs));

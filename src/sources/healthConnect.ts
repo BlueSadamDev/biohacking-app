@@ -19,7 +19,8 @@ import {
   type RecordType,
 } from 'react-native-health-connect';
 
-import { getLastSync, loadExercises, loadSleeps, setLastSync, upsertRows } from '@/db/healthData';
+import { countExerciseHeartRate, getLastSync, loadExercises, loadSleeps, setLastSync, upsertRows } from '@/db/healthData';
+import { heartRateBackfillTargets } from '@/domain/load';
 import { SETTINGS } from '@/domain/settings';
 
 /**
@@ -262,6 +263,37 @@ function insideAny(time: number, periods: { start: number; end: number }[]): boo
 
 const grams = (mass?: { inGrams: number }) => (mass && Number.isFinite(mass.inGrams) ? mass.inGrams : null);
 
+/**
+ * Rattrapage de la FC des séances : la FC continue n'est gardée que pendant les séances connues au
+ * moment de la synchro. Une séance arrivée plus tard (ou une synchro manquée) restait donc sans mesure.
+ * Chaque séance comptée récente sans aucune mesure est relue sur sa propre durée. Renvoie le nombre
+ * d'enregistrements lus. Une séance que Health Connect ne peut pas relire est laissée de côté.
+ */
+async function backfillExerciseHeartRate(now: number): Promise<number> {
+  const s = SETTINGS.sync;
+  const since = now - s.heartRateBackfillDays * DAY_MS;
+  const [sessions, counts] = await Promise.all([loadExercises(since), countExerciseHeartRate(since)]);
+  let read = 0;
+  for (const session of heartRateBackfillTargets(sessions, counts, since, s.heartRateBackfillMax)) {
+    try {
+      const records = await readAll('HeartRate', session.start, session.end);
+      read += records.length;
+      const rows = records.flatMap((r) => {
+        const id = idOf(r, `hr-${r.startTime}`);
+        const origin = originOf(r);
+        return r.samples
+          .map((x) => ({ time: ms(x.time), bpm: x.beatsPerMinute }))
+          .filter((x) => x.time >= session.start && x.time <= session.end)
+          .map((x) => [id, x.time, x.bpm, origin]);
+      });
+      await upsertRows('hc_heart_rate', ['record_id', 'time_ms', 'bpm', 'origin'], rows);
+    } catch {
+      // Séance suivante : elle sera retentée à la prochaine synchro.
+    }
+  }
+  return read;
+}
+
 /** Lit un type dans Health Connect et l'enregistre dans la base. Renvoie le nombre lu. */
 async function syncType(type: SyncType, since: number, until: number): Promise<number> {
   switch (type) {
@@ -343,7 +375,7 @@ async function syncType(type: SyncType, since: number, until: number): Promise<n
           .map((s) => [id, s.time, s.bpm, origin]);
       });
       await upsertRows('hc_heart_rate', ['record_id', 'time_ms', 'bpm', 'origin'], rows);
-      return records.length;
+      return records.length + (await backfillExerciseHeartRate(until));
     }
     case 'Steps': {
       const records = await readAll('Steps', since, until);

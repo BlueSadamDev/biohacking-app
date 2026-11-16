@@ -149,7 +149,7 @@ Tous les indicateurs se comparent à ma propre norme : une valeur n'est « mauva
 | HRV nocturne | Moyenne glissante 7 j de ln(rMSSD), comparée à la plage normale sur 60 j (moyenne ± 1 écart-type) | Moyenne 7 j sous la plage normale, ou 3 nuits d'affilée sous la plage |
 | FC au repos | Valeur nocturne, comparée à la moyenne sur 30 j | Plus de 5 bpm au-dessus de la moyenne pendant 2 jours (fatigue ou maladie qui débute) |
 | Sommeil | Durée, régularité de l'heure de coucher, efficacité | Moins de 6 h pendant 3 nuits sur 4, ou heure de coucher qui varie de plus d'1 h 30 sur la semaine |
-| Charge d'entraînement | TRIMP par séance (durée × intensité cardiaque), charge aiguë (7 j) / chronique (28 j) | Ratio supérieur à 1,5 (pic de charge) ou inférieur à 0,8 pendant 2 semaines (désentraînement) |
+| Charge d'entraînement | TRIMP par séance (durée × intensité cardiaque), charge aiguë (7 j) / chronique (28 j). Non fiable (ni valeur ni alerte) si plus d'une séance comptée sur 4 des 28 derniers jours manque de fréquence cardiaque | Ratio supérieur à 1,5 (pic de charge) ou inférieur à 0,8 pendant 2 semaines (désentraînement) |
 | Score de récupération | Combinaison pondérée HRV, FC au repos, sommeil et charge de la veille, sur 0 à 100 | Moins de 40 : recommandation de séance légère |
 | Poids | Moyenne glissante 7 j | Tendance hors de la fourchette cible fixée (prise ou perte trop rapide) sur 3 semaines |
 | Protéines | g/kg/jour depuis les repas Suivi macro (Health Connect) | Sous la cible plus de 3 jours sur 7 |
@@ -275,6 +275,7 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - [x] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine : saisies dans l'app (Réglages > Mes cibles), volontairement absentes du dépôt public
 - [x] Exercices de musculation clés à suivre : squat, développé couché, soulevé de terre (voir décisions)
 - [x] Nutrition : Suivi macro écrit les repas dans Health Connect (vérifié), plus besoin d'export JSON
+- [ ] **Contrôle qualité des données Zepp** (à cadrer, noté le 16 novembre 2026) : vérifier ce que Zepp écrit réellement dans Health Connect, sur mes enregistrements (export CSV de l'app). Exemples à analyser : deux séances de même durée le même jour (vraies séances ou doublon / erreur de mesure de Zepp ?), nombreuses activités courtes détectées automatiquement (environ 100 en 28 jours), séances arrivées sans fréquence cardiaque. L'analyse se fait sur l'ordinateur, hors du dépôt ; le rapport ne garde que des comptages et des dates, jamais de valeurs. Selon le résultat : règles de nettoyage (section 3) et contrôles affichés dans « Contrôle des données ».
 
 **Décisions prises**
 
@@ -290,6 +291,7 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - Coach IA (lot 4) : 100 % local, sur le Galaxy S21 (pas de Gemini Nano) avec un petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié), installé par import manuel du fichier. L'APK de production reste sans permission Internet. Le coach ne calcule rien, ne pose aucun diagnostic et dit quand il ne sait pas. Usages : bilan de la semaine, « Pourquoi ? », questions libres encadrées ; plan de semaine reporté.
 - Coach IA, choix du modèle et partage des rôles (lot 4, 15 novembre 2026) : LFM2.5 1.2B avec llama.rn (voir [RAPPORT_LOT_4_MODELE.md](RAPPORT_LOT_4_MODELE.md)), et Luth-LFM2 1.2B (version française) accepté aussi ; un seul installé à la fois, interchangeables. Un modèle de cette taille déforme les verdicts même avec des consignes strictes : l'app écrit donc le constat chiffré et le modèle seulement l'explication et l'action, sans chiffre. Le bilan de la semaine est généré à l'ouverture de l'onglet Coach (et non de l'app), pour ne charger le modèle que là.
 - Séances courtes (15 novembre 2026) : le Helio Strap enregistre toutes les activités détectées (marche rapide de quelques minutes…). Seules les séances d'au moins 20 minutes comptent dans les calculs (séances de la semaine, charge, zones, liens observés, suggestions) ; la musculation compte toujours. Seuil réglable dans `settings.ts`.
+- Charge et fréquence cardiaque des séances (16 novembre 2026) : la charge affichait +300 % parce que la fréquence cardiaque de la plupart des séances n'avait pas été gardée à la synchro (séance arrivée après les mesures). Corrections : (1) rattrapage à chaque synchro : une séance comptée des 28 derniers jours sans aucune mesure est relue dans Health Connect sur sa durée ; (2) charge « non fiable » quand plus d'une séance comptée sur 4 (28 derniers jours) n'a pas assez de fréquence cardiaque : ni pourcentage, ni pastille, ni alerte de charge ; (3) carte « Charge : séances des 28 derniers jours » dans « Contrôle des données » (points ou raison du rejet de chaque séance). Seuil réglable dans `settings.ts`.
 
 **Prochaines étapes**
 

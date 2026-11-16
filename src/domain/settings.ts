@@ -169,6 +169,11 @@ export const SETTINGS = {
     /** Charge aiguë et chronique : moyennes par jour sur N jours (aujourd'hui compris). */
     acuteDays: 7,
     chronicDays: 28,
+    /**
+     * Charge non fiable (ni valeur, ni pastille, ni alerte de charge) quand plus de cette part des
+     * séances comptées des 28 derniers jours n'a pas assez de fréquence cardiaque.
+     */
+    maxUnmeasuredShare: 0.25,
     /** Jours d'historique nécessaires avant d'afficher le ratio. */
     calibrationDays: 28,
     /** Seuils du ratio aigu / chronique. */
@@ -717,6 +722,12 @@ export const SETTINGS = {
     firstSyncDays: 90,
     /** Recouvrement à chaque synchro, pour rattraper les données arrivées en retard (jours). */
     overlapDays: 2,
+    /**
+     * Rattrapage de la FC des séances : une séance comptée des N derniers jours sans aucune mesure
+     * de FC dans la base est relue dans Health Connect (au plus `heartRateBackfillMax` par synchro).
+     */
+    heartRateBackfillDays: 28,
+    heartRateBackfillMax: 40,
     /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
     launchScreenMaxSeconds: 10,
   },

@@ -113,6 +113,9 @@ export const LOAD = {
   calibrating: (days: number, required: number) => `Calibration : ${days} / ${required} jours`,
   calibratingNote: (required: number) => `Ta charge s’affichera après ${required} jours de données.`,
   noLoad: 'Aucune séance avec fréquence cardiaque ces 28 derniers jours : pas encore de charge à comparer.',
+  unreliable: (unmeasured: number, total: number) =>
+    `*${unmeasured} ${pluralWord(unmeasured, 'séance')} sur ${total}* des 28 derniers jours ${pluralWord(unmeasured, 'n’a', 'n’ont')} pas de fréquence cardiaque : ta charge serait faussée.`,
+  unreliableButton: 'Voir les séances',
   gaugeMin: '−100 %',
   gaugeMax: '+100 %',
 } as const;

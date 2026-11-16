@@ -10,6 +10,7 @@ import { SETTINGS } from '@/domain/settings';
 import { getUserSettings } from './appSettings';
 import { loadMeals, loadNights, loadSteps, loadWeights } from './healthData';
 import { loadLoadInputs } from './loadData';
+import { loadPeriods } from './periods';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -18,12 +19,13 @@ export async function loadCorrelations(now: Date = new Date()): Promise<Correlat
   const today = dayKey(now);
   const since = now.getTime() - (c.windowDays + 2) * DAY_MS;
   const nights = await loadNights();
-  const [loadInputs, steps, meals, weights, user] = await Promise.all([
+  const [loadInputs, steps, meals, weights, user, periods] = await Promise.all([
     loadLoadInputs(nights, today, now, Math.max(0, c.windowDays - SETTINGS.load.chronicDays + 1)),
     loadSteps(since),
     loadMeals(since),
     loadWeights(since - SETTINGS.targets.weightAverageDays * DAY_MS),
     getUserSettings(),
+    loadPeriods(),
   ]);
   const dailyLoad =
     loadInputs.hrMax !== null && loadInputs.coefficient !== null
@@ -37,6 +39,7 @@ export async function loadCorrelations(now: Date = new Date()): Promise<Correlat
     nutrition: nutritionByDay(meals),
     weights: weightByDay(weights),
     proteinGPerKg: user.proteinGPerKg,
+    periods,
     today,
   });
 }

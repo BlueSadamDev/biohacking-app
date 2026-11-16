@@ -18,6 +18,8 @@ import { weightByDay } from '@/domain/daily';
 import { addDays, dayKey, daysBetween } from '@/domain/dates';
 import { dailyLoads, sessionLoads } from '@/domain/load';
 import { nutritionByDay } from '@/domain/nutrition';
+import { isTaggedDay, withoutTaggedNights } from '@/domain/periods';
+import { loadPeriods } from '@/db/periods';
 import { SETTINGS } from '@/domain/settings';
 
 import { getNotificationPermission } from './morningNotification';
@@ -53,7 +55,9 @@ export function runAlertEngine(now: Date = new Date()): Promise<SelectedAlert[]>
 async function run(now: Date): Promise<SelectedAlert[]> {
   const a = SETTINGS.alerts;
   const today = dayKey(now);
-  const [nights, user] = await Promise.all([loadNights(), getUserSettings()]);
+  const [nights, user, periods] = await Promise.all([loadNights(), getUserSettings(), loadPeriods()]);
+  // Période en cours : alertes en pause, rien n'est calculé, envoyé ni enregistré.
+  if (isTaggedDay(today, periods)) return [];
 
   const loadInputs = await loadLoadInputs(nights, today, now, a.underloadDays);
   const dailyLoad =
@@ -77,11 +81,12 @@ async function run(now: Date): Promise<SelectedAlert[]> {
     nutrition: nutritionByDay(meals),
     proteinGPerKg: user.proteinGPerKg,
     strength,
+    periods,
     today,
   });
 
   const selected = selectAlerts(candidates, {
-    calibrationDone: calibrationStatus(nights, today).done,
+    calibrationDone: calibrationStatus(withoutTaggedNights(nights, periods), today).done,
     alertsEnabled: user.alertsEnabled,
     history: await loadAlertHistory(addDays(today, -a.persistentWindowDays)),
     today,

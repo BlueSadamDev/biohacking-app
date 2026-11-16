@@ -12,6 +12,7 @@ import { SETTINGS } from '@/domain/settings';
 import { getStatus, syncHealthConnect } from '@/sources/healthConnect';
 
 import { runAlertEngine } from './alertEngine';
+import { runPeriodReminder } from './periodReminder';
 import { runStrengthReminder } from './strengthReminder';
 import {
   getNotificationPermission,
@@ -26,6 +27,7 @@ TaskManager.defineTask(SYNC_TASK, async () => {
     if ((await getStatus()) === 'available') await syncHealthConnect();
     await runAlertEngine().catch(() => undefined);
     await runStrengthReminder().catch(() => undefined);
+    await runPeriodReminder().catch(() => undefined);
     await scheduleMorningNotifications();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {

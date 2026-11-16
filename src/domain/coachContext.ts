@@ -13,6 +13,7 @@ import { addDays } from './dates';
 import type { LoadStatus, LoadSummary } from './load';
 import type { NightValue } from './nightly';
 import { mean, nightsBetween, type NormPosition } from './norms';
+import { periodLength, periodOn, taggedDaysBetween, type Period } from './periods';
 import type { NutritionDayView } from './nutrition';
 import { computeRecovery } from './recovery';
 import type { MorningRecap } from './recap';
@@ -33,6 +34,8 @@ export type CoachInputs = {
   body: Pick<BodyComposition, 'average7d' | 'trendKgPerWeek' | 'trend' | 'targetKg' | 'gapToTarget' | 'sentence'> | null;
   alerts: (Pick<Alert, 'date' | 'level' | 'title' | 'finding' | 'cause' | 'action'> & Partial<Pick<SelectedAlert, 'persistent'>>)[];
   links: Pick<Link, 'strength' | 'favorable' | 'days' | 'sentence' | 'action'>[];
+  /** Périodes (lot 5a) : période en cours et jours exclus des 7 derniers jours. */
+  periods?: readonly Period[];
 };
 
 export type SectionKey =
@@ -47,7 +50,8 @@ export type SectionKey =
   | 'strength'
   | 'weight'
   | 'alerts'
-  | 'links';
+  | 'links'
+  | 'period';
 
 export type CoachSection = {
   key: SectionKey;
@@ -385,6 +389,34 @@ function linksSection(i: CoachInputs): CoachSection {
   return section('links', title, line, { count: i.links.length });
 }
 
+/**
+ * Période (lot 5a) : période en cours et jours étiquetés des 7 derniers jours. Ce n'est ni un succès
+ * ni un échec : les jours étiquetés sont simplement mis à part (normes, alertes, liens observés).
+ */
+function periodSection(i: CoachInputs, s: Settings): CoachSection {
+  const periods = i.periods ?? [];
+  const days = s.coach.context.shortDays;
+  const title = 'Période particulière';
+  const excluded = taggedDaysBetween(addDays(i.today, -(days - 1)), i.today, periods);
+  const current = periodOn(i.today, periods);
+  if (!current && excluded === 0) return section('period', title, 'aucune', { current: null, excludedDays7d: 0 });
+  const plural = (x: number) => (x > 1 ? 's' : '');
+  const parts: string[] = [];
+  if (current) {
+    const length = periodLength(current, i.today);
+    parts.push(
+      `${s.periods.labels[current.type].toLowerCase()} en cours depuis ${length} jour${plural(length)}, normes et alertes en pause`,
+    );
+  }
+  parts.push(
+    `${excluded} jour${plural(excluded)} sur les ${days} derniers mis à part (exclus des normes, pas un échec)`,
+  );
+  return section('period', title, parts.join(', '), {
+    current: current ? current.type : null,
+    excludedDays7d: excluded,
+  });
+}
+
 /** Construit le résumé chiffré du coach à partir des résultats de l'app. */
 export function buildCoachContext(i: CoachInputs, settings: Settings = SETTINGS): CoachContext {
   const cal = i.recap.calibration;
@@ -408,6 +440,7 @@ export function buildCoachContext(i: CoachInputs, settings: Settings = SETTINGS)
     weightSection(i),
     alertsSection(i, settings),
     linksSection(i),
+    periodSection(i, settings),
   ];
   const text = [`Résumé de mes données calculé par l'app Aube (au ${i.today}) :`, ...sections.map((s) => `- ${s.line}`)].join('\n');
   return { date: i.today, calibrating: !cal.done, sections, text, numbers: [...new Set(extractNumbers(text))] };

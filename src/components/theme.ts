@@ -18,6 +18,8 @@ export const colors = {
   infoText: '#7DB8FF',
   bar: '#5C6B7E',
   tabInactive: '#8B97A6',
+  /** Anneau de récupération pendant une période (lot 5a) : gris, sans jugement. */
+  paused: '#4A5A6E',
 } as const;
 
 /** Couleur à 14 % d'opacité (fonds de pastilles et de la carte recommandation). */
@@ -31,6 +33,7 @@ export function zoneColor(zone: Zone): string {
   if (zone === 'good') return colors.good;
   if (zone === 'mid') return colors.mid;
   if (zone === 'low') return colors.low;
+  if (zone === 'paused') return colors.paused;
   return colors.textMuted;
 }
 

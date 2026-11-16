@@ -15,6 +15,7 @@ import type { NightValue } from './nightly';
 import { hrvBaseline, hrvNorm, restingHrNorm } from './norms';
 import type { TimeOfDay } from './notification';
 import type { DayNutrition } from './nutrition';
+import { isTaggedDay, withoutTaggedDays, withoutTaggedNights, type Period } from './periods';
 import { averageWeight, proteinTargetGrams } from './profile';
 import { SETTINGS, type Settings } from './settings';
 import { EXERCISE_LABEL, stagnantExercises, type StrengthEntry } from './strength';
@@ -84,6 +85,12 @@ export type AlertInputs = {
   proteinGPerKg: number;
   /** Saisies de musculation (lot 3) ; absentes = pas de règle de stagnation. */
   strength?: StrengthEntry[];
+  /**
+   * Périodes (lot 5a). Si aujourd'hui est étiqueté : aucune alerte (pause). Sinon, les nuits et les repas
+   * des jours étiquetés sont retirés, et une sous-charge ne compte pas des jours étiquetés.
+   * Les alertes reprennent donc le lendemain de la fin d'une période.
+   */
+  periods?: readonly Period[];
   today: string;
 };
 
@@ -141,8 +148,16 @@ export function bedtimeMinutes(start: number): number {
 // ---------------------------------------------------------------------------
 
 /** Toutes les alertes candidates du jour (avant limite quotidienne et anti-répétition). */
-export function evaluateAlerts(input: AlertInputs, settings: Settings = SETTINGS): Alert[] {
+export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS): Alert[] {
   const a = settings.alerts;
+  const periods = raw.periods ?? [];
+  // Période en cours : alertes en pause (rien n'est calculé, donc rien n'est envoyé ni enregistré).
+  if (isTaggedDay(raw.today, periods)) return [];
+  const input: AlertInputs = {
+    ...raw,
+    nights: withoutTaggedNights(raw.nights, periods),
+    nutrition: withoutTaggedDays(raw.nutrition, periods),
+  };
   const { nights, today } = input;
   const result: Alert[] = [];
 
@@ -212,7 +227,9 @@ export function evaluateAlerts(input: AlertInputs, settings: Settings = SETTINGS
   if (input.dailyLoad && input.loadHistoryDays >= settings.load.calibrationDays + a.underloadDays - 1) {
     let under = true;
     for (let i = 0; i < a.underloadDays && under; i++) {
-      const r = loadRatio(input.dailyLoad, addDays(today, -i), settings).ratio;
+      const day = addDays(today, -i);
+      // Un jour étiqueté (vacances, maladie…) interrompt la série : pas de « sous-charge » au retour.
+      const r = isTaggedDay(day, periods) ? null : loadRatio(input.dailyLoad, day, settings).ratio;
       under = r !== null && r < settings.load.underMax;
     }
     if (under) {

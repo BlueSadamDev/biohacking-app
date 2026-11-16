@@ -5,7 +5,8 @@ import { calibrationStatus, type Calibration } from './calibration';
 import { addDays } from './dates';
 import type { NightValue } from './nightly';
 import { hrvNorm, mean, nightsBetween, restingHrNorm, type HrvNorm, type RestingHrNorm } from './norms';
-import { recommend, type Recommendation } from './recommendation';
+import { periodOn, withoutTaggedNights, type Period } from './periods';
+import { pausedRecommendation, recommend, type Recommendation } from './recommendation';
 import { computeRecovery, type Recovery } from './recovery';
 import { SETTINGS, type Settings } from './settings';
 
@@ -19,19 +20,35 @@ export type MorningRecap = {
   recommendation: Recommendation;
   hrv: HrvNorm;
   restingHr: RestingHrNorm;
+  /** Période qui couvre ce jour (lot 5a) : score affiché en gris, recommandation remplacée. */
+  period: Period | null;
 };
 
-export function buildRecap(nights: NightValue[], date: string, settings: Settings = SETTINGS): MorningRecap {
-  const calibration = calibrationStatus(nights, date, settings);
-  const recovery = computeRecovery(nights, date, settings);
+/**
+ * Récap d'un jour. Les jours étiquetés (`periods`) sont retirés avant tout calcul :
+ * - calibration : seules les nuits non étiquetées comptent ;
+ * - normes et score : nuits non étiquetées, plus la nuit du jour elle-même (le score reste calculé
+ *   pendant une période, comparé à des normes sans jours anormaux).
+ */
+export function buildRecap(
+  nights: NightValue[],
+  date: string,
+  settings: Settings = SETTINGS,
+  periods: readonly Period[] = [],
+): MorningRecap {
+  const clean = withoutTaggedNights(nights, periods, date);
+  const calibration = calibrationStatus(withoutTaggedNights(nights, periods), date, settings);
+  const recovery = computeRecovery(clean, date, settings);
+  const period = periodOn(date, periods);
   return {
     date,
     night: nights.find((n) => n.date === date) ?? null,
     calibration,
     recovery,
-    recommendation: recommend(recovery, calibration, settings),
-    hrv: hrvNorm(nights, date, settings),
-    restingHr: restingHrNorm(nights, date, settings),
+    recommendation: period ? pausedRecommendation(period.type, settings) : recommend(recovery, calibration, settings),
+    hrv: hrvNorm(clean, date, settings),
+    restingHr: restingHrNorm(clean, date, settings),
+    period,
   };
 }
 
@@ -76,17 +93,20 @@ export function chartData(
   date: string,
   days: number,
   settings: Settings = SETTINGS,
+  periods: readonly Period[] = [],
 ): ChartData {
   const byDate = new Map(nights.map((n) => [n.date, n]));
+  // Plage normale sans les jours étiquetés ; les barres, elles, montrent toutes les nuits.
+  const clean = withoutTaggedNights(nights, periods, date);
   let band: ChartData['band'] = null;
   let reference: number | null = null;
   let referenceLabel: string | null = null;
 
   if (metric === 'hrv') {
-    const b = hrvNorm(nights, date, settings).baseline;
+    const b = hrvNorm(clean, date, settings).baseline;
     if (b) band = { low: Math.exp(b.low), high: Math.exp(b.high) };
   } else if (metric === 'restingHr') {
-    reference = restingHrNorm(nights, date, settings).baselineMean;
+    reference = restingHrNorm(clean, date, settings).baselineMean;
     referenceLabel = reference === null ? null : 'Moyenne 30 j';
   } else {
     reference = settings.recovery.sleepTargetMinutes;

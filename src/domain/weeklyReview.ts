@@ -155,6 +155,20 @@ export function fallbackWeekly(worked: WeeklyItem[], stuck: WeeklyItem[], settin
   return { synthesis, actions: actions.length ? actions : ['Garde ton rythme actuel la semaine prochaine.'] };
 }
 
+/**
+ * Période particulière de la semaine (lot 5a) : mentionnée à part, dans « Ce qui coince », mais jamais
+ * comptée comme un échec (ni dans la synthèse de repli, ni dans les actions demandées au modèle).
+ */
+export function periodNote(context: CoachContext, settings: Settings = SETTINGS): string | null {
+  const v = context.sections.find((s) => s.key === 'period')?.values;
+  const days = v?.excludedDays7d;
+  if (typeof days !== 'number' || days === 0) return null;
+  const type = typeof v?.current === 'string' ? v.current : null;
+  const label =
+    type && type in settings.periods.labels ? ` (${settings.periods.labels[type as keyof Settings['periods']['labels']].toLowerCase()})` : '';
+  return `Période particulière${label} : ${days} jour${days > 1 ? 's' : ''} mis à part, sans compter comme un échec`;
+}
+
 /** Rédige le bilan de la semaine `week` à partir du résumé (construit pour le dimanche de cette semaine). */
 export async function runWeeklyReview(
   model: CoachModel,
@@ -175,6 +189,7 @@ export async function runWeeklyReview(
   const parsed = outcome.kind === 'answer' ? parseWeeklyAnswer(outcome.text, settings) : null;
   const usable = parsed && parsed.synthesis && parsed.actions.length === settings.coach.generation.weeklyMaxActions;
   const content = usable ? parsed! : fallbackWeekly(worked, stuck, settings);
+  const note = periodNote(context, settings);
   return {
     outcome,
     review: {
@@ -182,7 +197,7 @@ export async function runWeeklyReview(
       synthesis: content.synthesis,
       actions: content.actions,
       worked: worked.map((w) => w.text),
-      stuck: stuck.map((s) => s.text),
+      stuck: [...stuck.map((s) => s.text), ...(note ? [note] : [])],
       facts: weeklyFacts(context, [...stuck, ...worked]),
       source: usable ? 'model' : 'app',
       createdMs: nowMs,

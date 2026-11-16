@@ -16,6 +16,7 @@ import { addDays, dayKey } from './dates';
 import type { ExerciseSession } from './load';
 import type { NightValue } from './nightly';
 import type { DayNutrition } from './nutrition';
+import { isTaggedDay, withoutTaggedNights, type Period } from './periods';
 import { averageWeight, proteinTargetGrams } from './profile';
 import { computeRecovery } from './recovery';
 import { SETTINGS, type Settings } from './settings';
@@ -32,6 +33,8 @@ export type CorrelationInputs = {
   nutrition: Map<string, DayNutrition>;
   weights: Map<string, DailyWeight>;
   proteinGPerKg: number;
+  /** Périodes (lot 5a) : jours étiquetés et nuits qui s'y terminent exclus de toutes les paires. */
+  periods?: readonly Period[];
   today: string;
 };
 
@@ -275,11 +278,17 @@ export type CorrelationReport = {
 /** Teste toutes les paires sur les 90 derniers jours. */
 export function findLinks(input: CorrelationInputs, settings: Settings = SETTINGS): CorrelationReport {
   const c = settings.correlations;
+  const periods = input.periods ?? [];
+  // Jours étiquetés retirés avant tout calcul : ni comme jour J, ni comme nuit suivante.
+  const nights = withoutTaggedNights(input.nights, periods);
   const ctx: Context = {
     ...input,
+    nights,
     settings,
-    nightByDate: new Map(input.nights.map((n) => [n.date, n])),
-    days: Array.from({ length: c.windowDays }, (_, i) => addDays(input.today, -(c.windowDays - 1 - i))),
+    nightByDate: new Map(nights.map((n) => [n.date, n])),
+    days: Array.from({ length: c.windowDays }, (_, i) => addDays(input.today, -(c.windowDays - 1 - i))).filter(
+      (day) => !isTaggedDay(day, periods),
+    ),
   };
   const statuses: Record<string, PairStatus> = {};
   const links: Link[] = [];

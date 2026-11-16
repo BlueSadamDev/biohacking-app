@@ -12,6 +12,7 @@ import { loadAlerts } from '@/db/alerts';
 import { getNotificationTime } from '@/db/appSettings';
 import { loadNights } from '@/db/healthData';
 import { loadNutritionView } from '@/db/nutritionData';
+import { loadPeriods } from '@/db/periods';
 import { addDays, dayKey } from '@/domain/dates';
 import { nextOccurrences, notificationText } from '@/domain/notification';
 import { nutritionReminder } from '@/domain/nutrition';
@@ -70,15 +71,17 @@ async function schedule(now: Date): Promise<void> {
   if ((await getNotificationPermission()) !== 'granted') return;
   await ensureChannel();
   const today = dayKey(now);
-  const [time, nights, alerts] = await Promise.all([
+  const [time, nights, alerts, periods] = await Promise.all([
     getNotificationTime(),
     loadNights(),
     loadAlerts().catch(() => []),
+    loadPeriods().catch(() => []),
   ]);
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const date of nextOccurrences(now, time, SETTINGS.notification.daysAhead)) {
     const key = dayKey(date);
-    const recap = buildRecap(nights, key);
+    // Une période en cours couvre aussi les matins à venir : texte « en pause » jusqu'à sa fin.
+    const recap = buildRecap(nights, key, SETTINGS, periods);
     // Alertes non urgentes de la veille et de la nuit, regroupées dans ce récap.
     const watchAlerts = alerts
       .filter((a) => a.delivery === 'recap' && (a.date === key || a.date === addDays(key, -1)))

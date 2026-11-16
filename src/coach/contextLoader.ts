@@ -12,16 +12,21 @@ import { loadCorrelations } from '@/db/trendsData';
 import { buildCoachContext, type CoachContext } from '@/domain/coachContext';
 import { dayKey } from '@/domain/dates';
 import { buildLoadSummary } from '@/domain/load';
+import { withoutTaggedNights } from '@/domain/periods';
 import { buildRecap } from '@/domain/recap';
+import { SETTINGS } from '@/domain/settings';
+import { loadPeriods } from '@/db/periods';
 import { strengthProgress } from '@/domain/strength';
 
 const orNull = <T>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
 export async function loadCoachContext(now: Date = new Date()): Promise<CoachContext> {
   const today = dayKey(now);
-  const nights = await loadNights();
+  const [allNights, periods] = await Promise.all([loadNights(), loadPeriods().catch(() => [])]);
+  // Moyennes et normes du coach sans les jours étiquetés (la nuit du jour reste, comme sur l'accueil).
+  const nights = withoutTaggedNights(allNights, periods, today);
   const [load, nutrition, week, entries, alerts, correlations] = await Promise.all([
-    orNull(loadLoadInputs(nights, today, now).then(buildLoadSummary)),
+    orNull(loadLoadInputs(allNights, today, now).then(buildLoadSummary)),
     orNull(loadYesterdayNutrition(today, now)),
     orNull(loadSportWeek(now)),
     orNull(loadStrengthHistory(now)),
@@ -33,7 +38,7 @@ export async function loadCoachContext(now: Date = new Date()): Promise<CoachCon
   return buildCoachContext({
     today,
     nights,
-    recap: buildRecap(nights, today),
+    recap: buildRecap(allNights, today, SETTINGS, periods),
     load,
     nutrition,
     week,
@@ -41,5 +46,6 @@ export async function loadCoachContext(now: Date = new Date()): Promise<CoachCon
     body,
     alerts: alerts ?? [],
     links: correlations?.links ?? [],
+    periods,
   });
 }

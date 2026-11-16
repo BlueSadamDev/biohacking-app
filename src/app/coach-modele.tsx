@@ -22,7 +22,9 @@ import {
   type InstalledModel,
 } from '@/coach/modelStore';
 import { formatBytes, problemMessage, requiredFreeSpace } from '@/domain/coachModel';
+import { RichText } from '@/components/RichText';
 import { SETTINGS } from '@/domain/settings';
+import { COACH_MODEL } from '@/domain/texts/coach';
 
 const STEP_TEXT: Record<ImportStep, string> = {
   verifying: 'Vérification du fichier (empreinte)…',
@@ -55,7 +57,7 @@ export default function CoachModelScreen() {
   const confirmDelete = useCallback(() => {
     Alert.alert(
       'Supprimer le modèle ?',
-      `Le coach ne fonctionnera plus tant que tu ne l'auras pas réinstallé. Cela libère ${formatBytes(model?.sizeBytes ?? SETTINGS.coach.model.sizeBytes)}.`,
+      COACH_MODEL.deleteBody(formatBytes(model?.sizeBytes ?? SETTINGS.coach.model.sizeBytes)),
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -93,10 +95,8 @@ export default function CoachModelScreen() {
 
       {model ? (
         <>
+          <RichText variant="constat" text={COACH_MODEL.ready} />
           <SettingsGroup title="Modèle installé">
-            <SettingRow label="État">
-              <SettingValue text="Installé · prêt" color={colors.good} />
-            </SettingRow>
             <SettingRow label="Modèle">
               <SettingValue text={model.label} />
             </SettingRow>
@@ -107,7 +107,7 @@ export default function CoachModelScreen() {
               <SettingValue text="pas encore mesurée" color={colors.textMuted} />
             </SettingRow>
             <SettingRow label="Bilan de la semaine">
-              <SettingValue text="dimanche, à l'ouverture du coach" />
+              <SettingValue text={COACH_MODEL.weeklyWhen} />
             </SettingRow>
           </SettingsGroup>
           {SETTINGS.coach.alternativeModels.length > 0 && (
@@ -125,7 +125,7 @@ export default function CoachModelScreen() {
         <>
           <Card>
             <AppText variant="label">Installer en 3 étapes</AppText>
-            <Step n={1} text={`Sur l'ordinateur, télécharge le fichier ${SETTINGS.coach.model.fileName} (lien dans le README du projet).`} />
+            <Step n={1} text={COACH_MODEL.step1(SETTINGS.coach.model.fileName)} />
             <Step n={2} text="Copie-le dans le dossier Téléchargements du téléphone (câble USB, « Transfert de fichiers »)." />
             <Step n={3} text="Choisis-le ci-dessous : Aube le vérifie puis le range dans son espace privé." />
             <AppText variant="small" style={styles.sizes}>

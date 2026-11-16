@@ -14,6 +14,7 @@ import { colors, fonts } from '@/components/theme';
 import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
 import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
 import { computeNights } from '@/domain/nightly';
+import { SOURCES } from '@/domain/texts/reglages';
 import {
   askReadPermissions,
   getGrantedReadTypes,
@@ -124,7 +125,7 @@ export default function InventoryScreen() {
 
   return (
     <Screen bottomInset>
-      <BackHeader title="Diagnostic" onBack={() => router.back()} />
+      <BackHeader title={SOURCES.dataCheck} onBack={() => router.back()} />
       <Text style={styles.subtitle}>Données reçues sur les {DAYS} derniers jours</Text>
       {state.kind === 'loading' && <ActivityIndicator size="large" color={colors.text} style={styles.block} />}
 

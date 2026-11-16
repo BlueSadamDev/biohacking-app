@@ -230,10 +230,11 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 5. **Lot 4 – Coach IA local** (F6) : d'abord un test de faisabilité (comparaison de 2 moteurs et de 2 ou 3 petits modèles sur le S21 : mémoire, vitesse, qualité en français, licence), résultat dans `docs/RAPPORT_LOT_4_MODELE.md` et choix du modèle ; puis installation du modèle par import manuel, résumé chiffré des données (seule source de chiffres du coach), garde-fous, bilan de la semaine, « Pourquoi ? » sur les alertes et les liens observés, questions libres. *Condition de passage : réponses jugées justes et utiles, aucun chiffre inventé, aucune formulation de diagnostic.*
 6. **Lot 4.1 – Fiabilité** : stabiliser l'app pendant la calibration des normes, sans nouvelle fonctionnalité de calcul. Base de données qui attend quelques secondes au lieu d'échouer (« database is locked » quand la synchro du lancement et la tâche de fond tournent en même temps) et écritures qui ne se chevauchent jamais ; bouton « Ouvrir Zepp » sur l'onglet Aujourd'hui quand la nuit n'est pas encore arrivée dans Health Connect (il ouvre seulement l'app Zepp, sans appel réseau ; Aube relance sa synchro au retour ; absent si Zepp n'est pas installée) ; chiffres utilisés repliables sur la carte « Bilan de la semaine », comme dans les réponses du coach.
 7. **Lot 5a – Collecter** : étiquettes de période (F7 : malade, blessure, voyage, vacances, autre) : les jours étiquetés sont exclus des normes, de la calibration, des liens observés et des suggestions, les alertes sont en pause, rappel au bout de 14 jours ; journal du matin (F8 : comportements de la veille, qui remplace la saisie du matin et devient une source des liens observés). Aucun nouveau calcul de recommandation.
-8. **Pause d'usage de 3 à 4 semaines** : aucun développement. Objectifs : calibration des normes terminée, et vérification des conditions de passage des lots 2 et 3.
-9. **Lot 5b – Exploiter** : expériences personnelles (tests « avec / sans » tirés au sort) et cible d'effort du jour.
-10. **Lot 6 – Nutrition et nuit** : répartition des protéines dans la journée ; préparation de la nuit (dette de sommeil, heure de coucher conseillée).
-11. **Lot 7 – Cycles et bilans** : plan de semaine fondé sur des règles, semaine allégée proposée au bon moment, rapport mensuel en PDF.
+8. **Lot 5a.1 – Écriture et relief** : textes affichés et mise en forme seulement (charte, glossaire et relief décrits dans DESIGN.md, section « Textes ») ; aucun changement de calcul, de seuil ni de donnée enregistrée. Seule exception : un champ facultatif « en phrase » pour les comportements (migration additive), utilisé par les liens observés. *Condition de passage : relecture de l'app écran par écran sur le téléphone, avec captures avant / après de l'accueil, d'une alerte, du journal et d'un lien observé.*
+9. **Pause d'usage de 3 à 4 semaines** : aucun développement. Objectifs : calibration des normes terminée, et vérification des conditions de passage des lots 2 et 3.
+10. **Lot 5b – Exploiter** : expériences personnelles (tests « avec / sans » tirés au sort) et cible d'effort du jour.
+11. **Lot 6 – Nutrition et nuit** : répartition des protéines dans la journée ; préparation de la nuit (dette de sommeil, heure de coucher conseillée).
+12. **Lot 7 – Cycles et bilans** : plan de semaine fondé sur des règles, semaine allégée proposée au bon moment, rapport mensuel en PDF.
 
 **Plus tard** (non planifié, à cadrer avant tout développement) : score de récupération qui s'ajuste à mon ressenti, heure d'entraînement idéale.
 
@@ -298,4 +299,5 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 4. ~~Lot 3 : progression et corrélations.~~ Fait (PR #11).
 5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).
 6. ~~Lot 4.1 : fiabilité.~~ Fait (PR #16). Les trois « idées pour plus tard » notées à la fin du lot 4 y sont intégrées (section 7).
-7. Lot 5a : collecter (F7, F8 ; règles en section 5), puis pause d'usage de 3 à 4 semaines (section 7).
+7. ~~Lot 5a : collecter (F7, F8 ; règles en section 5).~~ Fait (PR #17).
+8. Lot 5a.1 : écriture et relief (textes et mise en forme, section 7), puis pause d'usage de 3 à 4 semaines (section 7).

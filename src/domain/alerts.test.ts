@@ -14,6 +14,15 @@ import type { DailyWeight } from './daily';
 import { addDays } from './dates';
 import type { NightValue } from './nightly';
 import { nutritionByDay } from './nutrition';
+import { textProblems } from './texts/guard';
+
+/** Toutes les alertes produites par ce fichier : leurs textes sont vérifiés à la fin (charte des textes, lot 5a.1). */
+const produced: Alert[] = [];
+const evaluate = (...args: Parameters<typeof evaluateAlerts>): Alert[] => {
+  const alerts = evaluateAlerts(...args);
+  produced.push(...alerts);
+  return alerts;
+};
 
 const TODAY = '2026-03-31';
 
@@ -57,21 +66,21 @@ const rules = (alerts: Alert[]) => alerts.map((a) => a.rule);
 
 describe('aucune alerte quand tout est normal', () => {
   it('nuits dans la norme, charge régulière, pas de poids ni de repas', () => {
-    expect(evaluateAlerts(base())).toEqual([]);
+    expect(evaluate(base())).toEqual([]);
   });
 });
 
 describe('HRV', () => {
   it('3 nuits d’affilée sous la plage normale : « HRV basse » (à surveiller)', () => {
-    const [alert] = evaluateAlerts(base({ nights: nightsWith({ count: 3, hrvMs: 35 }) }));
+    const [alert] = evaluate(base({ nights: nightsWith({ count: 3, hrvMs: 35 }) }));
     expect(alert).toMatchObject({ rule: 'hrv-low', level: 'watch', theme: 'recovery' });
     expect(alert.finding).toContain('3 nuits');
   });
   it('une seule nuit basse : pas d’alerte', () => {
-    expect(evaluateAlerts(base({ nights: nightsWith({ count: 1, hrvMs: 35 }) }))).toEqual([]);
+    expect(evaluate(base({ nights: nightsWith({ count: 1, hrvMs: 35 }) }))).toEqual([]);
   });
   it('chaque alerte a un constat, une cause probable et une action', () => {
-    const [alert] = evaluateAlerts(base({ nights: nightsWith({ count: 3, hrvMs: 35 }) }));
+    const [alert] = evaluate(base({ nights: nightsWith({ count: 3, hrvMs: 35 }) }));
     expect(alert.finding.length).toBeGreaterThan(10);
     expect(alert.cause.length).toBeGreaterThan(10);
     expect(alert.action.length).toBeGreaterThan(10);
@@ -80,12 +89,12 @@ describe('HRV', () => {
 
 describe('FC au repos', () => {
   it('plus de 5 bpm au-dessus de la moyenne pendant 2 jours : alerte', () => {
-    const [alert] = evaluateAlerts(base({ nights: nightsWith({ count: 2, restingHr: 63 }) }));
+    const [alert] = evaluate(base({ nights: nightsWith({ count: 2, restingHr: 63 }) }));
     expect(alert).toMatchObject({ rule: 'resting-hr-high', level: 'watch' });
   });
   it('un seul jour, ou seulement +5 bpm : pas d’alerte', () => {
-    expect(evaluateAlerts(base({ nights: nightsWith({ count: 1, restingHr: 63 }) }))).toEqual([]);
-    expect(evaluateAlerts(base({ nights: nightsWith({ count: 2, restingHr: 60 }) }))).toEqual([]);
+    expect(evaluate(base({ nights: nightsWith({ count: 1, restingHr: 63 }) }))).toEqual([]);
+    expect(evaluate(base({ nights: nightsWith({ count: 2, restingHr: 60 }) }))).toEqual([]);
   });
 });
 
@@ -93,20 +102,20 @@ describe('combinaisons', () => {
   const tired = nightsWith({ count: 3, hrvMs: 35, restingHr: 63 });
 
   it('HRV basse + FC au repos haute + charge élevée : « surcharge » seule (Important)', () => {
-    const alerts = evaluateAlerts(base({ nights: tired, dailyLoad: SPIKE }));
+    const alerts = evaluate(base({ nights: tired, dailyLoad: SPIKE }));
     expect(rules(alerts)).toEqual(['overload']);
     expect(alerts[0]).toMatchObject({ level: 'important', theme: 'load' });
   });
   it('mêmes signaux avec une charge normale : « possible début de maladie ou stress »', () => {
-    const alerts = evaluateAlerts(base({ nights: tired }));
+    const alerts = evaluate(base({ nights: tired }));
     expect(rules(alerts)).toEqual(['illness-or-stress']);
     expect(alerts[0]).toMatchObject({ level: 'important', theme: 'recovery' });
   });
   it('charge inconnue (profil incomplet) : traitée comme normale', () => {
-    expect(rules(evaluateAlerts(base({ nights: tired, dailyLoad: null })))).toEqual(['illness-or-stress']);
+    expect(rules(evaluate(base({ nights: tired, dailyLoad: null })))).toEqual(['illness-or-stress']);
   });
   it('aucun mot de diagnostic médical', () => {
-    const text = evaluateAlerts(base({ nights: tired }))
+    const text = evaluate(base({ nights: tired }))
       .map((a) => `${a.title} ${a.finding} ${a.cause} ${a.action}`)
       .join(' ');
     expect(text).not.toMatch(/diagnostic|maladie (grave|cardiaque)|vous êtes malade/i);
@@ -115,34 +124,34 @@ describe('combinaisons', () => {
 
 describe('charge', () => {
   it('ratio au-dessus de 1,5 : « pic de charge » (Important)', () => {
-    const alerts = evaluateAlerts(base({ dailyLoad: SPIKE }));
+    const alerts = evaluate(base({ dailyLoad: SPIKE }));
     expect(alerts[0]).toMatchObject({ rule: 'load-high', level: 'important', theme: 'load' });
   });
   it('historique de charge trop court : pas d’alerte de charge', () => {
-    expect(evaluateAlerts(base({ dailyLoad: SPIKE, loadHistoryDays: 20 }))).toEqual([]);
+    expect(evaluate(base({ dailyLoad: SPIKE, loadHistoryDays: 20 }))).toEqual([]);
   });
   it('ratio sous 0,8 pendant 14 jours : « sous-charge »', () => {
     const drop = loads([
       { from: -59, to: -20, value: 100 },
       { from: -19, to: 0, value: 20 },
     ]);
-    expect(rules(evaluateAlerts(base({ dailyLoad: drop })))).toEqual(['load-under']);
+    expect(rules(evaluate(base({ dailyLoad: drop })))).toEqual(['load-under']);
   });
   it('sous 0,8 depuis moins de 14 jours : pas encore d’alerte', () => {
     const drop = loads([
       { from: -59, to: -10, value: 100 },
       { from: -9, to: 0, value: 20 },
     ]);
-    expect(evaluateAlerts(base({ dailyLoad: drop }))).toEqual([]);
+    expect(evaluate(base({ dailyLoad: drop }))).toEqual([]);
   });
 });
 
 describe('sommeil', () => {
   it('moins de 6 h trois nuits sur quatre : alerte', () => {
-    expect(rules(evaluateAlerts(base({ nights: nightsWith({ count: 3, asleepMinutes: 300 }) })))).toContain('sleep-short');
+    expect(rules(evaluate(base({ nights: nightsWith({ count: 3, asleepMinutes: 300 }) })))).toContain('sleep-short');
   });
   it('deux nuits courtes sur quatre : pas d’alerte', () => {
-    expect(rules(evaluateAlerts(base({ nights: nightsWith({ count: 2, asleepMinutes: 300 }) })))).not.toContain('sleep-short');
+    expect(rules(evaluate(base({ nights: nightsWith({ count: 2, asleepMinutes: 300 }) })))).not.toContain('sleep-short');
   });
 
   /** 7 dernières nuits couchées aux heures données (heure locale, la veille du réveil). */
@@ -157,12 +166,12 @@ describe('sommeil', () => {
   }
   it('coucher qui varie de plus de 1 h 30 sur la semaine : alerte', () => {
     const nights = bedtimes([[22, 0], [23, 0], [0, 30], [22, 30], [23, 0], [22, 45], [23, 15]]);
-    const alert = evaluateAlerts(base({ nights })).find((a) => a.rule === 'bedtime-irregular');
+    const alert = evaluate(base({ nights })).find((a) => a.rule === 'bedtime-irregular');
     expect(alert?.finding).toContain('2 h 30');
   });
   it('coucher régulier de part et d’autre de minuit : pas d’alerte', () => {
     const nights = bedtimes([[23, 30], [0, 15], [23, 45], [0, 0], [23, 30], [0, 20], [23, 50]]);
-    expect(rules(evaluateAlerts(base({ nights })))).not.toContain('bedtime-irregular');
+    expect(rules(evaluate(base({ nights })))).not.toContain('bedtime-irregular');
   });
 });
 
@@ -176,30 +185,30 @@ describe('protéines', () => {
     nutritionByDay(grams.flatMap((g, i) => (g === null ? [] : [meal(at(2026, 3, 30 - i, 12), { proteinG: g })])));
 
   it('sous la cible plus de 3 jours sur les 7 derniers : alerte', () => {
-    const alerts = evaluateAlerts(base({ weights, nutrition: days([100, 100, 100, 100, 150, 150, 150]) }));
+    const alerts = evaluate(base({ weights, nutrition: days([100, 100, 100, 100, 150, 150, 150]) }));
     expect(alerts.find((a) => a.rule === 'protein-low')).toMatchObject({ theme: 'nutrition', level: 'watch' });
   });
   it('3 jours sur 7 : pas d’alerte', () => {
-    expect(evaluateAlerts(base({ weights, nutrition: days([100, 100, 100, 150, 150, 150, 150]) }))).toEqual([]);
+    expect(evaluate(base({ weights, nutrition: days([100, 100, 100, 150, 150, 150, 150]) }))).toEqual([]);
   });
   it('les jours sans repas ne comptent pas comme « sous la cible »', () => {
-    expect(evaluateAlerts(base({ weights, nutrition: days([100, 100, 100, null, null, null, null]) }))).toEqual([]);
+    expect(evaluate(base({ weights, nutrition: days([100, 100, 100, null, null, null, null]) }))).toEqual([]);
   });
   it('sans poids connu : pas de cible, pas d’alerte', () => {
-    expect(evaluateAlerts(base({ nutrition: days([100, 100, 100, 100, 100, 100, 100]) }))).toEqual([]);
+    expect(evaluate(base({ nutrition: days([100, 100, 100, 100, 100, 100, 100]) }))).toEqual([]);
   });
 });
 
 describe('poids', () => {
   it('prise de plus de 0,35 kg par semaine sur 3 semaines : alerte', () => {
-    const alert = evaluateAlerts(base({ weights: weightsFrom([[-21, 78], [0, 80]]) }))[0];
-    expect(alert).toMatchObject({ rule: 'weight-trend', title: 'Prise de poids rapide', theme: 'nutrition' });
+    const alert = evaluate(base({ weights: weightsFrom([[-21, 78], [0, 80]]) }))[0];
+    expect(alert).toMatchObject({ rule: 'weight-trend', title: 'Poids en hausse rapide', theme: 'nutrition' });
   });
   it('perte de plus de 0,75 kg par semaine : alerte', () => {
-    expect(evaluateAlerts(base({ weights: weightsFrom([[-21, 80], [0, 77]]) }))[0].title).toBe('Perte de poids rapide');
+    expect(evaluate(base({ weights: weightsFrom([[-21, 80], [0, 77]]) }))[0].title).toBe('Poids en baisse rapide');
   });
   it('variation lente : pas d’alerte', () => {
-    expect(evaluateAlerts(base({ weights: weightsFrom([[-21, 79.5], [0, 80]]) }))).toEqual([]);
+    expect(evaluate(base({ weights: weightsFrom([[-21, 79.5], [0, 80]]) }))).toEqual([]);
   });
 });
 
@@ -207,13 +216,13 @@ describe('force (lot 3)', () => {
   it('stagnation sur 6 semaines : alerte « changer de programme »', () => {
     // Record fictif à 110 kg il y a 10 semaines, puis 105 kg chaque semaine.
     const strength = [set(addDays(TODAY, -70), 'bench', 110, 5), ...weeklySets(TODAY, 'bench', 8, () => 105)];
-    const alert = evaluateAlerts(base({ strength }))[0];
+    const alert = evaluate(base({ strength }))[0];
     expect(alert).toMatchObject({ rule: 'strength-stagnation', theme: 'load', level: 'watch', title: 'Force qui stagne' });
     expect(alert.finding).toContain('développé couché');
   });
   it('force en hausse : pas d’alerte', () => {
     const strength = weeklySets(TODAY, 'squat', 10, (i) => 100 + 2.5 * i);
-    expect(evaluateAlerts(base({ strength }))).toEqual([]);
+    expect(evaluate(base({ strength }))).toEqual([]);
   });
 });
 
@@ -294,5 +303,15 @@ describe('plage silencieuse', () => {
   it('plage dans la journée (13:00 – 14:00)', () => {
     expect(isQuietTime({ hour: 13, minute: 30 }, { hour: 13, minute: 0 }, { hour: 14, minute: 0 })).toBe(true);
     expect(isQuietTime({ hour: 15, minute: 0 }, { hour: 13, minute: 0 }, { hour: 14, minute: 0 })).toBe(false);
+  });
+});
+
+describe('textes des alertes (charte du lot 5a.1)', () => {
+  it('chaque alerte produite dans ce fichier respecte la charte : ni vocabulaire médical, ni « (s) », ni apostrophe droite', () => {
+    expect(new Set(produced.map((a) => a.rule)).size).toBeGreaterThanOrEqual(10);
+    const problems = produced.flatMap((a) =>
+      textProblems(`${a.title} ${a.finding} ${a.cause} ${a.action}`).map((p) => `${a.rule} : ${p}`),
+    );
+    expect([...new Set(problems)]).toEqual([]);
   });
 });

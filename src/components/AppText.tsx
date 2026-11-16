@@ -11,6 +11,8 @@ export const textStyles = StyleSheet.create({
   tileValue: { fontFamily: fonts.display600, fontSize: 22, color: colors.text },
   unit: { fontFamily: fonts.body400, fontSize: 13, color: colors.textMuted },
   strong: { fontFamily: fonts.body600, fontSize: 16, color: colors.text },
+  /** Constat d'une carte (lot 5a.1) : la phrase principale, entre « body » et « strong ». */
+  constat: { fontFamily: fonts.body500, fontSize: 16, lineHeight: 22, color: colors.text },
   body: { fontFamily: fonts.body400, fontSize: 15, color: colors.text },
   bodySmall: { fontFamily: fonts.body400, fontSize: 13, color: colors.text },
   label: {

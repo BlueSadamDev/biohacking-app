@@ -130,7 +130,7 @@ describe('demande au coach avec garde-fous', () => {
     expect(msg.startsWith("Mes chiffres, calculés par l'app Aube")).toBe(true);
     expect(msg).not.toMatch(/constat|données/i);
     expect(msg).toContain('- Alertes des 7 derniers jours : « Charge en hausse »');
-    expect(msg).toContain("- Charge d'entraînement : ratio 7 jours / 28 jours de 1,42");
+    expect(msg).toContain('- Charge d’entraînement : cette semaine, tu t’entraînes 42 % de plus que d’habitude');
     expect(msg).toContain("Demande : Explique simplement pourquoi j'ai reçu l'alerte « Charge en hausse »");
     expect(buildUserMessage(ctx, { kind: 'weekly' })).toContain('exactement 2 actions numérotées');
   });

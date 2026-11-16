@@ -28,7 +28,7 @@ import { SETTINGS } from '@/domain/settings';
  */
 export const SYNC_TYPES = [
   { type: 'SleepSession', label: 'Sommeil' },
-  { type: 'ExerciseSession', label: "Séances d'exercice" },
+  { type: 'ExerciseSession', label: 'Séances d’exercice' },
   { type: 'HeartRateVariabilityRmssd', label: 'HRV (rMSSD)' },
   { type: 'RestingHeartRate', label: 'FC au repos' },
   { type: 'HeartRate', label: 'Fréquence cardiaque' },
@@ -49,7 +49,7 @@ export const INVENTORY_TYPES: { type: RecordType; label: string }[] = [
   { type: 'RestingHeartRate', label: 'FC au repos' },
   { type: 'HeartRateVariabilityRmssd', label: 'HRV (rMSSD)' },
   { type: 'SleepSession', label: 'Sommeil' },
-  { type: 'ExerciseSession', label: "Séances d'exercice" },
+  { type: 'ExerciseSession', label: 'Séances d’exercice' },
   { type: 'ElevationGained', label: 'Dénivelé' },
   { type: 'OxygenSaturation', label: 'SpO2' },
   { type: 'Vo2Max', label: 'VO2max' },

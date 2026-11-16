@@ -1,9 +1,9 @@
 // Moteur d'alertes (cahier des charges, sections 4 F2 et 5). Calcul pur.
 // - Règles simples : HRV, FC au repos, sommeil (durée, régularité), charge, poids, protéines.
 // - Combinaisons : HRV basse + FC au repos haute + charge élevée = « surcharge » ;
-//   même chose avec une charge normale = « possible début de maladie ou stress ».
+//   même chose avec une charge normale = « signes de fatigue sans raison sportive ».
 //   Une combinaison remplace les alertes simples qu'elle regroupe.
-// - Chaque alerte = constat + cause probable + action. Jamais de diagnostic médical.
+// - Chaque alerte = constat + pourquoi + action (textes dans texts/alerts.ts). Jamais de diagnostic médical.
 // - Sélection : rien pendant la calibration ni si les alertes sont coupées, au plus 2 par jour,
 //   pas de répétition pendant 3 jours sauf aggravation ; les non urgentes vont dans le récap du matin,
 //   les urgentes partent tout de suite, sauf pendant la plage silencieuse.
@@ -19,6 +19,9 @@ import { isTaggedDay, withoutTaggedDays, withoutTaggedNights, type Period } from
 import { averageWeight, proteinTargetGrams } from './profile';
 import { SETTINGS, type Settings } from './settings';
 import { EXERCISE_LABEL, stagnantExercises, type StrengthEntry } from './strength';
+import { ALERT_TEXT } from './texts/alerts';
+import { joinList } from './texts/common';
+import { loadPercent } from './texts/today';
 
 export type AlertLevel = 'watch' | 'important';
 export type AlertTheme = 'recovery' | 'load' | 'nutrition';
@@ -94,8 +97,6 @@ export type AlertInputs = {
   today: string;
 };
 
-const fr = (n: number, digits = 1) => n.toFixed(digits).replace('.', ',');
-
 function make(rule: AlertRule, date: string, level: AlertLevel, theme: AlertTheme, text: Omit<Alert, 'id' | 'rule' | 'date' | 'level' | 'theme'>): Alert {
   return { id: `${rule}-${date}`, rule, date, level, theme, ...text };
 }
@@ -167,48 +168,27 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
 
   // Combinaisons HRV basse + FC au repos haute.
   if (hrv && rhrDelta !== null) {
-    const shared = `HRV sous ta plage normale et FC au repos à +${fr(rhrDelta, 0)} bpm de ta moyenne`;
+    const bpm = Math.round(rhrDelta);
+    const averageDays = settings.norms.restingHrBaselineDays;
     if (ratio !== null && ratio > a.overloadRatio) {
-      result.push(
-        make('overload', today, 'important', 'load', {
-          title: 'Surcharge',
-          finding: `${shared}, avec une charge élevée (ratio ${fr(ratio, 2)}).`,
-          cause: 'Ton corps n’absorbe pas la charge d’entraînement des derniers jours.',
-          action: 'Remplace les deux prochaines séances par du repos ou de la mobilité, couche-toi tôt.',
-        }),
-      );
+      result.push(make('overload', today, 'important', 'load', ALERT_TEXT.overload(bpm, averageDays, loadPercent(ratio))));
     } else {
-      result.push(
-        make('illness-or-stress', today, 'important', 'recovery', {
-          title: 'Possible début de maladie ou stress',
-          finding: `${shared}, sans hausse de ta charge d’entraînement.`,
-          cause: 'Fatigue, stress ou infection qui commence : l’entraînement n’explique pas ces signaux.',
-          action: 'Journée légère, hydrate-toi et dors plus. Si tu te sens malade, pas de séance intense.',
-        }),
-      );
+      result.push(make('illness-or-stress', today, 'important', 'recovery', ALERT_TEXT.fatigueWithoutTraining(bpm, averageDays)));
     }
   } else {
     if (hrv) {
-      result.push(
-        make('hrv-low', today, 'watch', 'recovery', {
-          title: 'HRV basse',
-          finding:
-            hrv.nightsBelow >= a.hrvConsecutiveNights
-              ? `Ta HRV est sous ta plage normale depuis ${hrv.nightsBelow} nuits.`
-              : 'Ta HRV moyenne sur 7 jours est sous ta plage normale.',
-          cause: 'Récupération incomplète : charge, sommeil, stress ou alcool.',
-          action: 'Séance technique ou mobilité aujourd’hui, couché avant 23 h.',
-        }),
-      );
+      const streak = hrv.nightsBelow >= a.hrvConsecutiveNights ? hrv.nightsBelow : null;
+      result.push(make('hrv-low', today, 'watch', 'recovery', ALERT_TEXT.hrvLow(streak)));
     }
     if (rhrDelta !== null) {
       result.push(
-        make('resting-hr-high', today, 'watch', 'recovery', {
-          title: 'FC au repos élevée',
-          finding: `Ta FC au repos est à +${fr(rhrDelta, 0)} bpm de ta moyenne depuis ${a.restingHrDays} jours.`,
-          cause: 'Fatigue accumulée ou infection qui débute.',
-          action: 'Évite l’intensité aujourd’hui et surveille comment tu te sens.',
-        }),
+        make(
+          'resting-hr-high',
+          today,
+          'watch',
+          'recovery',
+          ALERT_TEXT.restingHrHigh(Math.round(rhrDelta), settings.norms.restingHrBaselineDays, a.restingHrDays),
+        ),
       );
     }
   }
@@ -216,12 +196,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
   // Charge seule.
   if (ratio !== null && ratio > settings.load.highMin && !result.some((r) => r.rule === 'overload')) {
     result.push(
-      make('load-high', today, 'important', 'load', {
-        title: 'Pic de charge',
-        finding: `Ta charge des 7 derniers jours est ${fr(ratio, 2)} fois ta moyenne sur 28 jours.`,
-        cause: 'Hausse rapide du volume ou de l’intensité : risque de blessure et de fatigue.',
-        action: 'Allège les prochaines séances pour revenir sous 1,3.',
-      }),
+      make('load-high', today, 'important', 'load', ALERT_TEXT.loadHigh(loadPercent(ratio), loadPercent(settings.load.balancedMax))),
     );
   }
   if (input.dailyLoad && input.loadHistoryDays >= settings.load.calibrationDays + a.underloadDays - 1) {
@@ -234,12 +209,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
     }
     if (under) {
       result.push(
-        make('load-under', today, 'watch', 'load', {
-          title: 'Sous-charge',
-          finding: `Ta charge est sous ${fr(settings.load.underMax, 1)} fois ta moyenne depuis ${a.underloadDays} jours.`,
-          cause: 'Moins de séances ou des séances plus légères que d’habitude : tu perds en forme.',
-          action: 'Reprends progressivement : ajoute une séance cette semaine.',
-        }),
+        make('load-under', today, 'watch', 'load', ALERT_TEXT.loadUnder(-loadPercent(settings.load.underMax), a.underloadDays)),
       );
     }
   }
@@ -249,12 +219,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
   const short = recent.filter((n) => n && n.asleepMinutes < a.sleepShortMinutes).length;
   if (short >= a.sleepShortNights) {
     result.push(
-      make('sleep-short', today, 'watch', 'recovery', {
-        title: 'Sommeil court',
-        finding: `Moins de ${a.sleepShortMinutes / 60} h de sommeil ${short} nuits sur ${a.sleepWindowNights}.`,
-        cause: 'Dette de sommeil : ta récupération et ta HRV vont en pâtir.',
-        action: 'Avance ton coucher de 30 min ce soir et évite les écrans la dernière heure.',
-      }),
+      make('sleep-short', today, 'watch', 'recovery', ALERT_TEXT.sleepShort(a.sleepShortMinutes / 60, short, a.sleepWindowNights)),
     );
   }
 
@@ -268,12 +233,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
       const h = Math.floor(spread / 60);
       const m = Math.round(spread % 60);
       result.push(
-        make('bedtime-irregular', today, 'watch', 'recovery', {
-          title: 'Coucher irrégulier',
-          finding: `Ton heure de coucher a varié de ${h} h ${String(m).padStart(2, '0')} cette semaine.`,
-          cause: 'Des horaires irréguliers dérèglent ton rythme et la qualité du sommeil.',
-          action: 'Choisis une heure de coucher fixe pour les 7 prochains jours, à 30 min près.',
-        }),
+        make('bedtime-irregular', today, 'watch', 'recovery', ALERT_TEXT.bedtimeIrregular(`${h} h ${String(m).padStart(2, '0')}`)),
       );
     }
   }
@@ -288,14 +248,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
       if (day && day.proteinG !== null && day.proteinG < settings.nutrition.reachedFraction * target) below++;
     }
     if (below > a.proteinMaxDaysBelow) {
-      result.push(
-        make('protein-low', today, 'watch', 'nutrition', {
-          title: 'Protéines insuffisantes',
-          finding: `Sous ta cible de ${target} g ${below} jours sur ${a.proteinWindowDays}.`,
-          cause: 'Apport en protéines trop bas pour soutenir la prise de muscle.',
-          action: 'Ajoute une source de protéines à chaque repas (œufs, skyr, viande, légumineuses).',
-        }),
-      );
+      result.push(make('protein-low', today, 'watch', 'nutrition', ALERT_TEXT.proteinLow(target, below, a.proteinWindowDays)));
     }
   }
 
@@ -306,18 +259,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
     const perWeek = (now - before) / a.weightWeeks;
     if (perWeek > a.weightGainMaxKgPerWeek || perWeek < -a.weightLossMaxKgPerWeek) {
       const gain = perWeek > 0;
-      result.push(
-        make('weight-trend', today, 'watch', 'nutrition', {
-          title: gain ? 'Prise de poids rapide' : 'Perte de poids rapide',
-          finding: `Ton poids moyen ${gain ? 'augmente' : 'baisse'} de ${fr(Math.abs(perWeek), 2)} kg par semaine depuis ${a.weightWeeks} semaines.`,
-          cause: gain
-            ? 'Surplus calorique trop important : une partie de la prise risque d’être du gras.'
-            : 'Déficit calorique trop important : risque de perdre du muscle.',
-          action: gain
-            ? 'Réduis tes calories d’environ 200 kcal par jour et garde tes protéines.'
-            : 'Remonte tes calories d’environ 200 kcal par jour et garde tes protéines.',
-        }),
-      );
+      result.push(make('weight-trend', today, 'watch', 'nutrition', ALERT_TEXT.weightTrend(gain, Math.abs(perWeek), a.weightWeeks)));
     }
   }
 
@@ -325,16 +267,8 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
   const stagnant = input.strength ? stagnantExercises(input.strength, today, settings) : [];
   if (stagnant.length > 0) {
     const names = stagnant.map((e) => EXERCISE_LABEL[e].toLowerCase());
-    const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`;
     const weeks = Math.round(settings.strength.stagnationDays / 7);
-    result.push(
-      make('strength-stagnation', today, 'watch', 'load', {
-        title: 'Force qui stagne',
-        finding: `Pas de nouveau record en ${list} depuis ${weeks} semaines.`,
-        cause: 'Le même programme depuis trop longtemps : ton corps s’y est habitué.',
-        action: 'Change de programme pour 4 à 6 semaines : autres plages de répétitions, variantes ou volume.',
-      }),
-    );
+    result.push(make('strength-stagnation', today, 'watch', 'load', ALERT_TEXT.strengthStagnation(joinList(names), weeks)));
   }
 
   return result.sort((x, y) => PRIORITY.indexOf(x.rule) - PRIORITY.indexOf(y.rule));

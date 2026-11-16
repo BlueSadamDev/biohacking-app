@@ -4,6 +4,7 @@
 import type { MorningRecap, Metric } from '@/domain/recap';
 import { metricValue } from '@/domain/recap';
 import { SETTINGS } from '@/domain/settings';
+import { TILE } from '@/domain/texts/today';
 
 import { formatDuration } from './format';
 import type { Tone } from './MetricTile';
@@ -46,18 +47,18 @@ function deviation(recap: MorningRecap, metric: Metric, value: number): { note: 
     const b = recap.hrv.baseline;
     if (!b) return { note: '' };
     const ln = Math.log(value);
-    const note = ln < b.low ? 'Sous ta plage' : ln > b.high ? 'Au-dessus' : 'Dans ta plage';
-    return { note, context: 'norme 60 j' };
+    const note = ln < b.low ? TILE.belowNorm : ln > b.high ? TILE.aboveNorm : TILE.withinNorm;
+    return { note, context: TILE.hrvContext };
   }
   if (metric === 'restingHr') {
     const d = recap.restingHr.delta;
     if (d === null) return { note: '' };
     const r = Math.round(d);
-    return { note: r === 0 ? '= moyenne' : `${r > 0 ? '+' : '−'}${Math.abs(r)} bpm`, context: 'vs moy. 30 j' };
+    return { note: r === 0 ? TILE.equalAverage : `${r > 0 ? '+' : '−'}${Math.abs(r)} bpm`, context: TILE.restingHrContext };
   }
   const target = SETTINGS.recovery.sleepTargetMinutes;
   const diff = Math.round(value - target);
-  return { note: diff >= 0 ? 'Objectif atteint' : `−${formatGap(-diff)}`, context: `obj. ${formatDuration(target)}` };
+  return { note: diff >= 0 ? TILE.sleepReached : `−${formatGap(-diff)}`, context: `obj. ${formatDuration(target)}` };
 }
 
 export function metricView(recap: MorningRecap | null, metric: Metric): MetricView {
@@ -69,18 +70,18 @@ export function metricView(recap: MorningRecap | null, metric: Metric): MetricVi
     return {
       label,
       value: '—',
-      note: component?.explanation ?? 'Non calculable',
+      note: component?.explanation ?? TILE.notComputable,
       tone: 'neutral',
-      status: 'Non calculable',
+      status: TILE.notComputable,
     };
   }
   const shown = formatMetric(metric, raw);
   if (!recap.calibration.done) {
     // Calibration : valeurs brutes, sans jugement.
-    return { label, ...shown, note: 'Calibration en cours', tone: 'neutral', status: 'Calibration', statusColor: colors.info };
+    return { label, ...shown, note: TILE.calibration, tone: 'neutral', status: 'Calibration', statusColor: colors.info };
   }
   if (!component || component.effect === null) {
-    return { label, ...shown, note: component?.explanation ?? '', tone: 'neutral', status: 'Norme indisponible' };
+    return { label, ...shown, note: component?.explanation ?? '', tone: 'neutral', status: TILE.normUnavailable };
   }
   const gap = deviation(recap, metric, raw);
   // Période en cours (lot 5a) : écart à la norme affiché, mais sans jugement de couleur.

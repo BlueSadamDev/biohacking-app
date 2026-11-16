@@ -14,6 +14,7 @@ import { newPeriodId, savePeriod } from '@/db/periods';
 import { dayKey } from '@/domain/dates';
 import { validatePeriod, type Period, type PeriodType } from '@/domain/periods';
 import { Card, Pill } from '@/components/Card';
+import { RichText } from '@/components/RichText';
 import { formatLongDate } from '@/components/format';
 import { LoadCard } from '@/components/LoadCard';
 import { NutritionCard } from '@/components/NutritionCard';
@@ -27,6 +28,8 @@ import { Logo } from '@/components/Logo';
 import { colors, fonts, space, zoneColor } from '@/components/theme';
 import { useHealthData } from '@/components/useHealthData';
 import type { Metric, MorningRecap } from '@/domain/recap';
+import { ERRORS } from '@/domain/texts/common';
+import { HOME } from '@/domain/texts/today';
 
 const METRICS: Metric[] = ['hrv', 'restingHr', 'sleep'];
 
@@ -58,8 +61,8 @@ export default function HomeScreen() {
     if (error) return error;
     try {
       await savePeriod(candidate);
-    } catch (e) {
-      return `L’enregistrement a échoué : ${e instanceof Error ? e.message : String(e)}`;
+    } catch {
+      return ERRORS.save;
     }
     setSheetOpen(false);
     await afterPeriodChange();
@@ -98,7 +101,7 @@ export default function HomeScreen() {
               · {formatLongDate(new Date())}
             </AppText>
           </View>
-          <AppText variant="title">Ton récap du matin</AppText>
+          <AppText variant="title">{HOME.title}</AppText>
         </View>
         <View style={styles.headerButtons}>
           <PeriodButton onPress={() => setSheetOpen(true)} />
@@ -112,11 +115,8 @@ export default function HomeScreen() {
       <PeriodSheet visible={sheetOpen} today={today} onStart={startPeriod} onClose={() => setSheetOpen(false)} />
 
       <AccessBanner access={access} />
-      {error && (
-        <AppText variant="bodySmall" style={{ color: colors.low }}>
-          Erreur : {error}
-        </AppText>
-      )}
+      {/* Le détail technique de l'erreur reste réservé à l'écran de diagnostic. */}
+      {error && <RichText variant="bodySmall" text={HOME.loadError} style={{ color: colors.low }} />}
 
       {/* Nuit d'aujourd'hui absente de Health Connect : proposer d'ouvrir Zepp (si installée). */}
       {!loading && (access === 'ok' || access === 'partial') && !recap?.night && <OpenZeppCard onReturn={sync} />}
@@ -125,17 +125,17 @@ export default function HomeScreen() {
         <ActivityIndicator color={colors.text} style={styles.loading} />
       ) : nights.length === 0 ? (
         <Card style={styles.emptyCard}>
-          <AppText variant="strong">Aucune nuit enregistrée pour l’instant</AppText>
+          <AppText variant="strong">{HOME.noNights}</AppText>
           <AppText variant="bodySmall" style={{ color: colors.textSoft }}>
-            Porte ton Helio Strap cette nuit et vérifie que l’app Zepp synchronise vers Health Connect. Tire
-            l’écran vers le bas pour synchroniser.
+            {HOME.noNightsHelp}
           </AppText>
         </Card>
       ) : (
         <>
           <View style={styles.ringBlock}>
             <RecoveryRing {...ringOf(recap)} />
-            {recommendation && (
+            {/* Pendant une période, le bandeau dit déjà « en pause » : pas de pastille en double. */}
+            {recommendation && !period && (
               <Pill
                 text={recommendation.status}
                 color={recommendation.zone === 'neutral' || recommendation.zone === 'paused' ? undefined : zoneColor(recommendation.zone)}
@@ -181,9 +181,9 @@ export default function HomeScreen() {
 
       {/* Journal du matin : une fois enregistré, bouton secondaire qui permet de le modifier. */}
       {journalFilled ? (
-        <SecondaryButton title="Journal rempli ✓" onPress={() => router.push('/saisie')} />
+        <SecondaryButton title={HOME.journalFilled} onPress={() => router.push('/saisie')} />
       ) : (
-        <PrimaryButton title="Journal du matin" onPress={() => router.push('/saisie')} />
+        <PrimaryButton title={HOME.journal} onPress={() => router.push('/saisie')} />
       )}
     </Screen>
   );

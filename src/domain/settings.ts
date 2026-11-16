@@ -471,26 +471,26 @@ export const SETTINGS = {
       // Ordre = priorité d'affichage (au plus `maxItems`) : d'abord ce sur quoi on agit directement
       // (charge, sommeil, protéines), puis leurs conséquences (HRV, récupération).
       rules: [
-        { section: 'load', field: 'status', op: 'in', value: ['rising', 'high'], kind: 'stuck', text: 'Charge d’entraînement en hausse', action: 'Remplace une séance intense par une séance légère ou de mobilité.' },
-        { section: 'load', field: 'status', op: 'eq', value: 'under', kind: 'stuck', text: 'Charge d’entraînement en baisse (sous-charge)', action: 'Ajoute une séance modérée cette semaine.' },
-        { section: 'load', field: 'status', op: 'eq', value: 'balanced', kind: 'worked', text: 'Charge d’entraînement équilibrée', action: 'Garde le même volume d’entraînement la semaine prochaine.' },
-        { section: 'sleep', field: 'belowTarget', op: 'eq', value: true, kind: 'stuck', text: 'Sommeil sous la durée visée', action: 'Couche-toi 30 minutes plus tôt les soirs de semaine.' },
-        { section: 'sleep', field: 'belowTarget', op: 'eq', value: false, kind: 'worked', text: 'Sommeil à la durée visée', action: 'Garde tes horaires de coucher actuels.' },
+        { section: 'load', field: 'status', op: 'in', value: ['rising', 'high'], kind: 'stuck', text: 'ta charge d’entraînement augmente', action: 'Remplace une séance intense par une séance légère ou de mobilité.' },
+        { section: 'load', field: 'status', op: 'eq', value: 'under', kind: 'stuck', text: 'ta charge d’entraînement baisse', action: 'Ajoute une séance modérée cette semaine.' },
+        { section: 'load', field: 'status', op: 'eq', value: 'balanced', kind: 'worked', text: 'ta charge d’entraînement suit ton rythme habituel', action: 'Garde le même volume d’entraînement la semaine prochaine.' },
+        { section: 'sleep', field: 'belowTarget', op: 'eq', value: true, kind: 'stuck', text: 'ton sommeil reste sous la durée visée', action: 'Couche-toi 30 minutes plus tôt les soirs de semaine.' },
+        { section: 'sleep', field: 'belowTarget', op: 'eq', value: false, kind: 'worked', text: 'ton sommeil atteint la durée visée', action: 'Garde tes horaires de coucher actuels.' },
         // Seuil identique à l'alerte protéines (alerts.proteinMaxDaysBelow).
-        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'gt', value: 3, kind: 'stuck', text: 'Protéines souvent sous la cible', action: 'Ajoute une portion de protéines à un repas chaque jour.' },
-        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'lte', value: 3, kind: 'worked', text: 'Protéines le plus souvent dans la cible', action: 'Garde tes apports en protéines au même niveau.' },
-        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: false, kind: 'stuck', text: 'Zone 2 sous la cible', action: 'Ajoute une sortie d’endurance douce en zone 2.' },
-        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: true, kind: 'worked', text: 'Cible de zone 2 atteinte', action: 'Garde ta séance d’endurance douce en zone 2.' },
-        { section: 'hrv', field: 'position', op: 'eq', value: 'below', kind: 'stuck', text: 'HRV sous ta plage normale', action: 'Garde une journée légère ou de mobilité après chaque grosse séance.' },
-        { section: 'hrv', field: 'position', op: 'in', value: ['within', 'above'], kind: 'worked', text: 'HRV dans ta plage normale', action: 'Garde l’alternance entre séances intenses et journées plus légères.' },
-        { section: 'recovery', field: 'trend', op: 'eq', value: 'en baisse', kind: 'stuck', text: 'Récupération en baisse', action: 'Allège une séance cette semaine.' },
-        { section: 'recovery', field: 'trend', op: 'eq', value: 'en hausse', kind: 'worked', text: 'Récupération en hausse', action: 'Garde le même rythme de séances et de repos.' },
-        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Squat en hausse', action: 'Continue ton programme de squat tel quel.' },
-        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Développé couché en hausse', action: 'Continue ton programme de développé couché tel quel.' },
-        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'Soulevé de terre en hausse', action: 'Continue ton programme de soulevé de terre tel quel.' },
-        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Squat qui stagne', action: 'Change de programme de squat (séries, répétitions ou variante).' },
-        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Développé couché qui stagne', action: 'Change de programme de développé couché (séries, répétitions ou variante).' },
-        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'Soulevé de terre qui stagne', action: 'Change de programme de soulevé de terre (séries, répétitions ou variante).' },
+        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'gt', value: 3, kind: 'stuck', text: 'tes protéines restent souvent sous ta cible', action: 'Ajoute une portion de protéines à un repas chaque jour.' },
+        { section: 'nutrition', field: 'proteinDaysBelow7d', op: 'lte', value: 3, kind: 'worked', text: 'tes protéines atteignent le plus souvent ta cible', action: 'Garde tes apports en protéines au même niveau.' },
+        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: false, kind: 'stuck', text: 'l’endurance douce (zone 2) manque', action: 'Ajoute une sortie d’endurance douce en zone 2.' },
+        { section: 'zone2', field: 'zone2Reached', op: 'eq', value: true, kind: 'worked', text: 'ta cible d’endurance douce (zone 2) est atteinte', action: 'Garde ta séance d’endurance douce en zone 2.' },
+        { section: 'hrv', field: 'position', op: 'eq', value: 'below', kind: 'stuck', text: 'ta HRV est sous ta norme', action: 'Garde une journée légère ou de mobilité après chaque grosse séance.' },
+        { section: 'hrv', field: 'position', op: 'in', value: ['within', 'above'], kind: 'worked', text: 'ta HRV reste dans ta norme', action: 'Garde l’alternance entre séances intenses et journées plus légères.' },
+        { section: 'recovery', field: 'trend', op: 'eq', value: 'en baisse', kind: 'stuck', text: 'ta récupération baisse', action: 'Allège une séance cette semaine.' },
+        { section: 'recovery', field: 'trend', op: 'eq', value: 'en hausse', kind: 'worked', text: 'ta récupération progresse', action: 'Garde le même rythme de séances et de repos.' },
+        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'ton squat progresse', action: 'Continue ton programme de squat tel quel.' },
+        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'ton développé couché progresse', action: 'Continue ton programme de développé couché tel quel.' },
+        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'rising', kind: 'worked', text: 'ton soulevé de terre progresse', action: 'Continue ton programme de soulevé de terre tel quel.' },
+        { section: 'strength', field: 'squatTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'ton squat stagne', action: 'Change de programme de squat (séries, répétitions ou variante).' },
+        { section: 'strength', field: 'benchTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'ton développé couché stagne', action: 'Change de programme de développé couché (séries, répétitions ou variante).' },
+        { section: 'strength', field: 'deadliftTrend', op: 'eq', value: 'stagnant', kind: 'stuck', text: 'ton soulevé de terre stagne', action: 'Change de programme de soulevé de terre (séries, répétitions ou variante).' },
       ] as readonly WeeklyRule[],
       /** Points affichés au plus dans « Ce qui a marché » et « Ce qui coince ». */
       maxItems: 3,
@@ -537,7 +537,7 @@ export const SETTINGS = {
         'sport',
       ] as readonly string[],
       outOfScope:
-        "Je ne peux pas répondre à cette question : je ne connais que les chiffres suivis par l'app (sommeil, récupération, HRV, fréquence cardiaque au repos, entraînement, nutrition, force, poids).",
+        'Je ne peux pas répondre à cette question : je ne connais que les chiffres suivis par l’app (sommeil, récupération, HRV, fréquence cardiaque au repos, entraînement, nutrition, force, poids).',
       /** Rubrique sans chiffres : ce qui manque, dit par l'app (« Je ne peux pas encore te répondre : … »). */
       missing: {
         recovery: 'pas encore assez de nuits enregistrées par le bracelet pour calculer ta récupération',
@@ -547,7 +547,7 @@ export const SETTINGS = {
         load: 'pas encore assez de séances enregistrées pour calculer ta charge',
         zone2: 'pas encore de séance avec fréquence cardiaque cette semaine',
         nutrition: 'aucun repas récent enregistré dans Suivi macro',
-        strength: "aucune série enregistrée, saisis ta meilleure série dans l'onglet Sport",
+        strength: 'aucune série enregistrée, saisis ta meilleure série dans l’onglet Sport',
         weight: 'aucune pesée récente',
       } as Readonly<Record<string, string>>,
       general: [
@@ -760,6 +760,8 @@ export const SETTINGS = {
     ] as readonly { id: string; name: string }[],
     /** Longueur maximale du nom d'un comportement. */
     maxNameLength: 40,
+    /** Longueur maximale de la forme « en phrase » d'un comportement (lot 5a.1). */
+    maxPhraseLength: 80,
     /** Corrections possibles : aujourd'hui et les N jours précédents. */
     editableDays: 7,
     /** Résumé du coach : comportements des N derniers jours. */

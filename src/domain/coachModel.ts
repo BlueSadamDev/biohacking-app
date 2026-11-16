@@ -45,9 +45,9 @@ export function hashMatches(hash: string | null | undefined, spec: ModelSpec = S
 export function problemMessage(problem: ModelProblem, freeSpaceText?: string): string {
   switch (problem) {
     case 'no-space':
-      return `Pas assez de place sur le téléphone${freeSpaceText ? ` (${freeSpaceText} libres)` : ''}. Libère de l'espace, puis réessaie.`;
+      return `Pas assez de place sur le téléphone${freeSpaceText ? ` (${freeSpaceText} libres)` : ''}. Libère de l’espace, puis réessaie.`;
     case 'wrong-size':
-      return "Ce n'est pas le bon fichier : sa taille ne correspond pas. Vérifie le nom du fichier téléchargé.";
+      return 'Ce n’est pas le bon fichier : sa taille ne correspond pas. Vérifie le nom du fichier téléchargé.';
     case 'wrong-hash':
       return 'Le fichier est abîmé ou modifié (empreinte différente). Télécharge-le de nouveau depuis l’ordinateur.';
     case 'unreadable':

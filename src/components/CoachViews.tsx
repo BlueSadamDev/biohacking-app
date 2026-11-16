@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { explain, type ExplainJob } from '@/coach/explainService';
 import type { CoachTask } from '@/domain/coachPrompt';
 import type { CoachOutcome } from '@/domain/coachRun';
+import { joinList } from '@/domain/texts/common';
 import type { WeeklyReview } from '@/domain/weeklyReview';
 
 import { AppText } from './AppText';
@@ -237,8 +238,8 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
         </AppText>
       </View>
       <AppText style={styles.synthesis}>{review.synthesis}</AppText>
-      {review.worked.length > 0 && <Line label="Ce qui a marché" color={colors.good} text={review.worked.join(' · ')} />}
-      {review.stuck.length > 0 && <Line label="Ce qui coince" color={colors.mid} text={review.stuck.join(' · ')} />}
+      {review.worked.length > 0 && <Line label="Ce qui a marché" color={colors.good} text={`${joinList(review.worked)}.`} />}
+      {review.stuck.length > 0 && <Line label="Ce qui coince" color={colors.mid} text={`${joinList(review.stuck)}.`} />}
       <View style={styles.separator} />
       <AppText variant="small">
         {review.actions.length > 1 ? `Tes ${review.actions.length} actions pour la semaine` : 'Ton action pour la semaine'}
@@ -249,9 +250,6 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
         </AppText>
       ))}
       {review.facts.length > 0 && <FactsToggle text={review.facts.join(' · ')} />}
-      {review.source === 'app' && (
-        <AppText style={styles.facts}>Rédigé par l’app : le coach n’a pas pu formuler de conseil sûr cette fois.</AppText>
-      )}
     </View>
   );
 }
@@ -259,7 +257,7 @@ export function WeeklyReviewCard({ review }: { review: WeeklyReview }) {
 function Line({ label, color, text }: { label: string; color: string; text: string }) {
   return (
     <AppText style={styles.line}>
-      <AppText style={[styles.lineLabel, { color }]}>{label} · </AppText>
+      <AppText style={[styles.lineLabel, { color }]}>{label} : </AppText>
       {text}
     </AppText>
   );

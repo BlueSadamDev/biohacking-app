@@ -1,15 +1,19 @@
 // Carte « Cette semaine » de l'onglet Sport (DESIGN.md, « Écrans du lot 3 ») :
-// séances faites / cible, temps d'activité, charge 7 j / 28 j, puis barre des zones cardiaques.
+// séances faites / cible, temps d'activité, charge de la semaine (en mots depuis le lot 5a.1),
+// puis barre des zones cardiaques.
 // Quand un élément n'est pas calculable, la carte dit pourquoi (jamais de valeur inventée).
 
 import { StyleSheet, View } from 'react-native';
 
 import type { SportWeek } from '@/db/sportData';
 import type { LoadSummary } from '@/domain/load';
+import { plainText } from '@/domain/texts/markup';
+import { SPORT } from '@/domain/texts/sport';
+import { loadSentence } from '@/domain/texts/today';
 
 import { AppText } from './AppText';
 import { Card } from './Card';
-import { formatDecimal, formatDuration } from './format';
+import { formatDuration } from './format';
 import { HeartZonesBar } from './HeartZonesBar';
 import { statusView } from './LoadCard';
 import { colors } from './theme';
@@ -31,14 +35,14 @@ function loadValue(load: LoadSummary | null): { value: string; note: string | nu
   switch (load.state) {
     case 'ok': {
       const view = statusView(load.status);
-      return { value: formatDecimal(load.ratio, 2), note: view.text, color: view.color };
+      return { value: view.text, note: plainText(loadSentence(load.status, load.ratio)), color: view.color };
     }
     case 'calibrating':
-      return { value: '—', note: `Calibration : ${load.days} / ${load.required} jours` };
+      return { value: '—', note: SPORT.loadCalibrating(load.days, load.required) };
     case 'profile-missing':
-      return { value: '—', note: 'Profil cardiaque à compléter dans Réglages' };
+      return { value: '—', note: SPORT.loadProfileMissing };
     case 'no-load':
-      return { value: '—', note: 'Aucune séance avec FC sur 28 jours' };
+      return { value: '—', note: SPORT.loadNoSession };
   }
 }
 
@@ -50,29 +54,25 @@ export function SportWeekCard({ week, load }: { week: SportWeek; load: LoadSumma
       <View style={styles.stats}>
         <Stat label="Séances" value={`${week.sessions}`} unit={`/ ${week.sessionsTarget}`} />
         <Stat label="Activité" value={formatDuration(week.activeMinutes)} />
-        <Stat label="Charge 7 j / 28 j" value={charge.value} color={charge.color} />
+        <Stat label={SPORT.loadLabel} value={charge.value} color={charge.color} />
       </View>
       {charge.note ? (
-        <AppText variant="small" style={charge.color ? { color: charge.color } : undefined}>
-          {charge.note}
-        </AppText>
+        <AppText variant="small">{charge.note}</AppText>
       ) : null}
 
       {week.hrMaxMissing ? (
         <AppText variant="bodySmall" style={styles.soft}>
-          Renseigne ta FC max ou ton année de naissance dans Réglages pour voir tes zones cardiaques.
+          {SPORT.hrMaxMissing}
         </AppText>
       ) : week.zones && week.sessions > week.sessionsWithoutHr ? (
         <HeartZonesBar zones={week.zones} zone2Target={week.zone2Target} />
       ) : (
         <AppText variant="bodySmall" style={styles.soft}>
-          {week.sessions === 0
-            ? 'Aucune séance cette semaine : pas encore de zones cardiaques.'
-            : 'Pas assez de FC enregistrée pendant tes séances pour calculer les zones.'}
+          {week.sessions === 0 ? SPORT.noSessionThisWeek : SPORT.notEnoughHr}
         </AppText>
       )}
       {week.sessionsWithoutHr > 0 && week.sessions > week.sessionsWithoutHr ? (
-        <AppText variant="small">{week.sessionsWithoutHr} séance(s) sans FC suffisante, non comptée(s) dans les zones.</AppText>
+        <AppText variant="small">{SPORT.sessionsWithoutHr(week.sessionsWithoutHr)}</AppText>
       ) : null}
     </Card>
   );

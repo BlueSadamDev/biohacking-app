@@ -5,6 +5,7 @@ import type { Calibration } from './calibration';
 import type { PeriodType } from './periods';
 import type { Recovery } from './recovery';
 import { SETTINGS, type Settings } from './settings';
+import { RECOMMENDATION } from './texts/today';
 
 /**
  * 'good' = vert, 'mid' = ambre, 'low' = corail, 'neutral' = sans couleur (calibration ou donnée manquante),
@@ -22,22 +23,17 @@ export type Recommendation = {
   zone: Zone;
   /** Texte de la pastille sous l'anneau. */
   status: string;
-  /** Phrase d'action (carte « Recommandation du jour »). */
+  /** Phrase d'action, dernière ligne de la carte (relief balisé par astérisques, lot 5a.1). */
   action: string;
-  /** Justification courte. */
+  /** Pourquoi, en phrases, affiché avant l'action ('' si rien à dire). */
   reason: string;
 };
 
 const ACTIONS: Record<Exclude<Zone, 'neutral' | 'paused'>, { status: string; action: string }> = {
-  good: { status: 'Bonne récupération', action: 'Séance lourde OK' },
-  mid: { status: 'Récupération moyenne', action: 'Séance modérée ou technique' },
-  low: { status: 'Récupération faible', action: 'Journée légère : mobilité ou marche' },
+  good: RECOMMENDATION.good,
+  mid: RECOMMENDATION.mid,
+  low: RECOMMENDATION.low,
 };
-
-/** Chaque raison devient une phrase : « HRV basse. FC au repos haute. » */
-function joinReasons(parts: string[]): string {
-  return parts.map((p) => `${p}.`).join(' ');
-}
 
 /**
  * Pendant une période (lot 5a) : pas de recommandation chiffrée ni de couleur d'état,
@@ -46,28 +42,21 @@ function joinReasons(parts: string[]): string {
 export function pausedRecommendation(type: PeriodType, settings: Settings = SETTINGS): Recommendation {
   return {
     zone: 'paused',
-    status: 'En pause',
+    status: RECOMMENDATION.paused.status,
     action: settings.periods.advice[type],
-    reason: 'Tes normes et tes alertes sont en pause.',
+    reason: RECOMMENDATION.paused.reason,
   };
 }
 
 export function recommend(recovery: Recovery, calibration: Calibration, settings: Settings = SETTINGS): Recommendation {
   if (recovery.score === null) {
-    return {
-      zone: 'neutral',
-      status: 'Récap incomplet',
-      action: 'Synchronise ta nuit pour obtenir ton récap',
-      reason: joinReasons(recovery.missing),
-    };
+    // Nuit absente : la carte « Ouvrir Zepp » le dit déjà, la recommandation ne le répète pas.
+    if (recovery.noNight) return { zone: 'neutral', ...RECOMMENDATION.noNight, reason: '' };
+    return { zone: 'neutral', ...RECOMMENDATION.incomplete, reason: recovery.missing.join(' ') };
   }
   if (!calibration.done) {
-    return {
-      zone: 'neutral',
-      status: calibration.label,
-      action: 'Écoute tes sensations aujourd’hui',
-      reason: 'Ta norme personnelle se construit : les valeurs sont affichées sans jugement.',
-    };
+    // L'anneau affiche déjà « n / 28 » : la pastille ne le répète pas.
+    return { zone: 'neutral', ...RECOMMENDATION.calibration };
   }
   const zone = zoneOf(recovery.score, settings);
   // Justification : ce qui fait baisser le score en priorité, sinon ce qui le fait monter.
@@ -77,6 +66,6 @@ export function recommend(recovery: Recovery, calibration: Calibration, settings
   return {
     zone,
     ...ACTIONS[zone],
-    reason: joinReasons(shown.map((c) => c.explanation)) || 'Toutes tes valeurs sont dans ta norme.',
+    reason: shown.map((c) => c.sentence).join(' ') || RECOMMENDATION.allInNorm,
   };
 }

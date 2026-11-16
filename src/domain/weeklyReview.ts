@@ -8,6 +8,10 @@ import type { CoachTask } from './coachPrompt';
 import { runCoach, type CoachModel, type CoachOutcome } from './coachRun';
 import { addDays, startOfWeek } from './dates';
 import { SETTINGS, type Settings, type WeeklyRule } from './settings';
+import { weeklySynthesis } from './texts/coach';
+import { countOf, joinList } from './texts/common';
+import { plainText } from './texts/markup';
+import { loadComparison } from './texts/today';
 
 export type WeeklyItem = { section: string; text: string; action: string };
 
@@ -83,9 +87,9 @@ function shortFact(s: CoachSection): string | null {
     case 'recovery':
       return typeof v.mean7d === 'number' ? `récupération ${v.mean7d} sur 100 en moyenne` : null;
     case 'load':
-      return typeof v.ratio === 'number' ? `charge ${fr(v.ratio, 2)}` : null;
+      return typeof v.ratio === 'number' ? `charge de la semaine : ${plainText(loadComparison(v.ratio))}` : null;
     case 'zone2':
-      return typeof v.zone2Minutes === 'number' ? `zone 2 : ${v.zone2Minutes} min pour ${v.zone2Target} visées` : null;
+      return typeof v.zone2Minutes === 'number' ? `endurance douce (zone 2) : ${v.zone2Minutes} min sur les ${v.zone2Target} visées` : null;
     case 'nutrition': {
       if (typeof v.proteinDaysBelow7d !== 'number' || typeof v.proteinDaysKnown7d !== 'number') return null;
       const reached = v.proteinDaysKnown7d - v.proteinDaysBelow7d;
@@ -127,30 +131,18 @@ export function parseWeeklyAnswer(text: string, settings: Settings = SETTINGS): 
   return { synthesis, actions };
 }
 
-/** Première lettre en minuscule, sauf sigle (« HRV »). */
-function lowerFirst(text: string): string {
-  return /^[A-ZÀ-Ý]{2}/.test(text) ? text : text.charAt(0).toLowerCase() + text.slice(1);
-}
-
-/** « a », « a et b », « a, b et c ». */
-function joinFr(items: string[]): string {
-  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
-}
-
 /**
- * Repli écrit par l'app : deux phrases (ce qui a marché, ce qui coince) et deux actions
- * (corriger ce qui coince d'abord, puis garder ce qui a marché).
+ * Repli écrit par l'app : des phrases (ce qui a marché, puis « En revanche, » ce qui coince) et deux
+ * actions (corriger ce qui coince d'abord, puis garder ce qui a marché). Les textes des règles sont
+ * des propositions en minuscules (« ton sommeil atteint la durée visée », lot 5a.1).
  */
 export function fallbackWeekly(worked: WeeklyItem[], stuck: WeeklyItem[], settings: Settings = SETTINGS): { synthesis: string; actions: string[] } {
   const max = settings.coach.generation.weeklyMaxActions;
-  const good = joinFr(worked.map((w) => lowerFirst(w.text)));
-  const bad = joinFr(stuck.map((s) => lowerFirst(s.text)));
-  const goodLine = `${worked.length > 1 ? 'Bons points' : 'Bon point'} de la semaine : ${good}.`;
-  let synthesis: string;
-  if (worked.length && stuck.length) synthesis = `${goodLine} À travailler : ${bad}.`;
-  else if (stuck.length) synthesis = `Semaine à ajuster : ${bad}. Concentre-toi sur ${stuck.length > 1 ? 'ces points' : 'ce point'} la semaine prochaine.`;
-  else if (worked.length) synthesis = `${goodLine} Rien ne coince d’après tes chiffres.`;
-  else synthesis = 'Pas assez de données cette semaine pour un bilan détaillé.';
+  const synthesis = weeklySynthesis(
+    worked.map((w) => w.text),
+    stuck.map((s) => s.text),
+    joinList,
+  );
   const actions = [...stuck, ...worked].map((i) => i.action).filter(Boolean).slice(0, max);
   return { synthesis, actions: actions.length ? actions : ['Garde ton rythme actuel la semaine prochaine.'] };
 }
@@ -166,7 +158,7 @@ export function periodNote(context: CoachContext, settings: Settings = SETTINGS)
   const type = typeof v?.current === 'string' ? v.current : null;
   const label =
     type && type in settings.periods.labels ? ` (${settings.periods.labels[type as keyof Settings['periods']['labels']].toLowerCase()})` : '';
-  return `Période particulière${label} : ${days} jour${days > 1 ? 's' : ''} mis à part, sans compter comme un échec`;
+  return `une période particulière${label} a mis ${countOf(days, 'jour')} à part, sans compter comme un échec`;
 }
 
 /** Rédige le bilan de la semaine `week` à partir du résumé (construit pour le dimanche de cette semaine). */

@@ -37,7 +37,7 @@ describe('texte de la notification', () => {
     const recap = buildRecap([...history, night(TODAY, { hrvMs: 49, restingHr: 50 })], TODAY);
     expect(notificationText(recap)).toEqual({
       title: 'Récap du matin',
-      body: `Récupération ${recap.recovery.score} % · Bonne récupération. Séance lourde OK.`,
+      body: `${recap.recovery.score} % ce matin, en forme. Feu vert pour une séance lourde aujourd’hui.`,
     });
   });
   it('pendant la calibration : pas de score', () => {
@@ -45,8 +45,8 @@ describe('texte de la notification', () => {
     expect(notificationText(recap).body).toBe('Calibration : 10 / 28 jours. Écoute tes sensations aujourd’hui.');
   });
   it('nuit pas encore synchronisée : invite à ouvrir l’app', () => {
-    expect(notificationText(buildRecap(history, TODAY)).body).toMatch(/^Ouvre l’app/);
-    expect(notificationText(null).body).toMatch(/^Ouvre l’app/);
+    expect(notificationText(buildRecap(history, TODAY)).body).toMatch(/Ouvre Aube/);
+    expect(notificationText(null).body).toMatch(/Ouvre Aube/);
   });
   it('regroupe les alertes « À surveiller » et ajoute le rappel nutrition', () => {
     const recap = buildRecap(series(TODAY, 10), TODAY);

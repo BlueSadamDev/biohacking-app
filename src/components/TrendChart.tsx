@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 
 import type { ChartData } from '@/domain/recap';
+import { DETAIL } from '@/domain/texts/sport';
 
 import { AppText } from './AppText';
 import { formatShortDate } from './format';
@@ -102,7 +103,7 @@ export function TrendChart({
         </View>
       )}
       <View style={styles.legend}>
-        {data.band && <Legend color={tint(colors.info, 0.35)} text="Plage normale" />}
+        {data.band && <Legend color={tint(colors.info, 0.35)} text={DETAIL.band} />}
         {data.referenceLabel && <Legend color={colors.textMuted} text={data.referenceLabel} line />}
         {unfavorableLabel && <Legend color={colors.mid} text={unfavorableLabel} />}
         <Legend color={colors.good} text="Aujourd’hui" />

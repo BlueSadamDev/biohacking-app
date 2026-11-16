@@ -6,8 +6,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { StoredAlert } from '@/db/alerts';
 import { LEVEL_LABEL, THEME_LABEL, type AlertLevel } from '@/domain/alerts';
+import { ALERT_UI } from '@/domain/texts/alerts';
+import { plainText } from '@/domain/texts/markup';
 
 import { AppText } from './AppText';
+import { RichText } from './RichText';
 import { WhyLink } from './CoachViews';
 import { formatShortDate } from './format';
 import { BellIcon, ChevronIcon } from './Icons';
@@ -47,7 +50,7 @@ export function TodayAlertCard({ alert, onPress }: { alert: StoredAlert; onPress
         </AppText>
         <AppText style={styles.todayTitle}>{alert.title}</AppText>
         <AppText style={styles.oneLine} numberOfLines={1}>
-          {alert.finding}
+          {plainText(alert.finding)}
         </AppText>
       </View>
       <ChevronIcon size={20} color={colors.textMuted} />
@@ -55,7 +58,11 @@ export function TodayAlertCard({ alert, onPress }: { alert: StoredAlert; onPress
   );
 }
 
-/** Carte de l'historique : niveau · thème et date, titre, constat, cause probable, action. */
+/**
+ * Carte de l'historique : niveau · thème et date, titre, puis la charte des textes (lot 5a.1) :
+ * constat (chiffre en relief), pourquoi en petit, action en dernière ligne (en relief).
+ * Les alertes enregistrées avant le lot 5a.1 gardent leur texte d'origine (sans relief).
+ */
 export function AlertHistoryCard({ alert, onWhy }: { alert: StoredAlert; onWhy?: () => void }) {
   const color = levelColor(alert.level);
   return (
@@ -67,20 +74,10 @@ export function AlertHistoryCard({ alert, onWhy }: { alert: StoredAlert; onWhy?:
         <AppText variant="small">{formatShortDate(alert.date)}</AppText>
       </View>
       <AppText style={styles.cardTitle}>{alert.title}</AppText>
-      <AppText style={styles.detail}>
-        <AppText style={styles.detailLabel}>Constat · </AppText>
-        {alert.finding}
-      </AppText>
-      <AppText style={styles.detail}>
-        <AppText style={styles.detailLabel}>Cause probable · </AppText>
-        {alert.cause}
-      </AppText>
-      <AppText style={styles.action}>{alert.action}</AppText>
-      {alert.persistent && (
-        <AppText variant="small">
-          Cette alerte revient souvent : si ça dure, parles-en à un professionnel de santé.
-        </AppText>
-      )}
+      <RichText style={styles.finding} text={alert.finding} />
+      <AppText style={styles.detail}>{alert.cause}</AppText>
+      <RichText style={styles.action} text={alert.action} />
+      {alert.persistent && <AppText variant="small">{ALERT_UI.persistent}</AppText>}
       {onWhy && <WhyLink onPress={onWhy} />}
     </View>
   );
@@ -113,7 +110,7 @@ const styles = StyleSheet.create({
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1 },
   cardTitle: { fontFamily: fonts.body600, fontSize: 15, color: colors.text },
+  finding: { fontFamily: fonts.body400, fontSize: 15, lineHeight: 21, color: colors.text },
   detail: { fontFamily: fonts.body400, fontSize: 13, color: colors.textSoft },
-  detailLabel: { fontFamily: fonts.body400, fontSize: 13, color: colors.textMuted },
-  action: { fontFamily: fonts.body600, fontSize: 13, color: colors.text },
+  action: { fontFamily: fonts.body500, fontSize: 14, color: colors.text, marginTop: 2 },
 });

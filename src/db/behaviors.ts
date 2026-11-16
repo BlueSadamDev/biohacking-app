@@ -7,7 +7,7 @@ import { SETTINGS } from '@/domain/settings';
 
 import { getDb, writeSql, writeTransaction } from './database';
 
-type Row = { id: string; name: string; visible: number; position: number };
+type Row = { id: string; name: string; visible: number; position: number; phrase: string | null };
 
 /** Liste par défaut, créée si la table est vide (premier usage, ou après un effacement des données). */
 async function ensureDefaults(): Promise<void> {
@@ -32,8 +32,14 @@ async function ensureDefaults(): Promise<void> {
 export async function loadBehaviors(): Promise<Behavior[]> {
   await ensureDefaults();
   const db = await getDb();
-  const rows = await db.getAllAsync<Row>('SELECT id, name, visible, position FROM behavior ORDER BY position, created_ms');
-  return rows.map((r) => ({ id: r.id, name: r.name, visible: r.visible === 1, position: r.position }));
+  const rows = await db.getAllAsync<Row>('SELECT id, name, visible, position, phrase FROM behavior ORDER BY position, created_ms');
+  return rows.map((r) => ({ id: r.id, name: r.name, visible: r.visible === 1, position: r.position, phrase: r.phrase }));
+}
+
+/** Forme « en phrase » (lot 5a.1) ; vide = phrase par défaut ou tournure générique. */
+export async function setBehaviorPhrase(id: string, phrase: string): Promise<void> {
+  const value = phrase.trim();
+  await writeSql('UPDATE behavior SET phrase = ? WHERE id = ?', value === '' ? null : value, id);
 }
 
 /** Ajoute un comportement en fin de liste (nom déjà contrôlé par `validateBehaviorName`). */

@@ -12,6 +12,7 @@ import { AppText } from '@/components/AppText';
 import { PrimaryButton } from '@/components/Buttons';
 import { Card } from '@/components/Card';
 import { formatDecimal, formatDuration, formatLongDate } from '@/components/format';
+import { RichText } from '@/components/RichText';
 import { BackHeader, Screen } from '@/components/Screen';
 import { Stepper } from '@/components/StrengthControls';
 import { colors, fonts, radius } from '@/components/theme';
@@ -22,6 +23,7 @@ import { dayKey } from '@/domain/dates';
 import { exerciseTypeLabel } from '@/domain/exerciseTypes';
 import type { ExerciseSession } from '@/domain/load';
 import { SETTINGS } from '@/domain/settings';
+import { ERRORS } from '@/domain/texts/common';
 import {
   compareSet,
   EXERCISE_LABEL,
@@ -106,8 +108,8 @@ export default function StrengthEntryScreen() {
       setHistory(await loadStrengthHistory());
       await reloadFromDb();
       setSaved(true);
-    } catch (e) {
-      setError(`L’enregistrement a échoué : ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      setError(ERRORS.save);
     } finally {
       setSaving(false);
     }
@@ -211,11 +213,7 @@ export default function StrengthEntryScreen() {
           );
         })}
 
-      {error && (
-        <AppText variant="bodySmall" style={{ color: colors.low }}>
-          {error}
-        </AppText>
-      )}
+      {error && <RichText variant="bodySmall" text={error} style={{ color: colors.low }} />}
 
       <PrimaryButton
         title={saved ? 'Enregistré ✓' : 'Enregistrer la séance'}

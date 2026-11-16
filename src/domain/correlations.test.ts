@@ -68,7 +68,7 @@ describe('séance du soir → HRV de la nuit', () => {
     expect(link.strength).toBe('strong');
     expect(link.favorable).toBe(false);
     expect(link.days).toBe(89);
-    expect(link.sentence).toMatch(/^Les soirs de séance après 20 h, ta HRV de la nuit est inférieure de \d+ % en moyenne\.$/);
+    expect(link.sentence).toMatch(/^Les soirs où tu t’entraînes après 20 h, ta HRV de la nuit est \*\d+ % plus basse\* que les autres soirs de séance\.$/);
     expect(link.study.label).toBe('Séance après 20 h');
     expect(link.reference.mean).toBeGreaterThan(link.study.mean);
   });
@@ -111,7 +111,7 @@ describe('autres paires', () => {
     const nights = series(TODAY, DAYS, (i) => ({ asleepMinutes: i % 2 ? 420 + wobble(i) * 5 : 480 + wobble(i) * 5 }));
     const link = findLinks(base({ nights })).links.find((l) => l.id === 'bedtime-sleep')!;
     expect(link.favorable).toBe(false);
-    expect(link.sentence).toMatch(/^Quand tu te couches après \d+ h \d{2}, tu dors \d+ % de moins en moyenne\.$/);
+    expect(link.sentence).toMatch(/^Quand tu te couches après \d+ h \d{2}, ta nuit est \*\d+ % plus courte\* que quand tu te couches plus tôt\.$/);
   });
 
   it('protéines atteintes → meilleur score de récupération le lendemain', () => {
@@ -128,7 +128,7 @@ describe('autres paires', () => {
     const nights = series(TODAY, DAYS, (i) => ({ asleepMinutes: i > 0 && reached(i - 1) ? 480 + wobble(i) * 5 : 380 + wobble(i) * 5 }));
     const link = findLinks(base({ nights, weights, nutrition })).links.find((l) => l.id === 'protein-recovery')!;
     expect(link.favorable).toBe(true);
-    expect(link.sentence).toMatch(/supérieur de \d+ %/);
+    expect(link.sentence).toMatch(/\*\d+ % plus haut\* que les autres jours/);
   });
 
   it('charge de la veille → HRV (sans profil cardiaque : rien à comparer)', () => {
@@ -147,7 +147,7 @@ describe('autres paires', () => {
     const nights = series(TODAY, DAYS, (i) => ({ asleepMinutes: i > 0 && (i - 1) % 2 ? 470 + wobble(i) * 5 : 420 + wobble(i) * 5 }));
     const link = findLinks(base({ nights, steps })).links.find((l) => l.id === 'steps-sleep')!;
     expect(link.favorable).toBe(true);
-    expect(link.sentence).toMatch(/^Les jours à plus de [\d ]+ pas, tu dors \d+ % de plus la nuit suivante\.$/);
+    expect(link.sentence).toMatch(/^Les jours où tu fais plus de [\d ]+ pas, ta nuit suivante est \*\d+ % plus longue\* que les autres\.$/);
   });
 });
 

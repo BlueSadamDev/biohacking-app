@@ -5,6 +5,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { EXERCISE_LABEL, type ExerciseProgress, type StrengthTrend } from '@/domain/strength';
+import { SPORT } from '@/domain/texts/sport';
 
 import { AppText } from './AppText';
 import { formatDecimal } from './format';
@@ -80,7 +81,7 @@ export function StrengthRow({ progress }: { progress: ExerciseProgress }) {
       style={styles.row}
       accessible
       accessibilityLabel={`${EXERCISE_LABEL[progress.exercise]} : ${
-        progress.current === null ? 'pas de 1RM récent' : `1RM estimé ${Math.round(progress.current)} kilos`
+        progress.current === null ? SPORT.noRecentOneRepMax : SPORT.oneRepMax(Math.round(progress.current))
       }, ${trend.text}`}>
       <View style={styles.rowName}>
         <AppText style={styles.name}>{EXERCISE_LABEL[progress.exercise]}</AppText>

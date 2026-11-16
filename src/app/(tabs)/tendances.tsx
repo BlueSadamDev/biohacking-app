@@ -17,6 +17,7 @@ import { useHealthData } from '@/components/useHealthData';
 import { loadCorrelations } from '@/db/trendsData';
 import type { CorrelationReport } from '@/domain/correlations';
 import { SETTINGS } from '@/domain/settings';
+import { plainText } from '@/domain/texts/markup';
 
 const DETAILS: { label: string; href: Href }[] = [
   { label: 'HRV', href: '/detail/hrv' },
@@ -94,7 +95,8 @@ export default function TrendsScreen() {
             // « Pourquoi ? » seulement si le modèle du coach est installé.
             onWhy={
               coach
-                ? () => setWhy({ task: { kind: 'why-link', sentence: link.sentence }, date: null, title: link.sentence })
+                ? () =>
+                    setWhy({ task: { kind: 'why-link', sentence: plainText(link.sentence) }, date: null, title: plainText(link.sentence) })
                 : undefined
             }
           />

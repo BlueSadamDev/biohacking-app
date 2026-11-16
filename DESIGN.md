@@ -17,7 +17,7 @@ Référence visuelle : les maquettes du lot 1 et la rangée « Aube · identité
 ## Principes
 - **Sombre, sobre, orienté données** : fond presque noir, cartes anthracite, peu de couleurs. Inspiration Whoop pour l'ambiance, sans reprendre ses éléments propres (logo, noms, icônes).
 - **Une information principale par écran** (sur l'accueil : le score de récupération), le reste en cartes secondaires.
-- **La couleur porte un sens, jamais seule** : chaque couleur d'état est accompagnée d'un libellé texte (« Bonne récupération », « reçue », « absente »…).
+- **La couleur porte un sens, jamais seule** : chaque couleur d'état est accompagnée d'un libellé texte (« En forme », « reçue », « absente »…).
 - **Pas d'emoji, pas de dégradés décoratifs, pas d'ombres.** Icônes en trait fin (2 px), couleur du texte.
 - Thème sombre uniquement.
 
@@ -53,6 +53,8 @@ Contraste : tout texte doit atteindre 4,5:1 sur son fond (les valeurs ci-dessus 
 | Titre d'écran | Space Grotesk | 20–22 / 600 |
 | Valeur d'indicateur (tuile) | Space Grotesk | 22 / 600 (unité en 13, `textMuted`) |
 | Texte important (recommandation) | Inter | 16 / 600 |
+| Constat d'une carte (style « constat », lot 5a.1) | Inter | 16 / 500, interligne 22 |
+| Passage en relief dans une phrase (lot 5a.1) | chiffre : Space Grotesk ; action : Inter | 600, couleur `text`, taille de la phrase |
 | Texte courant | Inter | 13–15 / 400 |
 | Libellé de section | Inter | 12 / 500, MAJUSCULES, espacement 0,08 em, `textMuted` |
 | Petites mentions | Inter | 11–12 / 400 |
@@ -344,11 +346,120 @@ Liste des périodes, de la plus récente à la plus ancienne : type, dates,
 nombre de jours. Toucher une période permet de modifier ses dates ou de
 la supprimer (avec confirmation).
 
+## Écrans du lot 5a.1 (écriture et relief)
+Ces points remplacent les descriptions plus anciennes ci-dessus. Les règles d'écriture sont dans
+« Textes », en fin de fichier ; les textes eux-mêmes dans `src/domain/texts/`.
+
+### Accueil
+- Pastille sous l'anneau, sans répéter « Récupération » (déjà au centre de l'anneau) :
+  « En forme », « Forme moyenne », « Corps fatigué » ; « Norme en construction » pendant la
+  calibration ; « Nuit manquante » ou « Récap incomplet » sans score ; aucune pastille pendant
+  une période (le bandeau dit déjà « en pause »).
+- Carte « Recommandation du jour » : le pourquoi en petit (`textSoft`), puis l'action en dernière
+  ligne, style « constat » avec relief. Nuit absente : pas de raison (la carte « Ouvrir Zepp »
+  l'explique déjà).
+- Carte « Charge de la semaine » (au lieu de « Charge 7 j / 28 j ») : pastille d'état à droite du
+  titre (« Équilibrée » `good`, « En hausse » et « En baisse » `mid`, « Trop haute » `low`),
+  phrase en style « constat » (« Tu t'entraînes *45 % de plus* que d'habitude cette semaine »),
+  jauge bornée « −100 % » / « +100 % », détail en petit (séances, charge par jour).
+- Erreur de lecture : message simple (« Tire l'écran vers le bas pour réessayer »), jamais le
+  détail technique.
+
+### Alertes
+Carte de l'historique : titre (15/600), constat (15/400, chiffre en relief), pourquoi en petit
+(`textSoft`), action en dernière ligne (14/500, relief en gras). Plus de libellés « Constat · » ni
+« Cause probable · ». Les alertes enregistrées avant le lot 5a.1 gardent leur texte d'origine.
+
+### Journal du matin et « Gérer la liste »
+- Chaque ressenti a son échelle en phrase sous les boutons 1 à 5 (« De 1 (aucune) à 5 (très
+  fortes) : plus la note est haute, plus tu as mal »).
+- « Gérer la liste » : en modifiant ou en ajoutant un comportement, champ facultatif « En phrase »
+  (80 caractères au plus) ; vide, l'exemple affiché est la phrase utilisée.
+
+### Coach
+- Carte « Bilan de la semaine » : « Ce qui a marché : … » et « Ce qui coince : … » en phrases
+  (propositions reliées par « et »). Le bilan écrit par l'app quand le modèle n'a pas pu formuler de
+  conseil sûr se lit comme les autres (« … En revanche, … ») : plus de mention « Rédigé par l'app ».
+- Modèle du coach : « Le coach est *prêt*. » (style « constat ») au-dessus du groupe « Modèle
+  installé », à la place de la ligne « État · Installé · prêt ».
+
+### Sport et écrans de détail
+- Carte « Cette semaine » : la case « Charge » affiche l'état en mots (« En hausse », couleur
+  d'état) et la ligne dessous la phrase de l'accueil (« Tu t'entraînes 45 % de plus… »).
+- Graphique de tendance : la bande s'appelle « Ta norme » ; les barres défavorables « Sous ta
+  norme » (HRV), « Au-dessus de ta moyenne » (FC au repos), « Nuit courte » (sommeil).
+- Composition corporelle sans poids visé : « Indique ton poids visé dans Réglages. »
+
+### Réglages, Sources, Mes périodes
+- Notifications : « Heures de silence : début » et « Heures de silence : fin ».
+- Champ vide : « à indiquer » (au lieu de « à définir ») ; Sexe non choisi : « Choisis ».
+- L'écran technique « Diagnostic » s'appelle « Contrôle des données » (titre et bouton de Sources).
+- Erreur d'enregistrement : « Pas enregistré. *Réessaie dans un instant.* », jamais le détail technique.
+
+### Liens observés
+En-tête en mots : « Effet marqué | net | léger », suivi de « qui t'aide » ou « qui te dessert »
+(sauf effet léger). La phrase passe en style « constat » avec l'écart en relief et son repère
+(« que les autres nuits »).
+
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.
 - **Donnée manquante** (nuit non synchronisée, Health Connect absent, permission refusée) : message clair et action proposée, jamais une valeur inventée.
 - **Valeurs fictives** : uniquement dans les tests et les maquettes, jamais dans l'app livrée.
 
 ## Textes
-- Français, tutoiement, phrases courtes et actionnables (« Séance lourde OK », « Journée légère : mobilité ou marche »).
-- Jamais de vocabulaire de diagnostic médical.
+
+Aube parle comme un coach qui te connaît : une phrase complète, un fait, une
+action. Français, tutoiement.
+
+### Règles
+1. Une phrase avec un verbe, pas une étiquette. Les étiquettes courtes
+   restent permises pour les titres de carte et les pastilles.
+2. Constat, puis pourquoi, puis action, dans cet ordre ; l'action toujours
+   en dernière ligne.
+3. Un seul élément en relief par phrase : le chiffre qui compte ou
+   l'action (composant d'emphase, voir « Relief »).
+4. Le nom en clair d'abord, le sigle ensuite, à sa première apparition sur
+   un écran : « variabilité cardiaque (HRV) ».
+5. Ratios et écarts traduits en mots : « 45 % de plus que d'habitude »
+   plutôt que « ratio 1,45 ».
+6. Parler du signal, jamais d'une cause médicale : « ton corps montre des
+   signes de fatigue », pas « infection qui commence ». Jamais de
+   vocabulaire de diagnostic.
+7. Pas de machinerie visible : vrais pluriels (jamais « (s) »), aucun
+   message d'erreur technique (réservé à l'écran de diagnostic), pas de
+   « à définir » mais une invitation (« Indique ton poids visé »).
+8. Typographie française : apostrophe ’, guillemets « », espace insécable
+   avant : ; ! ?
+
+### Glossaire (un mot par notion)
+| Notion | Mot retenu | À abandonner |
+| --- | --- | --- |
+| Plage de valeurs habituelle calculée sur tes nuits | ta norme (« dans ta norme », « sous ta norme ») | plage, plage normale, plage habituelle |
+| Moyenne simple sur une période | ta moyenne sur N jours (toujours avec la durée) | « ta moyenne » seule |
+| HRV | variabilité cardiaque (HRV), puis HRV | — |
+| FC au repos | fréquence cardiaque au repos, puis FC au repos | FC seule |
+| Charge aiguë / chronique | ta charge de la semaine comparée à ton rythme habituel | 7 j / 28 j, ratio |
+| 1RM | force estimée (1RM), puis 1RM | — |
+| Plage silencieuse | heures de silence | silence à partir de / jusqu'à |
+| Poids | kg partout | kilos |
+
+### Relief
+- Trois étages par carte : le constat en style « constat » (15–16 px),
+  le chiffre clé ou l'action en relief, le détail en petit gris.
+- Relief = gras (Inter 600) pour une action, police des chiffres
+  (Space Grotesk 600) pour un chiffre, dans la couleur du texte principal.
+  Jamais plus d'un élément en relief par phrase.
+- Un même message n'apparaît qu'une fois par écran (pas d'état répété
+  entre la pastille, la carte et le libellé).
+
+### Exemples avant / après (le relief est entre astérisques)
+| Avant | Après |
+| --- | --- |
+| Séance lourde OK | *Feu vert* pour une séance lourde aujourd'hui. |
+| Récap incomplet · Synchronise ta nuit pour obtenir ton récap | Ta nuit n'est pas encore arrivée. *Ouvre Zepp* pour l'envoyer. |
+| Pic de charge (au-dessus de 1,5) | Tu t'entraînes *45 % de plus* que d'habitude cette semaine. |
+| Ta FC au repos est à +6 bpm de ta moyenne depuis 2 jours. Fatigue accumulée ou infection qui débute. | Ta fréquence cardiaque au repos est *6 battements au-dessus* de ta moyenne sur 30 jours depuis 2 jours : ton corps récupère moins bien. *Évite l'intensité aujourd'hui.* |
+| Les jours avec alcool, tu dors 12 % de moins la nuit suivante. | Les soirs où tu bois de l'alcool, tu dors *12 % de moins*. |
+| Bons points de la semaine : récupération 64 sur 100 en moyenne, zone 2 : 45 min pour 90 visées. | Ta récupération a tenu à *64 en moyenne*. En revanche, l'endurance douce manque : *45 min sur les 90 visées*. |
+| Installé · prêt | Le coach est *prêt*. |
+| L'enregistrement a échoué : <erreur technique> | Pas enregistré. *Réessaie dans un instant.* |

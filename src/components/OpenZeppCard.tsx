@@ -8,7 +8,10 @@ import { AppState, StyleSheet } from 'react-native';
 
 import { isZeppInstalled, openZepp } from '../../modules/zepp-launcher';
 
+import { HOME } from '@/domain/texts/today';
+
 import { AppText } from './AppText';
+import { RichText } from './RichText';
 import { SecondaryButton } from './Buttons';
 import { Card } from './Card';
 import { colors } from './theme';
@@ -39,12 +42,9 @@ export function OpenZeppCard({ onReturn }: { onReturn: () => void }) {
 
   return (
     <Card style={styles.card}>
-      <AppText variant="strong">Ta nuit n’est pas encore arrivée</AppText>
-      <AppText variant="bodySmall" style={{ color: colors.textSoft }}>
-        Zepp ne l’a pas encore envoyée à Health Connect. Ouvre Zepp pour lancer l’envoi : Aube se
-        resynchronise à ton retour.
-      </AppText>
-      <SecondaryButton title="Ouvrir Zepp" onPress={open} />
+      <AppText variant="constat">{HOME.zeppTitle}</AppText>
+      <RichText variant="bodySmall" text={HOME.zeppBody} style={{ color: colors.textSoft }} />
+      <SecondaryButton title={HOME.zeppButton} onPress={open} />
     </Card>
   );
 }

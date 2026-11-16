@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 
 import type { BodyComposition } from '@/domain/bodyComposition';
+import { BODY } from '@/domain/texts/sport';
 
 import { AppText } from './AppText';
 import { Card } from './Card';
@@ -23,7 +24,7 @@ export function formatTrend(kgPerWeek: number): string {
 }
 
 export function targetText(c: BodyComposition): string | null {
-  if (c.targetKg === null) return 'Cible de poids à définir dans Réglages';
+  if (c.targetKg === null) return BODY.noTarget;
   if (c.gapToTarget === null) return null;
   const cible = `${formatDecimal(c.targetKg, 1)} kg`;
   if (c.targetReached) return `Cible de ${cible} atteinte`;

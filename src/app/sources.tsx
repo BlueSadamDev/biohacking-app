@@ -23,6 +23,7 @@ import { colors } from '@/components/theme';
 import { useHealthData } from '@/components/useHealthData';
 import { loadSourcesStatus, type SourcesStatus } from '@/db/healthData';
 import { SETTINGS } from '@/domain/settings';
+import { SOURCES } from '@/domain/texts/reglages';
 import { askReadPermissions, hasBackgroundAccess } from '@/sources/healthConnect';
 
 /** Types lus pour le Helio Strap et la table où ils sont rangés. */
@@ -69,7 +70,7 @@ export default function SourcesScreen() {
         <Gauge value={calibrated} max={required} minLabel="0" maxLabel={`${required} jours`} />
         <AppText variant="small">
           {remaining > 0
-            ? `Encore ${remaining} nuit(s) complète(s) (HRV et FC au repos) avant le score coloré.`
+            ? SOURCES.calibrationLeft(remaining)
             : 'Terminée : ton score se compare à ta propre norme.'}
         </AppText>
       </Card>
@@ -118,7 +119,7 @@ export default function SourcesScreen() {
       <PermissionsCard />
 
       <PrimaryButton title="Synchroniser maintenant" busy={syncing} onPress={syncAndRefresh} />
-      <SecondaryButton title="Diagnostic des données" onPress={() => router.push('/diagnostic')} />
+      <SecondaryButton title={SOURCES.dataCheck} onPress={() => router.push('/diagnostic')} />
     </Screen>
   );
 }

@@ -25,7 +25,7 @@ describe('résumé chiffré du coach', () => {
       'period',
       'behaviors',
     ]);
-    expect(ctx.text.startsWith(`Résumé de mes données calculé par l'app Aube (au ${COACH_TODAY})`)).toBe(true);
+    expect(ctx.text.startsWith(`Résumé de mes données calculé par l’app Aube (au ${COACH_TODAY})`)).toBe(true);
   });
 
   it('écrit les nombres à la française', () => {
@@ -39,22 +39,24 @@ describe('résumé chiffré du coach', () => {
     expect(line).toContain('6,4 h par nuit en moyenne sur 7 jours, 7,2 h sur 30 jours');
     expect(line).toContain('3 nuits sous 6 h sur les 7 dernières');
     expect(line).toContain('sous la durée visée de 7,5 h');
-    expect(line).toContain("en baisse par rapport à d'habitude");
+    expect(line).toContain('en baisse par rapport à d’habitude');
   });
 
-  it('situe la HRV par rapport à la plage normale', () => {
+  it('situe la HRV par rapport à la norme', () => {
     const line = lineOf('hrv');
     expect(line).toMatch(/\d+ ms en moyenne sur 7 jours/);
-    expect(line).toContain('plage normale de');
-    expect(line).toContain('sous ta plage normale');
+    expect(line).toContain('norme de 46 à 52 ms');
+    expect(line).toContain('sous ta norme');
   });
 
   it('compare la FC au repos à la moyenne 30 jours', () => {
     expect(lineOf('restingHr')).toMatch(/56 bpm cette nuit, moyenne 5\d bpm sur 30 jours, \d bpm au-dessus de ta moyenne/);
   });
 
-  it('donne le ratio de charge, son verdict et les seuils', () => {
-    expect(lineOf('load')).toContain('ratio 7 jours / 28 jours de 1,42, charge en hausse (équilibrée entre 0,8 et 1,3');
+  it('donne la charge de la semaine en pourcentage, son verdict et les seuils', () => {
+    expect(lineOf('load')).toContain(
+      'tu t’entraînes 42 % de plus que d’habitude, charge en hausse (équilibrée entre −20 % et +30 % par rapport à ton rythme habituel, trop élevée au-delà de +50 %)',
+    );
   });
 
   it('dit que les protéines sont sous la cible, avec le compte sur 7 jours', () => {
@@ -123,7 +125,7 @@ describe('résumé chiffré du coach', () => {
     );
     const n = ctx.sections.find((s) => s.key === 'nutrition')!;
     expect(n.line).toContain('protéines hier : 108 g, cible de protéines non calculable : il faut une pesée récente');
-    expect(n.line).toContain('cible de calories à définir dans les Réglages');
+    expect(n.line).toContain('cible de calories pas encore indiquée dans les Réglages');
     expect(n.line).not.toContain('0 jour');
     expect(n.values.proteinDaysBelow7d).toBeNull();
   });
@@ -140,7 +142,7 @@ describe('résumé chiffré du coach', () => {
     const ctx = buildCoachContext(coachInputs({ nights, recap: buildRecap(nights, COACH_TODAY) }));
     expect(ctx.calibrating).toBe(true);
     expect(lineOf('calibration', ctx)).toContain('en cours');
-    expect(lineOf('hrv', ctx)).not.toContain('plage normale de');
+    expect(lineOf('hrv', ctx)).not.toContain('norme de');
   });
 
   it('ne reprend que les alertes des 7 derniers jours', () => {

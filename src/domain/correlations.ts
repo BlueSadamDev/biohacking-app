@@ -21,6 +21,8 @@ import { isTaggedDay, withoutTaggedNights, type Period } from './periods';
 import { averageWeight, proteinTargetGrams } from './profile';
 import { computeRecovery } from './recovery';
 import { SETTINGS, type Settings } from './settings';
+import { behaviorPhrase } from './texts/journal';
+import { LINK_TEXT } from './texts/links';
 
 export type Observation = { date: string; study: boolean; value: number };
 export type ValueKind = 'ms' | 'minutes' | 'score';
@@ -37,7 +39,7 @@ export type CorrelationInputs = {
   /** Périodes (lot 5a) : jours étiquetés et nuits qui s'y terminent exclus de toutes les paires. */
   periods?: readonly Period[];
   /** Comportements affichés du journal (lot 5a) : chacun devient 3 paires testées. */
-  behaviors?: readonly Pick<Behavior, 'id' | 'name'>[];
+  behaviors?: readonly Pick<Behavior, 'id' | 'name' | 'phrase'>[];
   behaviorLog?: BehaviorLog;
   today: string;
 };
@@ -92,8 +94,7 @@ export const PAIRS: readonly Pair[] = [
       }
       return { observations, studyLabel: `Séance après ${hour} h`, refLabel: `Séance avant ${hour} h` };
     },
-    sentence: (higher, pct) =>
-      `Les soirs de séance après ${SETTINGS.correlations.lateSessionHour} h, ta HRV de la nuit est ${higher ? 'supérieure' : 'inférieure'} de ${pct} % en moyenne.`,
+    sentence: (higher, pct) => LINK_TEXT.lateSessionHrv(SETTINGS.correlations.lateSessionHour, higher, pct),
     action: (fav) =>
       fav ? 'Tes séances du soir ne pèsent pas sur ta nuit : garde ce rythme.' : 'Quand c’est possible, place tes séances intenses avant 20 h.',
   },
@@ -111,7 +112,7 @@ export const PAIRS: readonly Pair[] = [
         detail: hm(cut),
       };
     },
-    sentence: (higher, pct, cut) => `Quand tu te couches après ${cut}, tu dors ${pct} % de ${higher ? 'plus' : 'moins'} en moyenne.`,
+    sentence: (higher, pct, cut) => LINK_TEXT.bedtimeSleep(cut ?? '', higher, pct),
     action: (fav) =>
       fav ? 'Tes couchers tardifs n’écourtent pas ta nuit : garde des horaires réguliers.' : 'Vise un coucher avant cette heure pour allonger tes nuits.',
   },
@@ -131,8 +132,7 @@ export const PAIRS: readonly Pair[] = [
       }
       return { observations, studyLabel: 'Protéines atteintes', refLabel: 'Protéines sous la cible' };
     },
-    sentence: (higher, pct) =>
-      `Les lendemains de protéines atteintes, ton score de récupération est ${higher ? 'supérieur' : 'inférieur'} de ${pct} % en moyenne.`,
+    sentence: (higher, pct) => LINK_TEXT.proteinRecovery(higher, pct),
     action: (fav) =>
       fav ? 'Garde tes protéines à la cible chaque jour, surtout les jours de séance.' : 'Atteindre tes protéines ne suffit pas : regarde aussi ton sommeil et ta charge.',
   },
@@ -152,7 +152,7 @@ export const PAIRS: readonly Pair[] = [
         refLabel: 'Veille légère',
       };
     },
-    sentence: (higher, pct) => `Après une journée chargée, ta HRV est ${higher ? 'supérieure' : 'inférieure'} de ${pct} % en moyenne.`,
+    sentence: (higher, pct) => LINK_TEXT.loadHrv(higher, pct),
     action: (fav) =>
       fav ? 'Tu absorbes bien tes grosses journées : continue à bien dormir après.' : 'Après une grosse séance, prévois une journée plus légère et un coucher tôt.',
   },
@@ -173,7 +173,7 @@ export const PAIRS: readonly Pair[] = [
         detail: rounded,
       };
     },
-    sentence: (higher, pct, cut) => `Les jours à plus de ${cut} pas, tu dors ${pct} % de ${higher ? 'plus' : 'moins'} la nuit suivante.`,
+    sentence: (higher, pct, cut) => LINK_TEXT.stepsSleep(cut ?? '', higher, pct),
     action: (fav) =>
       fav ? 'Bouger dans la journée t’aide à dormir : garde tes marches.' : 'Les journées très actives écourtent ta nuit : avance un peu ton coucher ces jours-là.',
   },
@@ -195,9 +195,11 @@ const BEHAVIOR_OUTCOMES: readonly Outcome[] = [
  * de la nuit suivante (celle qui porte la date J+1), score de récupération de J+1.
  * Jours « inconnus » (sans journal) et jours étiquetés exclus. Règles strictes (`strict`).
  */
-export function behaviorPairs(behaviors: readonly Pick<Behavior, 'id' | 'name'>[]): Pair[] {
+export function behaviorPairs(behaviors: readonly Pick<Behavior, 'id' | 'name' | 'phrase'>[]): Pair[] {
   return behaviors.flatMap((b) => {
     const name = lowerFirst(b.name.trim());
+    // Forme « en phrase » (lot 5a.1) : « les soirs où tu bois de l’alcool ».
+    const phrase = behaviorPhrase({ ...b, name: b.name.trim() });
     return BEHAVIOR_OUTCOMES.map(
       (o): Pair => ({
         id: `behavior:${b.id}:${o.key}`,
@@ -217,12 +219,11 @@ export function behaviorPairs(behaviors: readonly Pick<Behavior, 'id' | 'name'>[
           return { observations, studyLabel: `Avec ${name}`, refLabel: `Sans ${name}` };
         },
         sentence: (higher, pct) => {
-          if (o.key === 'hrv') return `Les jours avec ${name}, ta HRV de la nuit suivante est ${higher ? 'supérieure' : 'inférieure'} de ${pct} % en moyenne.`;
-          if (o.key === 'sleep') return `Les jours avec ${name}, tu dors ${pct} % de ${higher ? 'plus' : 'moins'} la nuit suivante.`;
-          return `Le lendemain d’un jour avec ${name}, ton score de récupération est ${higher ? 'supérieur' : 'inférieur'} de ${pct} % en moyenne.`;
+          if (o.key === 'hrv') return LINK_TEXT.behaviorHrv(phrase, higher, pct);
+          if (o.key === 'sleep') return LINK_TEXT.behaviorSleep(phrase, higher, pct);
+          return LINK_TEXT.behaviorScore(phrase, higher, pct);
         },
-        action: (fav) =>
-          fav ? `« ${b.name.trim()} » semble te réussir : garde-le si ça te convient.` : `Essaie de t’en passer quelques jours et regarde si tes nuits changent.`,
+        action: (fav) => LINK_TEXT.behaviorAction(b.name.trim(), fav),
       }),
     );
   });

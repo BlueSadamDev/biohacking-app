@@ -13,6 +13,7 @@ import { AppText } from './AppText';
 import { PrimaryButton, SecondaryButton } from './Buttons';
 import { dateFromKey } from './format';
 import { FlagIcon } from './Icons';
+import { RichText } from './RichText';
 import { TimeStepper } from './SettingsControls';
 import { colors, fonts, radius, tint, TOUCH } from './theme';
 
@@ -152,9 +153,7 @@ function SheetContent({ today, onStart, onClose }: { today: string; onStart: (ty
           onChange={setStart}
         />
         {error && (
-          <AppText variant="bodySmall" style={{ color: colors.low }}>
-            {error}
-          </AppText>
+          <RichText variant="bodySmall" text={error} style={{ color: colors.low }} />
         )}
         <PrimaryButton title="Commencer la période" busy={busy} onPress={submit} />
         <SecondaryButton title="Annuler" onPress={onClose} />

@@ -450,6 +450,8 @@ action. Français, tutoiement.
 | 1RM | force estimée (1RM), puis 1RM | — |
 | Plage silencieuse | heures de silence | silence à partir de / jusqu'à |
 | Poids | kg partout | kilos |
+| Tout ce que le bracelet enregistre (marche, course, séance…) | activité | — |
+| Activité d'au moins 45 minutes, ou musculation quelle que soit sa durée | séance | — |
 
 ### Relief
 - Trois étages par carte : le constat en style « constat » (15–16 px),

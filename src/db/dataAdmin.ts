@@ -51,6 +51,8 @@ const ERASE_TABLES = [
   'coach_message',
   'alert',
   'sync_state',
+  // Lot 5b : mesure des synchros (comptages et durées, pas dans l'export).
+  'sync_run',
 ];
 
 /** Texte nu (sans astérisques de relief) pour chaque colonne de texte d'une ligne. */

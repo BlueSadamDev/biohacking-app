@@ -7,12 +7,17 @@ import { countedSessions, type ExerciseSession } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
 
 import { getDb, writeTransaction } from './database';
+import { currentRecorder } from './syncRuns';
 
 type Value = string | number | null;
 
-/** Insère (ou remplace, à identifiant égal) des lignes en une seule transaction. */
+/**
+ * Insère (ou remplace, à identifiant égal) des lignes en une seule transaction.
+ * Pendant une synchro, les lignes écrites sont comptées dans son relevé (lot 5b).
+ */
 export async function upsertRows(table: string, columns: string[], rows: Value[][]): Promise<void> {
   if (rows.length === 0) return;
+  currentRecorder()?.addWritten(rows.length);
   const sql = `INSERT OR REPLACE INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
   await writeTransaction(async (tx) => {
     const statement = await tx.prepareAsync(sql);
@@ -170,7 +175,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * 160 jours par défaut : 90 jours de graphique + 60 jours de norme + marge.
  */
 export async function loadNights(days = 160): Promise<NightValue[]> {
-  return computeNights(await loadNightInputs(Date.now() - days * DAY_MS));
+  const t0 = Date.now();
+  const inputs = await loadNightInputs(t0 - days * DAY_MS);
+  const t1 = Date.now();
+  const nights = computeNights(inputs);
+  // Mesure de la synchro (lot 5b) : chaque calcul des nuits pendant une synchro est compté.
+  currentRecorder()?.addNights(t1 - t0, Date.now() - t1);
+  return nights;
 }
 
 export type SourcesStatus = {

@@ -217,6 +217,22 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE behavior ADD COLUMN phrase TEXT;
   `,
+  // 9 – Lot 5b (étape 1) : mesure des synchros. Comptages et durées seulement, jamais de valeurs ;
+  // seules les dernières synchros sont gardées (SETTINGS.sync.runsKept).
+  `
+  CREATE TABLE sync_run (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_ms INTEGER NOT NULL,
+    origin TEXT NOT NULL,
+    total_ms INTEGER NOT NULL,
+    home_ready_ms INTEGER,
+    access_calls INTEGER NOT NULL,
+    nights_runs INTEGER NOT NULL,
+    nights_read_ms INTEGER NOT NULL,
+    nights_compute_ms INTEGER NOT NULL,
+    types_json TEXT NOT NULL
+  );
+  `,
 ];
 
 /** Évolutions du schéma, exportées pour les tests de migration (base SQLite en mémoire). */

@@ -731,6 +731,8 @@ export const SETTINGS = {
     heartRateBackfillMax: 40,
     /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
     launchScreenMaxSeconds: 10,
+    /** Mesure de la synchro (lot 5b) : nombre de synchros gardées en base (comptages et durées seulement). */
+    runsKept: 10,
   },
 
   /**

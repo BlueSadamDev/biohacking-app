@@ -6,7 +6,7 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText as Text } from '@/components/AppText';
 import { BackHeader, Screen } from '@/components/Screen';
@@ -16,12 +16,15 @@ import { formatDuration } from '@/components/format';
 import { useHealthData } from '@/components/useHealthData';
 import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
 import { loadSessionChecks } from '@/db/loadData';
+import { beginSyncRun, endSyncRun, loadSyncRuns } from '@/db/syncRuns';
 import { exerciseTypeLabel } from '@/domain/exerciseTypes';
 import type { SessionCheck } from '@/domain/load';
 import { LOAD_CHECK } from '@/domain/texts/sport';
 import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
 import { computeNights } from '@/domain/nightly';
-import { SOURCES } from '@/domain/texts/reglages';
+import { SETTINGS } from '@/domain/settings';
+import { runTotals, type SyncRun } from '@/domain/syncRuns';
+import { SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
 import {
   askReadPermissions,
   getGrantedReadTypes,
@@ -49,13 +52,20 @@ type SyncState =
 
 /** Synchronise puis calcule les nuits des 90 derniers jours (comptages uniquement). */
 async function runSync(): Promise<SyncState> {
+  const { recorder, owner } = beginSyncRun('button');
   try {
     const reports = await syncHealthConnect();
     const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const nights = summarizeNights(computeNights(await loadNightInputs(since)));
+    const t0 = Date.now();
+    const inputs = await loadNightInputs(since);
+    const t1 = Date.now();
+    const nights = summarizeNights(computeNights(inputs));
+    recorder.addNights(t1 - t0, Date.now() - t1);
     return { kind: 'done', at: new Date(), reports, rows: await countRows(), nights };
   } catch (e) {
     return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
+  } finally {
+    if (owner) await endSyncRun(recorder);
   }
 }
 
@@ -122,6 +132,16 @@ export default function InventoryScreen() {
     fetchScreenState().then(setState);
   }, []);
 
+  // Dernières synchros mesurées (lot 5b) : relues après chaque synchro (bouton ou accueil).
+  const { nights, syncing } = useHealthData();
+  const [runs, setRuns] = useState<SyncRun[] | null>(null);
+  useEffect(() => {
+    if (syncing) return;
+    loadSyncRuns()
+      .then(setRuns)
+      .catch(() => setRuns(null));
+  }, [sync, syncing]);
+
   // Séances par type (base locale, 90 jours) : relu après chaque synchro.
   const [types, setTypes] = useState<SessionTypeCount[] | null>(null);
   useEffect(() => {
@@ -131,7 +151,6 @@ export default function InventoryScreen() {
   }, [sync]);
 
   // Séances des 28 derniers jours et ce que le calcul de charge en fait (relu après chaque synchro).
-  const { nights } = useHealthData();
   const [checks, setChecks] = useState<SessionCheck[] | null | undefined>(undefined);
   useEffect(() => {
     loadSessionChecks(nights, new Date())
@@ -172,6 +191,7 @@ export default function InventoryScreen() {
       {state.kind === 'ready' && (
         <View style={styles.block}>
           <SyncSection state={sync} onSync={startSync} />
+          <SyncRunsSection runs={runs} />
           <SessionTypesSection types={types} />
           <LoadCheckSection checks={checks} />
           <Text style={styles.section}>Inventaire</Text>
@@ -274,6 +294,57 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
           {count('short') > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(count('short'))}</Text>}
         </>
       )}
+    </View>
+  );
+}
+
+const TYPE_LABELS: Record<string, string> = Object.fromEntries(SYNC_TYPES.map(({ type, label }) => [type, label]));
+
+/** Dernières synchros : durées et comptages (jamais de valeurs), détail par type à l'appui. */
+function SyncRunsSection({ runs }: { runs: SyncRun[] | null }) {
+  const [open, setOpen] = useState<number | null>(null);
+  if (runs === null) return null;
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{SYNC_RUNS.title}</Text>
+      <Text style={styles.muted}>{SYNC_RUNS.help(SETTINGS.sync.runsKept)}</Text>
+      {runs.length === 0 && <Text style={styles.block}>{SYNC_RUNS.none}</Text>}
+      {runs.map((run) => {
+        const totals = runTotals(run);
+        const expanded = open === run.startedMs;
+        return (
+          <Pressable
+            key={run.startedMs}
+            onPress={() => setOpen(expanded ? null : run.startedMs)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            style={styles.origin}
+          >
+            <Text style={styles.originName}>
+              {formatDate(new Date(run.startedMs))} · {SYNC_RUNS.line(SYNC_RUNS.origin[run.origin], run.totalMs, run.homeReadyMs)}
+            </Text>
+            <Text style={styles.muted}>{SYNC_RUNS.totals(totals.calls, totals.read, totals.written, totals.inserted)}</Text>
+            {expanded && (
+              <View style={styles.block}>
+                <Text style={styles.muted}>{SYNC_RUNS.access(run.accessCalls)}</Text>
+                {run.types.map((t) => {
+                  const label = TYPE_LABELS[t.type] ?? t.type;
+                  return (
+                    <Text key={t.type} style={styles.muted}>
+                      {t.state === 'ok'
+                        ? SYNC_RUNS.type(label, t.durationMs, t.calls, t.read, t.written, t.inserted)
+                        : t.state === 'denied'
+                          ? SYNC_RUNS.denied(label)
+                          : SYNC_RUNS.error(label)}
+                    </Text>
+                  );
+                })}
+                <Text style={styles.muted}>{SYNC_RUNS.nights(run.nightsRuns, run.nightsReadMs, run.nightsComputeMs)}</Text>
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

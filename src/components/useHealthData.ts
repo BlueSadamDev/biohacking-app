@@ -14,8 +14,10 @@ import { loadNights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
 import { loadYesterdayNutrition } from '@/db/nutritionData';
 import { loadPeriods } from '@/db/periods';
+import { beginSyncRun, endSyncRun } from '@/db/syncRuns';
 import type { Period } from '@/domain/periods';
 import { SETTINGS } from '@/domain/settings';
+import type { SyncOrigin } from '@/domain/syncRuns';
 import type { NutritionDayView } from '@/domain/nutrition';
 import { dayKey } from '@/domain/dates';
 import { buildLoadSummary, type LoadSummary } from '@/domain/load';
@@ -97,10 +99,14 @@ export async function reloadFromDb(): Promise<void> {
   }
 }
 
-/** Vérifie l'accès à Health Connect, synchronise si possible, puis recalcule. */
-export async function syncNow(): Promise<void> {
+/**
+ * Vérifie l'accès à Health Connect, synchronise si possible, puis recalcule.
+ * `origin` : ouverture de l'app (ou retour depuis Zepp) ou bouton, pour la mesure de la synchro (lot 5b).
+ */
+export async function syncNow(origin: SyncOrigin = 'button'): Promise<void> {
   if (state.syncing) return;
   setState({ syncing: true, error: null });
+  const { recorder, owner } = beginSyncRun(origin);
   try {
     const access = await checkAccess();
     setState({ access });
@@ -114,14 +120,21 @@ export async function syncNow(): Promise<void> {
     await runPeriodReminder().catch(() => undefined);
     await reloadFromDb();
     setState({ syncing: false, launched: true });
+    recorder.markHomeReady();
     // Le texte de la notification du matin suit les dernières données.
     await scheduleMorningNotifications().catch(() => undefined);
+    if (owner) await endSyncRun(recorder);
   }
 }
 
 let started = false;
 
-export function useHealthData(): HealthData & { sync: () => Promise<void>; reload: () => Promise<void> } {
+export function useHealthData(): HealthData & {
+  sync: () => Promise<void>;
+  /** Synchro au retour depuis Zepp (comptée comme une ouverture dans la mesure de la synchro). */
+  syncOnReturn: () => Promise<void>;
+  reload: () => Promise<void>;
+} {
   const snapshot = useSyncExternalStore(
     (l) => {
       listeners.add(l);
@@ -134,10 +147,11 @@ export function useHealthData(): HealthData & { sync: () => Promise<void>; reloa
     // Au premier affichage : on montre tout de suite la base, puis on synchronise.
     if (started) return;
     started = true;
-    reloadFromDb().then(syncNow);
+    reloadFromDb().then(() => syncNow('launch'));
   }, []);
 
-  const sync = useCallback(() => syncNow(), []);
+  const sync = useCallback(() => syncNow('button'), []);
+  const syncOnReturn = useCallback(() => syncNow('launch'), []);
   const reload = useCallback(() => reloadFromDb(), []);
-  return { ...snapshot, sync, reload };
+  return { ...snapshot, sync, syncOnReturn, reload };
 }

@@ -20,6 +20,7 @@ import {
 } from 'react-native-health-connect';
 
 import { countExerciseHeartRate, getLastSync, loadExercises, loadSleeps, setLastSync, upsertRows } from '@/db/healthData';
+import { countTableRows, currentRecorder } from '@/db/syncRuns';
 import { heartRateBackfillTargets } from '@/domain/load';
 import { SETTINGS } from '@/domain/settings';
 
@@ -111,8 +112,10 @@ export async function hasBackgroundAccess(): Promise<boolean> {
 
 /** Vérifie si Health Connect est présent et à jour sur le téléphone. */
 export async function getStatus(): Promise<HealthConnectStatus> {
+  currentRecorder()?.countAccessCall();
   const status = await getSdkStatus();
   if (status === SdkAvailabilityStatus.SDK_AVAILABLE) {
+    currentRecorder()?.countAccessCall();
     const ok = await initialize();
     return ok ? 'available' : 'unavailable';
   }
@@ -124,6 +127,7 @@ export async function getStatus(): Promise<HealthConnectStatus> {
 
 /** Types pour lesquels l'utilisateur a donné la permission de lecture. */
 export async function getGrantedReadTypes(): Promise<Set<string>> {
+  currentRecorder()?.countAccessCall();
   const granted = await getGrantedPermissions();
   return new Set(
     granted.filter((p) => p.accessType === 'read').map((p) => p.recordType as string),
@@ -227,11 +231,15 @@ export type SyncTypeReport = {
   errorMessage?: string;
 };
 
-/** Lit tous les enregistrements d'un type entre deux instants (toutes les pages). */
+/**
+ * Lit tous les enregistrements d'un type entre deux instants (toutes les pages).
+ * Pendant une synchro, chaque page compte pour un appel dans le relevé (lot 5b).
+ */
 async function readAll<T extends SyncType>(type: T, since: number, until: number) {
   const records = [];
   let pageToken: string | undefined;
   do {
+    currentRecorder()?.countCall();
     const result = await readRecords(type, {
       timeRangeFilter: {
         operator: 'between',
@@ -242,10 +250,26 @@ async function readAll<T extends SyncType>(type: T, since: number, until: number
       pageToken,
     });
     records.push(...result.records);
+    currentRecorder()?.addRead(result.records.length);
     pageToken = result.pageToken || undefined;
   } while (pageToken);
   return records;
 }
+
+/** Table de la base où chaque type est enregistré (comptage des lignes nouvelles). */
+const TABLE_OF: Record<SyncType, string> = {
+  SleepSession: 'hc_sleep',
+  ExerciseSession: 'hc_exercise',
+  HeartRateVariabilityRmssd: 'hc_hrv',
+  RestingHeartRate: 'hc_resting_hr',
+  HeartRate: 'hc_heart_rate',
+  Steps: 'hc_steps',
+  Weight: 'weight',
+  Nutrition: 'hc_nutrition',
+};
+
+/** Lignes d'une table, ou null si le comptage échoue (le relevé dira alors 0 ligne nouvelle). */
+const rowsOf = (type: SyncType) => countTableRows(TABLE_OF[type]).catch(() => null);
 
 const ms = (iso: string) => new Date(iso).getTime();
 
@@ -429,19 +453,27 @@ export function syncHealthConnect(now: number = Date.now()): Promise<SyncTypeRep
 async function runSync(now: number): Promise<SyncTypeReport[]> {
   const granted = await getGrantedReadTypes();
   const reports: SyncTypeReport[] = [];
+  const recorder = currentRecorder();
   for (const { type, label } of SYNC_TYPES) {
     if (!granted.has(type)) {
+      recorder?.beginType(type);
+      recorder?.endType('denied', 0);
       reports.push({ type, label, state: 'denied', count: 0 });
       continue;
     }
     const last = await getLastSync(type);
     const since =
       last === null ? now - SETTINGS.sync.firstSyncDays * DAY_MS : last - SETTINGS.sync.overlapDays * DAY_MS;
+    const before = recorder ? await rowsOf(type) : null;
+    recorder?.beginType(type);
     try {
       const count = await syncType(type, since, now);
+      const after = recorder ? await rowsOf(type) : null;
+      recorder?.endType('ok', before !== null && after !== null ? after - before : 0);
       await setLastSync(type, now);
       reports.push({ type, label, state: 'ok', count });
     } catch (e) {
+      recorder?.endType('error', 0);
       reports.push({
         type,
         label,

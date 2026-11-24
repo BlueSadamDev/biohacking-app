@@ -8,6 +8,7 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 
+import { beginSyncRun, endSyncRun } from '@/db/syncRuns';
 import { SETTINGS } from '@/domain/settings';
 import { getStatus, syncHealthConnect } from '@/sources/healthConnect';
 
@@ -23,6 +24,8 @@ import {
 export const SYNC_TASK = 'biohacking-sync';
 
 TaskManager.defineTask(SYNC_TASK, async () => {
+  // Mesure de la synchro (lot 5b) : relevé enregistré à la fin de la tâche, réussie ou non.
+  const { recorder, owner } = beginSyncRun('background');
   try {
     if ((await getStatus()) === 'available') await syncHealthConnect();
     await runAlertEngine().catch(() => undefined);
@@ -33,6 +36,8 @@ TaskManager.defineTask(SYNC_TASK, async () => {
   } catch {
     // Pas de détail dans les logs : il pourrait contenir des données de santé.
     return BackgroundTask.BackgroundTaskResult.Failed;
+  } finally {
+    if (owner) await endSyncRun(recorder);
   }
 });
 

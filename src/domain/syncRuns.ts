@@ -69,6 +69,7 @@ export function latestRuns(runs: readonly SyncRun[], kept: number): SyncRun[] {
 /** Relevé en cours : chaque étape de la synchro y ajoute ses comptages. */
 export type SyncRecorder = {
   readonly origin: SyncOrigin;
+  readonly startedMs: number;
   /** Début de la lecture d'un type : les appels et lectures suivants lui sont comptés. */
   beginType(type: string): void;
   /** Un appel à Health Connect : compté au type en cours, sinon aux appels d'accès. */
@@ -106,6 +107,7 @@ export function createSyncRecorder(origin: SyncOrigin, clock: () => number = Dat
 
   return {
     origin,
+    startedMs,
     get finished() {
       return done !== null;
     },

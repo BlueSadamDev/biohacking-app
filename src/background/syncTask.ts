@@ -8,7 +8,7 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 
-import { beginSyncRun, endSyncRun } from '@/db/syncRuns';
+import { beginSyncRun, endSyncRun, settleWithin } from '@/db/syncRuns';
 import { SETTINGS } from '@/domain/settings';
 import { getStatus, syncHealthConnect } from '@/sources/healthConnect';
 
@@ -31,7 +31,8 @@ TaskManager.defineTask(SYNC_TASK, async () => {
     await runAlertEngine().catch(() => undefined);
     await runStrengthReminder().catch(() => undefined);
     await runPeriodReminder().catch(() => undefined);
-    await scheduleMorningNotifications();
+    // Le relevé n'attend la notification du matin que quelques secondes (voir useHealthData).
+    await settleWithin(scheduleMorningNotifications(), SETTINGS.sync.runFinishWaitSeconds);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {
     // Pas de détail dans les logs : il pourrait contenir des données de santé.

@@ -10,6 +10,37 @@ import { createSyncRecorder, latestRuns, type SyncOrigin, type SyncRecorder, typ
 import { getDb, writeTransaction } from './database';
 
 let active: SyncRecorder | null = null;
+/** Dernier échec d'enregistrement d'un relevé (message technique, écran Contrôle des données seulement). */
+let lastSaveError: string | null = null;
+
+export function syncRunSaveError(): string | null {
+  return lastSaveError;
+}
+
+/** Début du relevé en cours (ms), ou null s'il n'y en a pas. */
+export function activeRunStartedMs(): number | null {
+  return active && !active.finished ? active.startedMs : null;
+}
+
+/**
+ * Attend `task` au plus `seconds` secondes. Sert à ne jamais bloquer la fin d'un relevé sur une étape
+ * qui ne répond plus (la tâche continue de son côté).
+ */
+export function settleWithin(task: Promise<unknown>, seconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, Math.max(0, seconds) * 1000);
+    task.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
+}
 
 /** Relevé de la synchro en cours, ou null. */
 export function currentRecorder(): SyncRecorder | null {
@@ -18,7 +49,12 @@ export function currentRecorder(): SyncRecorder | null {
 
 /** Commence un relevé, ou rejoint celui en cours (`owner` = false : ne pas l'enregistrer). */
 export function beginSyncRun(origin: SyncOrigin): { recorder: SyncRecorder; owner: boolean } {
-  if (active && !active.finished) return { recorder: active, owner: false };
+  if (active && !active.finished) {
+    const stale = Date.now() - active.startedMs > SETTINGS.sync.staleRunMinutes * 60_000;
+    if (!stale) return { recorder: active, owner: false };
+    // Relevé abandonné (une étape n'a jamais répondu) : enregistré tel quel, sans bloquer celui-ci.
+    void endSyncRun(active);
+  }
   active = createSyncRecorder(origin);
   return { recorder: active, owner: true };
 }
@@ -29,8 +65,10 @@ export async function endSyncRun(recorder: SyncRecorder): Promise<void> {
   if (active === recorder) active = null;
   try {
     await saveSyncRun(run);
-  } catch {
-    // Relevé perdu : sans conséquence sur les données.
+    lastSaveError = null;
+  } catch (e) {
+    // Relevé perdu : sans conséquence sur les données. La cause s'affiche dans Contrôle des données.
+    lastSaveError = e instanceof Error ? e.message : String(e);
   }
 }
 

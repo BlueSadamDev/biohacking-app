@@ -16,7 +16,7 @@ import { formatDuration } from '@/components/format';
 import { useHealthData } from '@/components/useHealthData';
 import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
 import { loadSessionChecks } from '@/db/loadData';
-import { beginSyncRun, endSyncRun, loadSyncRuns } from '@/db/syncRuns';
+import { activeRunStartedMs, beginSyncRun, endSyncRun, loadSyncRuns, syncRunSaveError } from '@/db/syncRuns';
 import { exerciseTypeLabel } from '@/domain/exerciseTypes';
 import type { SessionCheck } from '@/domain/load';
 import { LOAD_CHECK } from '@/domain/texts/sport';
@@ -308,6 +308,12 @@ function SyncRunsSection({ runs }: { runs: SyncRun[] | null }) {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{SYNC_RUNS.title}</Text>
       <Text style={styles.muted}>{SYNC_RUNS.help(SETTINGS.sync.runsKept)}</Text>
+      {activeRunStartedMs() !== null && (
+        <Text style={styles.block}>{SYNC_RUNS.running(formatDate(new Date(activeRunStartedMs()!)))}</Text>
+      )}
+      {syncRunSaveError() !== null && (
+        <Text style={styles.warning}>{SYNC_RUNS.saveError(syncRunSaveError()!)}</Text>
+      )}
       {runs.length === 0 && <Text style={styles.block}>{SYNC_RUNS.none}</Text>}
       {runs.map((run) => {
         const totals = runTotals(run);

@@ -14,7 +14,7 @@ import { loadNights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
 import { loadYesterdayNutrition } from '@/db/nutritionData';
 import { loadPeriods } from '@/db/periods';
-import { beginSyncRun, endSyncRun } from '@/db/syncRuns';
+import { beginSyncRun, endSyncRun, settleWithin } from '@/db/syncRuns';
 import type { Period } from '@/domain/periods';
 import { SETTINGS } from '@/domain/settings';
 import type { SyncOrigin } from '@/domain/syncRuns';
@@ -121,8 +121,9 @@ export async function syncNow(origin: SyncOrigin = 'button'): Promise<void> {
     await reloadFromDb();
     setState({ syncing: false, launched: true });
     recorder.markHomeReady();
-    // Le texte de la notification du matin suit les dernières données.
-    await scheduleMorningNotifications().catch(() => undefined);
+    // Le texte de la notification du matin suit les dernières données. Le relevé l'attend au plus
+    // quelques secondes : il est toujours enregistré, même si cette étape ne répond pas.
+    await settleWithin(scheduleMorningNotifications(), SETTINGS.sync.runFinishWaitSeconds);
     if (owner) await endSyncRun(recorder);
   }
 }

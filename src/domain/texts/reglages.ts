@@ -34,6 +34,9 @@ export const SYNC_RUNS = {
   help: (kept: number) =>
     `Durées et comptages des ${countOf(kept, 'dernière synchro', 'dernières synchros')}, pour comparer avant et après les optimisations. Touche une synchro pour le détail par type.`,
   none: 'Aucune synchro mesurée pour l’instant.',
+  running: (since: string) => `Synchro en cours de mesure depuis le ${since}.`,
+  /** Écran de diagnostic seulement : détail technique de l'échec d'enregistrement d'un relevé. */
+  saveError: (detail: string) => `Dernier relevé non enregistré : ${detail}`,
   origin: { launch: 'ouverture', background: 'tâche de fond', button: 'bouton' } as const,
   seconds,
   line: (origin: string, totalMs: number, homeReadyMs: number | null) =>

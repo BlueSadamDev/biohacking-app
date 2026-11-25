@@ -733,6 +733,13 @@ export const SETTINGS = {
     launchScreenMaxSeconds: 10,
     /** Mesure de la synchro (lot 5b) : nombre de synchros gardées en base (comptages et durées seulement). */
     runsKept: 10,
+    /**
+     * Fin du relevé : la notification du matin, programmée après l'accueil, est attendue au plus
+     * N secondes ; au-delà, le relevé est enregistré sans attendre (elle continue de son côté).
+     */
+    runFinishWaitSeconds: 20,
+    /** Un relevé encore ouvert après N minutes est considéré comme abandonné : il est enregistré tel quel. */
+    staleRunMinutes: 10,
   },
 
   /**

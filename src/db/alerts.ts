@@ -1,11 +1,10 @@
 // Historique des alertes (table `alert`), stocké uniquement sur le téléphone.
 
-import type { AlertLevel, AlertRule, AlertTheme, PastAlert, SelectedAlert } from '@/domain/alerts';
+import type { AlertFeedback, AlertLevel, AlertRule, AlertTheme, PastAlert, SelectedAlert } from '@/domain/alerts';
 
-import { getDb, writeSql } from './database';
-import { upsertRows } from './healthData';
+import { getDb, writeSql, writeTransaction } from './database';
 
-export type StoredAlert = SelectedAlert & { createdMs: number; read: boolean };
+export type StoredAlert = SelectedAlert & { createdMs: number; read: boolean; feedback: AlertFeedback | null };
 
 type Row = {
   id: string;
@@ -21,6 +20,7 @@ type Row = {
   persistent: number;
   created_ms: number;
   read: number;
+  feedback: AlertFeedback | null;
 };
 
 const fromRow = (r: Row): StoredAlert => ({
@@ -37,28 +37,44 @@ const fromRow = (r: Row): StoredAlert => ({
   persistent: r.persistent === 1,
   createdMs: r.created_ms,
   read: r.read === 1,
+  feedback: r.feedback ?? null,
 });
 
+/**
+ * Enregistre les alertes du jour. Une alerte déjà enregistrée (même identifiant) est mise à jour sans
+ * perdre l'avis donné dessus (lot 5b).
+ */
 export async function saveAlerts(alerts: SelectedAlert[], nowMs: number): Promise<void> {
-  await upsertRows(
-    'alert',
-    ['id', 'rule', 'date', 'level', 'theme', 'title', 'finding', 'cause', 'action', 'delivery', 'persistent', 'created_ms', 'read'],
-    alerts.map((a) => [
-      a.id,
-      a.rule,
-      a.date,
-      a.level,
-      a.theme,
-      a.title,
-      a.finding,
-      a.cause,
-      a.action,
-      a.delivery,
-      a.persistent ? 1 : 0,
-      nowMs,
-      0,
-    ]),
-  );
+  if (alerts.length === 0) return;
+  await writeTransaction(async (tx) => {
+    for (const a of alerts) {
+      await tx.runAsync(
+        `INSERT INTO alert (id, rule, date, level, theme, title, finding, cause, action, delivery, persistent, created_ms, read)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+         ON CONFLICT(id) DO UPDATE SET rule = excluded.rule, date = excluded.date, level = excluded.level,
+           theme = excluded.theme, title = excluded.title, finding = excluded.finding, cause = excluded.cause,
+           action = excluded.action, delivery = excluded.delivery, persistent = excluded.persistent,
+           created_ms = excluded.created_ms, read = 0`,
+        a.id,
+        a.rule,
+        a.date,
+        a.level,
+        a.theme,
+        a.title,
+        a.finding,
+        a.cause,
+        a.action,
+        a.delivery,
+        a.persistent ? 1 : 0,
+        nowMs,
+      );
+    }
+  });
+}
+
+/** Avis sur une alerte (lot 5b), modifiable ; null efface l'avis. */
+export async function setAlertFeedback(id: string, feedback: AlertFeedback | null, nowMs = Date.now()): Promise<void> {
+  await writeSql('UPDATE alert SET feedback = ?, feedback_ms = ? WHERE id = ?', feedback, feedback ? nowMs : null, id);
 }
 
 /** Alertes enregistrées depuis `sinceDate` (pour la limite par jour et l'anti-répétition). */

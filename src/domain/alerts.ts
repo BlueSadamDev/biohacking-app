@@ -25,6 +25,9 @@ import { loadPercent } from './texts/today';
 
 export type AlertLevel = 'watch' | 'important';
 export type AlertTheme = 'recovery' | 'load' | 'nutrition';
+/** Avis sur une alerte (lot 5b) : aucun ajustement automatique de seuil avant le lot 5c. */
+export type AlertFeedback = 'useful' | 'not-useful' | 'false-alarm';
+export const ALERT_FEEDBACKS: readonly AlertFeedback[] = ['useful', 'not-useful', 'false-alarm'];
 export type AlertRule =
   | 'overload'
   | 'illness-or-stress'

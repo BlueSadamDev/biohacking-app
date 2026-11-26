@@ -86,3 +86,27 @@ maybe('migration 9 (lot 5b, mesure des synchros)', () => {
     expect(rows.map((r) => r.started_ms)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => n * 1000));
   });
 });
+
+maybe('migration 11 (lot 5b, avis sur les alertes)', () => {
+  it('ajoute l’avis sans toucher aux alertes existantes ; une alerte réenregistrée garde son avis', () => {
+    const db = new DatabaseSync!(':memory:');
+    for (const sql of SCHEMA_MIGRATIONS.slice(0, 10)) db.exec(sql);
+    const insert = `INSERT INTO alert (id, rule, date, level, theme, title, finding, cause, action, delivery, persistent, created_ms, read)
+      VALUES (?, 'hrv-low', '2026-11-20', ?, 'recovery', 'Titre fictif', 'Constat', 'Cause', 'Action', 'recap', 0, ?, 0)`;
+    db.prepare(insert).run('a1', 'watch', 1);
+
+    db.exec(SCHEMA_MIGRATIONS[10]);
+    expect(db.prepare('SELECT id, feedback, feedback_ms FROM alert').all()).toEqual([{ id: 'a1', feedback: null, feedback_ms: null }]);
+
+    db.prepare('UPDATE alert SET feedback = ?, feedback_ms = ? WHERE id = ?').run('false-alarm', 5, 'a1');
+    // Même requête que saveAlerts (src/db/alerts.ts) : mise à jour sans perdre l'avis.
+    db.prepare(
+      `INSERT INTO alert (id, rule, date, level, theme, title, finding, cause, action, delivery, persistent, created_ms, read)
+       VALUES (?, 'hrv-low', '2026-11-20', ?, 'recovery', 'Titre fictif', 'Constat', 'Cause', 'Action', 'recap', 0, ?, 0)
+       ON CONFLICT(id) DO UPDATE SET level = excluded.level, created_ms = excluded.created_ms, read = 0`,
+    ).run('a1', 'important', 9);
+    expect(db.prepare('SELECT level, feedback, feedback_ms FROM alert').all()).toEqual([
+      { level: 'important', feedback: 'false-alarm', feedback_ms: 5 },
+    ]);
+  });
+});

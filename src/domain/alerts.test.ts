@@ -45,10 +45,10 @@ function loads(parts: { from: number; to: number; value: number }[]): Map<string
   return map;
 }
 const STEADY = loads([{ from: -59, to: 0, value: 100 }]);
-// 7 derniers jours à 200 : ratio = 200 / ((7 × 200 + 21 × 100) / 28) = 1,6.
+// 7 derniers jours à 300 (lot 5b, moyennes exponentielles) : aiguë ≈ 273, chronique ≈ 179, ratio ≈ 1,53.
 const SPIKE = loads([
   { from: -59, to: -7, value: 100 },
-  { from: -6, to: 0, value: 200 },
+  { from: -6, to: 0, value: 300 },
 ]);
 
 const base = (over: Partial<AlertInputs> = {}): AlertInputs => ({

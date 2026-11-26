@@ -132,10 +132,15 @@ export function restingHrHighSignal(nights: NightValue[], date: string, settings
   return todayDelta;
 }
 
+/** Premier jour de l'historique de charge (départ des moyennes exponentielles). */
+function loadHistoryStart(input: AlertInputs): string | null {
+  return input.loadHistoryDays > 0 ? addDays(input.today, -(input.loadHistoryDays - 1)) : null;
+}
+
 /** Ratio de charge du jour (null si la charge n'est pas calculable ou l'historique trop court). */
 function ratioOn(input: AlertInputs, date: string, settings: Settings): number | null {
   if (!input.dailyLoad || input.loadHistoryDays < settings.load.calibrationDays) return null;
-  return loadRatio(input.dailyLoad, date, settings).ratio;
+  return loadRatio(input.dailyLoad, date, settings, loadHistoryStart(input)).ratio;
 }
 
 /** Minutes depuis 18 h la veille : rend comparables les couchers avant et après minuit. */
@@ -204,7 +209,7 @@ export function evaluateAlerts(raw: AlertInputs, settings: Settings = SETTINGS):
     for (let i = 0; i < a.underloadDays && under; i++) {
       const day = addDays(today, -i);
       // Un jour étiqueté (vacances, maladie…) interrompt la série : pas de « sous-charge » au retour.
-      const r = isTaggedDay(day, periods) ? null : loadRatio(input.dailyLoad, day, settings).ratio;
+      const r = isTaggedDay(day, periods) ? null : loadRatio(input.dailyLoad, day, settings, loadHistoryStart(input)).ratio;
       under = r !== null && r < settings.load.underMax;
     }
     if (under) {

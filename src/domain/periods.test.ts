@@ -126,7 +126,7 @@ describe('normes et calibration sans les jours étiquetés', () => {
 describe('alertes en pause', () => {
   const TODAY = '2026-03-31';
   const loads = new Map<string, number>();
-  for (let i = 0; i < 60; i++) loads.set(addDays(TODAY, -i), i < 7 ? 200 : 100); // pic de charge
+  for (let i = 0; i < 60; i++) loads.set(addDays(TODAY, -i), i < 7 ? 300 : 100); // pic de charge (ratio en moyennes exponentielles ≈ 1,53)
   const base = (periods: Period[]): AlertInputs => ({
     nights: series(TODAY, 60, (i) => ({ hrvMs: i % 2 ? 45 : 55, restingHr: i % 2 ? 54 : 56 })),
     dailyLoad: loads,

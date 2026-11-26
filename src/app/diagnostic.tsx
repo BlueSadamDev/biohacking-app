@@ -261,13 +261,15 @@ const TABLE_LABELS: Record<string, string> = {
 };
 
 /**
- * Charge : séances des 28 derniers jours, comptées (avec leurs points) ou non, et pourquoi.
- * Les séances de moins de 20 min sont seulement comptées dans le résumé (elles sont nombreuses).
+ * Charge : activités des 28 derniers jours, avec leurs points (mesurés ou estimés), ou pourquoi elles
+ * n'en ont pas. Seules les séances sont listées ; les activités courtes, nombreuses, sont résumées.
  */
 function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefined }) {
   if (checks === undefined) return null;
-  const listed = checks?.filter((c) => c.reason !== 'short') ?? [];
-  const count = (r: SessionCheck['reason']) => checks?.filter((c) => c.reason === r).length ?? 0;
+  const listed = checks?.filter((c) => c.isSession) ?? [];
+  const short = (checks?.length ?? 0) - listed.length;
+  const count = (r: SessionCheck['reason'], estimated = false) =>
+    checks?.filter((c) => c.reason === r && c.estimated === estimated).length ?? 0;
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{LOAD_CHECK.title}</Text>
@@ -277,7 +279,7 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
       {checks !== null && checks.length > 0 && (
         <>
           <Text style={styles.block}>
-            {LOAD_CHECK.summary(count(null), count('short'), count('no-heart-rate'), count('no-resting-hr'))}
+            {LOAD_CHECK.summary(count(null), count(null, true), count('no-heart-rate'), count('no-resting-hr'))}
           </Text>
           {listed.map((c) => (
             <View key={c.id} style={styles.origin}>
@@ -287,11 +289,15 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
               </Text>
               <Text style={styles.muted}>
                 {LOAD_CHECK.coverage(Math.round(c.coverage * 100), c.samples)} ·{' '}
-                {c.reason === null ? LOAD_CHECK.points(Math.round(c.trimp ?? 0)) : LOAD_CHECK.rejected[c.reason as 'no-heart-rate' | 'no-resting-hr']}
+                {c.reason === null
+                  ? c.estimated
+                    ? LOAD_CHECK.estimatedPoints(Math.round(c.trimp ?? 0))
+                    : LOAD_CHECK.points(Math.round(c.trimp ?? 0))
+                  : LOAD_CHECK.rejected[c.reason]}
               </Text>
             </View>
           ))}
-          {count('short') > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(count('short'))}</Text>}
+          {short > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(short)}</Text>}
         </>
       )}
     </View>

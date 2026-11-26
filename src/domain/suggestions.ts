@@ -6,7 +6,7 @@
 // L'activité proposée pour un manque change chaque semaine (rotation dans le catalogue).
 
 import { dayKey, daysBetween, startOfWeek } from './dates';
-import type { ExerciseSession } from './load';
+import { sessionsOnly, type ExerciseSession } from './load';
 import type { Sample } from './nightly';
 import { isTaggedDay, untaggedDaysBack, type Period } from './periods';
 import { SETTINGS, type Settings } from './settings';
@@ -17,7 +17,10 @@ export type Suggestion = { gap: Gap; activity: Activity; reason: string };
 export type WeeklySuggestions = { primary: Suggestion; secondary: Suggestion | null } | null;
 
 export type SuggestionInputs = {
-  /** Séances des 3 dernières semaines au moins. */
+  /**
+   * Activités des 3 dernières semaines au moins (lot 5b) : toutes comptent pour la zone 2 ; seules les
+   * séances (au moins 45 min ou musculation) comptent pour les manques par type de sport.
+   */
   sessions: ExerciseSession[];
   samples: Sample[];
   /** null : zones non calculables, pas de règle d'endurance. */
@@ -66,7 +69,7 @@ export function findGaps(input: SuggestionInputs, settings: Settings = SETTINGS)
   }
 
   const days = windowDays(input.today, s.mobilityWindowDays, input.periods, settings);
-  const mobility = input.sessions.some((x) => s.mobilityTypes.includes(x.exerciseType) && inWindow(x, days));
+  const mobility = sessionsOnly(input.sessions, settings).some((x) => s.mobilityTypes.includes(x.exerciseType) && inWindow(x, days));
   if (!mobility) {
     gaps.push({ gap: 'mobility', reason: `Aucune séance de mobilité, yoga ou étirements depuis ${Math.round(s.mobilityWindowDays / 7)} semaines.` });
   }

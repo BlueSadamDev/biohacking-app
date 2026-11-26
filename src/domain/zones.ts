@@ -4,7 +4,7 @@
 // - Semaine (lundi → dimanche) : séances, temps d'activité, minutes par zone, zone 2 / cible.
 
 import { addDays, dayKey, startOfWeek } from './dates';
-import type { ExerciseSession } from './load';
+import { isSession, type ExerciseSession } from './load';
 import type { Sample } from './nightly';
 import { SETTINGS, type Settings } from './settings';
 
@@ -81,6 +81,8 @@ export function weekActivity(
 ): WeekActivity {
   const weekStart = startOfWeek(today);
   const weekEnd = addDays(weekStart, 6);
+  // Lot 5b : toutes les activités comptent dans le temps d'activité et les zones ; le nombre de séances
+  // (et les séances sans FC) ne compte que les séances (au moins 45 min ou musculation).
   const inWeek = sessions.filter((s) => {
     const day = dayKey(s.start);
     return day >= weekStart && day <= weekEnd;
@@ -93,15 +95,16 @@ export function weekActivity(
     zones = emptyZones();
     for (const session of inWeek) {
       const z = sessionZones(session, samples, hrMax, settings);
-      if (z === null) sessionsWithoutHr += 1;
-      else z.forEach((m, i) => (zones![i] += m));
+      if (z === null) {
+        if (isSession(session, settings)) sessionsWithoutHr += 1;
+      } else z.forEach((m, i) => (zones![i] += m));
     }
   }
   const zone2Minutes = zones ? zones[1] : null;
   return {
     weekStart,
     weekEnd,
-    sessions: inWeek.length,
+    sessions: inWeek.filter((s) => isSession(s, settings)).length,
     activeMinutes,
     zones,
     sessionsWithoutHr,

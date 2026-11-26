@@ -3,7 +3,7 @@
 import { findLinks, type CorrelationReport } from '@/domain/correlations';
 import { stepsByDay, weightByDay } from '@/domain/daily';
 import { dayKey } from '@/domain/dates';
-import { dailyLoads, sessionLoads } from '@/domain/load';
+import { dailyLoads, sessionLoads, sessionsOnly } from '@/domain/load';
 import { nutritionByDay } from '@/domain/nutrition';
 import { SETTINGS } from '@/domain/settings';
 
@@ -36,7 +36,8 @@ export async function loadCorrelations(now: Date = new Date()): Promise<Correlat
       : null;
   return findLinks({
     nights,
-    sessions: loadInputs.sessions,
+    // Jours d'entraînement des liens observés : séances seulement (lot 5b) ; la charge prend tout.
+    sessions: sessionsOnly(loadInputs.sessions),
     dailyLoad,
     steps: stepsByDay(steps),
     nutrition: nutritionByDay(meals),

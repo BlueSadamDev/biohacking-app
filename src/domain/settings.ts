@@ -163,12 +163,20 @@ export const SETTINGS = {
   /** Charge d'entraînement (cahier des charges, section 5) : TRIMP de Banister et ratio aigu / chronique. */
   load: {
     /**
-     * Durée minimale d'une séance pour qu'elle compte (minutes) : les courtes activités détectées
-     * automatiquement par le bracelet (marche rapide de 5 min…) sont ignorées dans tous les calculs
-     * (séances de la semaine, charge, zones, liens observés, suggestions). La musculation compte
-     * toujours (types de `strength.sessionTypes`). Les séances restent enregistrées (écran Diagnostic).
+     * Activités et séances (décision du 18 novembre 2026, lot 5b) : toutes les activités comptent dans les
+     * zones et la charge ; une séance est une activité d'au moins N minutes, ou de la musculation (types de
+     * `strength.sessionTypes`) quelle que soit sa durée. Seules les séances comptent dans le nombre de
+     * séances de la semaine, les jours d'entraînement des liens observés et les suggestions.
      */
-    minSessionMinutes: 20,
+    sessionMinMinutes: 45,
+    /** Activité sans FC (lot 5b) : charge estimée d'après au moins N activités mesurées du même type… */
+    estimateMinReferences: 3,
+    /** … des N derniers jours. */
+    estimateWindowDays: 28,
+    /** Ratio en moyennes exponentielles (lot 5b) : jours de mise en route en plus des 28 jours. */
+    ewmaWarmupDays: 56,
+    /** Contrôle des données : ancien et nouveau ratio affichés côte à côte jusqu'à cette date (comprise). */
+    ratioComparisonUntil: '2026-12-15',
     /** TRIMP = minutes × FCr × a × e^(k × FCr), FCr = (FC − FC repos) / (FC max − FC repos). */
     trimpA: 0.64,
     /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
@@ -180,8 +188,8 @@ export const SETTINGS = {
     acuteDays: 7,
     chronicDays: 28,
     /**
-     * Charge non fiable (ni valeur, ni pastille, ni alerte de charge) quand plus de cette part des
-     * séances comptées des 28 derniers jours n'a pas assez de fréquence cardiaque.
+     * Charge non fiable (ni valeur, ni pastille, ni alerte de charge) quand plus de cette part des minutes
+     * d'activité des 28 derniers jours n'a pas assez de fréquence cardiaque (lot 5b ; charge estimée = mesurée).
      */
     maxUnmeasuredShare: 0.25,
     /** Jours d'historique nécessaires avant d'afficher le ratio. */

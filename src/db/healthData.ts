@@ -4,7 +4,7 @@
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
 import { dayKey } from '@/domain/dates';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
-import { countedSessions, type ExerciseSession } from '@/domain/load';
+import { mergeOverlappingSessions, sessionsOnly, type ExerciseSession, type SessionMerge } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
 
 import { getDb, writeTransaction } from './database';
@@ -237,12 +237,26 @@ export async function loadExerciseHeartRate(sinceMs: number): Promise<Sample[]> 
   );
 }
 
-export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]> {
+/** Activités telles qu'enregistrées (sans fusion) : synchro et rattrapage de la FC. */
+export async function loadRawExercises(sinceMs: number): Promise<ExerciseSession[]> {
   const db = await getDb();
   return db.getAllAsync<ExerciseSession>(
     'SELECT id, start_ms AS start, end_ms AS "end", exercise_type AS exerciseType, origin FROM hc_exercise WHERE end_ms >= ? ORDER BY start_ms',
     sinceMs,
   );
+}
+
+/**
+ * Activités terminées après `sinceMs`, celles qui se chevauchent fusionnées en une seule (lot 5b) :
+ * c'est ce que voient tous les calculs (charge, zones, séances de la semaine, liens, suggestions).
+ */
+export async function loadExercises(sinceMs: number): Promise<ExerciseSession[]> {
+  return mergeOverlappingSessions(await loadRawExercises(sinceMs)).sessions;
+}
+
+/** Fusions de séances qui se chevauchent depuis `sinceMs` (Contrôle des données). */
+export async function loadExerciseMerges(sinceMs: number): Promise<SessionMerge[]> {
+  return mergeOverlappingSessions(await loadRawExercises(sinceMs)).merges;
 }
 
 /** Nombre de mesures de FC enregistrées pendant chaque séance terminée après `sinceMs`. */
@@ -278,9 +292,9 @@ export async function recordBackfillAttempt(sessionId: string, now: number): Pro
   });
 }
 
-/** Séances qui comptent dans les calculs (sans les courtes activités détectées automatiquement). */
-export async function loadCountedExercises(sinceMs: number): Promise<ExerciseSession[]> {
-  return countedSessions(await loadExercises(sinceMs));
+/** Séances seulement (au moins 45 min, ou musculation), activités qui se chevauchent fusionnées. */
+export async function loadSessionsOnly(sinceMs: number): Promise<ExerciseSession[]> {
+  return sessionsOnly(await loadExercises(sinceMs));
 }
 
 export async function loadMeals(sinceMs: number): Promise<Meal[]> {

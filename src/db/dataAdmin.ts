@@ -54,6 +54,7 @@ const ERASE_TABLES = [
   'sync_state',
   // Lot 5b : mesure des synchros (comptages et durées, pas dans l'export).
   'sync_run',
+  'hr_backfill_attempt',
 ];
 
 /** Texte nu (sans astérisques de relief) pour chaque colonne de texte d'une ligne. */

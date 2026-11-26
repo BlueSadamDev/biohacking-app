@@ -23,7 +23,13 @@ import { dayKey } from '@/domain/dates';
 import { buildLoadSummary, type LoadSummary } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
 import { buildRecap, type MorningRecap } from '@/domain/recap';
-import { checkAccess, syncHealthConnect, type AccessState } from '@/sources/healthConnect';
+import {
+  checkAccess,
+  ESSENTIAL_SYNC_TYPES,
+  OTHER_SYNC_TYPES,
+  syncHealthConnect,
+  type AccessState,
+} from '@/sources/healthConnect';
 import { filledJournalDates } from '@/sources/manualEntry';
 
 export type HealthData = {
@@ -110,7 +116,18 @@ export async function syncNow(origin: SyncOrigin = 'button'): Promise<void> {
   try {
     const access = await checkAccess();
     setState({ access });
-    if (access === 'ok' || access === 'partial') await syncHealthConnect();
+    if (access === 'ok' || access === 'partial') {
+      if (origin === 'launch') {
+        // Lot 5b : à l'ouverture, la dernière nuit d'abord (accueil à jour au plus vite), puis le reste.
+        await syncHealthConnect(Date.now(), { types: ESSENTIAL_SYNC_TYPES, heartRateScope: 'last-night' });
+        await reloadFromDb();
+        setState({ launched: true });
+        recorder.markHomeReady();
+        await syncHealthConnect(Date.now(), { types: OTHER_SYNC_TYPES });
+      } else {
+        await syncHealthConnect();
+      }
+    }
   } catch (e) {
     setState({ error: message(e) });
   } finally {

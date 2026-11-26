@@ -38,6 +38,7 @@ export const SYNC_RUNS = {
   /** Écran de diagnostic seulement : détail technique de l'échec d'enregistrement d'un relevé. */
   saveError: (detail: string) => `Dernier relevé non enregistré : ${detail}`,
   origin: { launch: 'ouverture', background: 'tâche de fond', button: 'bouton' } as const,
+  heartRateNight: 'Fréquence cardiaque (dernière nuit)',
   seconds,
   line: (origin: string, totalMs: number, homeReadyMs: number | null) =>
     homeReadyMs === null

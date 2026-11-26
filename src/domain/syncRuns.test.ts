@@ -77,6 +77,14 @@ describe('relevé d’une synchro', () => {
     expect(run.homeReadyMs).toBeNull();
   });
 
+  it('note les autres lancements qui rejoignent la synchro, une fois chacun', () => {
+    const rec = createSyncRecorder('background', fakeClock().clock);
+    rec.join('launch');
+    rec.join('launch');
+    rec.join('background');
+    expect(rec.finish().joined).toEqual(['launch']);
+  });
+
   it('les lignes nouvelles ne sont jamais négatives', () => {
     const rec = createSyncRecorder('button', fakeClock().clock);
     rec.beginType('Weight');
@@ -89,6 +97,7 @@ describe('dernières synchros gardées', () => {
   const run = (startedMs: number): SyncRun => ({
     startedMs,
     origin: 'button',
+    joined: [],
     totalMs: 0,
     homeReadyMs: null,
     accessCalls: 0,

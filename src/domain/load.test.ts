@@ -1,3 +1,4 @@
+import { SETTINGS } from './settings';
 import { session, steadyHr } from './__fixtures__/exercises';
 import { at, night } from './__fixtures__/nights';
 import { addDays } from './dates';
@@ -268,5 +269,12 @@ describe('rattrapage de la FC des séances', () => {
 
   it('au plus N séances par synchro', () => {
     expect(heartRateBackfillTargets(sessions, counts, since, 2).map((s) => s.id)).toEqual(['strength', 'missing-2']);
+  });
+  it('une séance déjà relue 3 fois sans succès n’est plus relue (lot 5b)', () => {
+    const attempts = new Map([['missing-2', 3], ['missing-1', 2]]);
+    expect(heartRateBackfillTargets(sessions, counts, since, 40, SETTINGS, attempts, 3).map((s) => s.id)).toEqual([
+      'strength',
+      'missing-1',
+    ]);
   });
 });

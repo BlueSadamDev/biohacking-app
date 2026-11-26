@@ -51,7 +51,10 @@ export function currentRecorder(): SyncRecorder | null {
 export function beginSyncRun(origin: SyncOrigin): { recorder: SyncRecorder; owner: boolean } {
   if (active && !active.finished) {
     const stale = Date.now() - active.startedMs > SETTINGS.sync.staleRunMinutes * 60_000;
-    if (!stale) return { recorder: active, owner: false };
+    if (!stale) {
+      active.join(origin);
+      return { recorder: active, owner: false };
+    }
     // Relevé abandonné (une étape n'a jamais répondu) : enregistré tel quel, sans bloquer celui-ci.
     void endSyncRun(active);
   }
@@ -86,7 +89,7 @@ async function saveSyncRun(run: SyncRun): Promise<void> {
       `INSERT INTO sync_run (started_ms, origin, total_ms, home_ready_ms, access_calls, nights_runs,
         nights_read_ms, nights_compute_ms, types_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       run.startedMs,
-      run.origin,
+      [run.origin, ...run.joined].join('+'),
       run.totalMs,
       run.homeReadyMs,
       run.accessCalls,
@@ -104,7 +107,8 @@ async function saveSyncRun(run: SyncRun): Promise<void> {
 
 type Row = {
   started_ms: number;
-  origin: SyncRun['origin'];
+  /** Origine, suivie des origines qui l'ont rejointe : « background+launch ». */
+  origin: string;
   total_ms: number;
   home_ready_ms: number | null;
   access_calls: number;
@@ -121,7 +125,8 @@ export async function loadSyncRuns(): Promise<SyncRun[]> {
   const runs = rows.map(
     (r): SyncRun => ({
       startedMs: r.started_ms,
-      origin: r.origin,
+      origin: r.origin.split('+')[0] as SyncOrigin,
+      joined: r.origin.split('+').slice(1) as SyncOrigin[],
       totalMs: r.total_ms,
       homeReadyMs: r.home_ready_ms,
       accessCalls: r.access_calls,

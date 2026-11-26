@@ -729,6 +729,8 @@ export const SETTINGS = {
      */
     heartRateBackfillDays: 28,
     heartRateBackfillMax: 40,
+    /** Lot 5b : une séance est relue au plus N fois ; le rattrapage ne se fait qu'avec l'app ouverte. */
+    heartRateBackfillMaxAttempts: 3,
     /** Écran Aube du lancement : affiché au plus N secondes, même si la synchro continue. */
     launchScreenMaxSeconds: 10,
     /** Mesure de la synchro (lot 5b) : nombre de synchros gardées en base (comptages et durées seulement). */
@@ -740,6 +742,12 @@ export const SETTINGS = {
     runFinishWaitSeconds: 20,
     /** Un relevé encore ouvert après N minutes est considéré comme abandonné : il est enregistré tel quel. */
     staleRunMinutes: 10,
+    /** Autorisations Health Connect relues au plus une fois par N secondes (une lecture par synchro). */
+    permissionsCacheSeconds: 30,
+    /** Fréquence cardiaque lue sur les plages de sommeil et de séance ; plages séparées de moins de N min réunies. */
+    heartRateMergeGapMinutes: 30,
+    /** Ouverture de l'app : « dernière nuit » = sommeils terminés depuis moins de N heures. */
+    lastNightHours: 18,
   },
 
   /**

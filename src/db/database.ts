@@ -233,6 +233,16 @@ const MIGRATIONS: string[] = [
     types_json TEXT NOT NULL
   );
   `,
+  // 10 – Lot 5b (étape 1) : essais de rattrapage de la FC par séance (au plus 3), et jeton de suivi
+  // des modifications Health Connect par type (NULL = lecture par période).
+  `
+  CREATE TABLE hr_backfill_attempt (
+    session_id TEXT PRIMARY KEY NOT NULL,
+    attempts INTEGER NOT NULL,
+    last_ms INTEGER NOT NULL
+  );
+  ALTER TABLE sync_state ADD COLUMN changes_token TEXT;
+  `,
 ];
 
 /** Évolutions du schéma, exportées pour les tests de migration (base SQLite en mémoire). */

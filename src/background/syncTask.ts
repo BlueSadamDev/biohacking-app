@@ -27,7 +27,8 @@ TaskManager.defineTask(SYNC_TASK, async () => {
   // Mesure de la synchro (lot 5b) : relevé enregistré à la fin de la tâche, réussie ou non.
   const { recorder, owner } = beginSyncRun('background');
   try {
-    if ((await getStatus()) === 'available') await syncHealthConnect();
+    // Tâche de fond : pas de rattrapage de la FC des séances (seulement avec l'app ouverte).
+    if ((await getStatus()) === 'available') await syncHealthConnect(Date.now(), { interactive: false });
     await runAlertEngine().catch(() => undefined);
     await runStrengthReminder().catch(() => undefined);
     await runPeriodReminder().catch(() => undefined);

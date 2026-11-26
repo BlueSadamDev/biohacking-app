@@ -25,6 +25,8 @@ export type SyncTypeMetric = {
 export type SyncRun = {
   startedMs: number;
   origin: SyncOrigin;
+  /** Autres lancements qui ont rejoint cette synchro (par exemple une ouverture pendant la tâche de fond). */
+  joined: SyncOrigin[];
   /** Du début de la synchro à la fin de tout ce qu'elle déclenche (alertes, accueil, notification). */
   totalMs: number;
   /** Du début de la synchro à l'accueil à jour ; null sans accueil (tâche de fond, bouton du contrôle). */
@@ -70,6 +72,8 @@ export function latestRuns(runs: readonly SyncRun[], kept: number): SyncRun[] {
 export type SyncRecorder = {
   readonly origin: SyncOrigin;
   readonly startedMs: number;
+  /** Une demande d'une autre origine rejoint la synchro en cours. */
+  join(origin: SyncOrigin): void;
   /** Début de la lecture d'un type : les appels et lectures suivants lui sont comptés. */
   beginType(type: string): void;
   /** Un appel à Health Connect : compté au type en cours, sinon aux appels d'accès. */
@@ -97,6 +101,7 @@ export function createSyncRecorder(origin: SyncOrigin, clock: () => number = Dat
   let nightsComputeMs = 0;
   let homeReadyMs: number | null = null;
   let done: SyncRun | null = null;
+  const joined: SyncOrigin[] = [];
 
   const closeCurrent = (state: SyncTypeMetric['state'], inserted: number) => {
     if (!current) return;
@@ -110,6 +115,9 @@ export function createSyncRecorder(origin: SyncOrigin, clock: () => number = Dat
     startedMs,
     get finished() {
       return done !== null;
+    },
+    join(other) {
+      if (!done && other !== origin && !joined.includes(other)) joined.push(other);
     },
     beginType(type) {
       if (done) return;
@@ -148,6 +156,7 @@ export function createSyncRecorder(origin: SyncOrigin, clock: () => number = Dat
       done = {
         startedMs,
         origin,
+        joined,
         totalMs: Math.max(0, clock() - startedMs),
         homeReadyMs,
         accessCalls,

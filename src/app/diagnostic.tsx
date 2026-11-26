@@ -294,7 +294,10 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
   );
 }
 
-const TYPE_LABELS: Record<string, string> = Object.fromEntries(SYNC_TYPES.map(({ type, label }) => [type, label]));
+const TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(SYNC_TYPES.map(({ type, label }) => [type, label])),
+  'HeartRate:night': SYNC_RUNS.heartRateNight,
+};
 
 /** Dernières synchros : durées et comptages (jamais de valeurs), détail par type à l'appui. */
 function SyncRunsSection({ runs }: { runs: SyncRun[] | null }) {
@@ -323,7 +326,12 @@ function SyncRunsSection({ runs }: { runs: SyncRun[] | null }) {
             style={styles.origin}
           >
             <Text style={styles.originName}>
-              {formatDate(new Date(run.startedMs))} · {SYNC_RUNS.line(SYNC_RUNS.origin[run.origin], run.totalMs, run.homeReadyMs)}
+              {formatDate(new Date(run.startedMs))} ·{' '}
+              {SYNC_RUNS.line(
+                [run.origin, ...run.joined].map((o) => SYNC_RUNS.origin[o]).join(' + '),
+                run.totalMs,
+                run.homeReadyMs,
+              )}
             </Text>
             <Text style={styles.muted}>{SYNC_RUNS.totals(totals.calls, totals.read, totals.written, totals.inserted)}</Text>
             {expanded && (

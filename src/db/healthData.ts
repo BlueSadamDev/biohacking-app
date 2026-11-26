@@ -41,7 +41,117 @@ export async function getLastSync(recordType: string): Promise<number | null> {
 }
 
 export async function setLastSync(recordType: string, ms: number): Promise<void> {
-  await upsertRows('sync_state', ['record_type', 'last_sync_ms'], [[recordType, ms]]);
+  // Mise à jour de la seule date : le jeton de suivi des modifications (lot 5b) est gardé.
+  await writeTransaction(async (tx) => {
+    await tx.runAsync(
+      `INSERT INTO sync_state (record_type, last_sync_ms) VALUES (?, ?)
+       ON CONFLICT(record_type) DO UPDATE SET last_sync_ms = excluded.last_sync_ms`,
+      recordType,
+      ms,
+    );
+  });
+}
+
+/** Poids venus de Health Connect (jamais les saisies manuelles) : condition SQL pour la réconciliation. */
+export const WEIGHT_FROM_HEALTH_CONNECT = "source = 'health_connect'";
+
+/** Jeton de suivi des modifications Health Connect d'un type (lot 5b), ou null. */
+export async function getChangesToken(recordType: string): Promise<string | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ changes_token: string | null }>(
+    'SELECT changes_token FROM sync_state WHERE record_type = ?',
+    recordType,
+  );
+  return row?.changes_token ?? null;
+}
+
+/** Fin réussie de la synchro d'un type : date et jeton enregistrés ensemble. */
+export async function saveSyncState(recordType: string, ms: number, changesToken: string | null): Promise<void> {
+  await writeTransaction(async (tx) => {
+    await tx.runAsync(
+      `INSERT INTO sync_state (record_type, last_sync_ms, changes_token) VALUES (?, ?, ?)
+       ON CONFLICT(record_type) DO UPDATE SET last_sync_ms = excluded.last_sync_ms, changes_token = excluded.changes_token`,
+      recordType,
+      ms,
+      changesToken,
+    );
+  });
+}
+
+/**
+ * Lignes locales venues de Health Connect qui touchent la période [since, until] (réconciliation, lot 5b).
+ * `where` : condition en plus (par exemple, le poids venu de Health Connect seulement, jamais la saisie).
+ */
+export async function loadLocalRows(
+  table: string,
+  idColumn: string,
+  startColumn: string,
+  endColumn: string,
+  since: number,
+  until: number,
+  where = '1 = 1',
+): Promise<{ id: string; start: number; end: number }[]> {
+  const db = await getDb();
+  return db.getAllAsync(
+    `SELECT ${idColumn} AS id, ${startColumn} AS start, ${endColumn} AS "end" FROM ${table}
+     WHERE ${endColumn} >= ? AND ${startColumn} <= ? AND (${where})`,
+    since,
+    until,
+  );
+}
+
+/** Supprime des lignes par identifiant (enregistrements supprimés ou réécrits dans Health Connect). */
+export async function deleteRowsById(table: string, idColumn: string, ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await writeTransaction(async (tx) => {
+    const statement = await tx.prepareAsync(`DELETE FROM ${table} WHERE ${idColumn} = ?`);
+    try {
+      for (const id of ids) await statement.executeAsync(id);
+    } finally {
+      await statement.finalizeAsync();
+    }
+  });
+  if (NIGHT_TABLES.has(table)) invalidateNights();
+}
+
+/** Enregistrements de FC présents en base entre deux instants (réconciliation d'une plage). */
+export async function heartRateRecordIds(start: number, end: number): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ record_id: string }>(
+    'SELECT DISTINCT record_id FROM hc_heart_rate WHERE time_ms BETWEEN ? AND ?',
+    start,
+    end,
+  );
+  return rows.map((r) => r.record_id);
+}
+
+/** Supprime les mesures de FC d'enregistrements disparus, dans une plage seulement. */
+export async function deleteHeartRateRecords(recordIds: readonly string[], start: number, end: number): Promise<void> {
+  if (recordIds.length === 0) return;
+  await writeTransaction(async (tx) => {
+    const statement = await tx.prepareAsync('DELETE FROM hc_heart_rate WHERE record_id = ? AND time_ms BETWEEN ? AND ?');
+    try {
+      for (const id of recordIds) await statement.executeAsync(id, start, end);
+    } finally {
+      await statement.finalizeAsync();
+    }
+  });
+  invalidateNights();
+}
+
+/** Plus ancien enregistrement local d'une table (rattrapage de l'historique), ou null si vide. */
+export async function oldestLocalTime(table: string, timeColumn: string, where = '1 = 1'): Promise<number | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ t: number | null }>(`SELECT MIN(${timeColumn}) AS t FROM ${table} WHERE ${where}`);
+  return row?.t ?? null;
+}
+
+/** Plus ancien enregistrement par app d'origine (affiché après le rattrapage de l'historique). */
+export async function oldestByOrigin(table: string, timeColumn: string, where = '1 = 1'): Promise<{ origin: string; oldest: number }[]> {
+  const db = await getDb();
+  return db.getAllAsync(
+    `SELECT origin, MIN(${timeColumn}) AS oldest FROM ${table} WHERE ${where} GROUP BY origin ORDER BY oldest`,
+  );
 }
 
 export async function getAllLastSyncs(): Promise<Map<string, number>> {
@@ -145,6 +255,27 @@ export async function countExerciseHeartRate(sinceMs: number): Promise<Map<strin
     sinceMs,
   );
   return new Map(rows.map((r) => [r.id, r.n]));
+}
+
+/** Essais de rattrapage de la FC déjà faits, par séance (lot 5b). */
+export async function loadBackfillAttempts(): Promise<Map<string, number>> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ session_id: string; attempts: number }>(
+    'SELECT session_id, attempts FROM hr_backfill_attempt',
+  );
+  return new Map(rows.map((r) => [r.session_id, r.attempts]));
+}
+
+/** Note un essai de rattrapage de la FC pour une séance. */
+export async function recordBackfillAttempt(sessionId: string, now: number): Promise<void> {
+  await writeTransaction(async (tx) => {
+    await tx.runAsync(
+      `INSERT INTO hr_backfill_attempt (session_id, attempts, last_ms) VALUES (?, 1, ?)
+       ON CONFLICT(session_id) DO UPDATE SET attempts = attempts + 1, last_ms = excluded.last_ms`,
+      sessionId,
+      now,
+    );
+  });
 }
 
 /** Séances qui comptent dans les calculs (sans les courtes activités détectées automatiquement). */

@@ -337,6 +337,11 @@ export const SETTINGS = {
    * Les calories sont un plafond : respectées à la cible ou en dessous (pas de marge).
    */
   nutrition: {
+    /**
+     * Apps d'origine des repas comptés (lot 5b) : Suivi macro seulement. D'autres apps (Zepp…) écrivent
+     * aussi des repas dans Health Connect : ils sont gardés en base mais ne comptent pas (double comptage).
+     */
+    mealOrigins: ['com.lebilab.suivimacros'] as readonly string[],
     reachedFraction: 0.9,
     /** Fenêtre du compteur « Sous la cible · n jours sur 7 ». */
     weekDays: 7,
@@ -808,6 +813,12 @@ export const SETTINGS = {
       { id: 'sauna', name: 'Sauna' },
       { id: 'meditation', name: 'Méditation' },
     ] as readonly { id: string; name: string }[],
+    /**
+     * Repas tardif calculé (lot 5b) : coché quand le dernier repas Suivi macro du jour tombe moins de N heures
+     * avant le début du sommeil principal de la nuit qui suit. Une saisie du journal prime toujours.
+     */
+    lateMealBehaviorId: 'late-meal',
+    lateMealHours: 3,
     /** Longueur maximale du nom d'un comportement. */
     maxNameLength: 40,
     /** Longueur maximale de la forme « en phrase » d'un comportement (lot 5a.1). */

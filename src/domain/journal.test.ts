@@ -17,6 +17,8 @@ import {
   validateBehaviorName,
   type Behavior,
   type BehaviorLog,
+  lateMealByDay,
+  withComputedLateMeal,
 } from './journal';
 
 const TODAY = '2026-11-12';
@@ -192,5 +194,33 @@ describe('rappel dans la notification du matin', () => {
     const recap = buildRecap(series(TODAY, 60), TODAY);
     expect(notificationText(recap, { journalMissing: true }).body).toContain('Pense à ton journal du matin.');
     expect(notificationText(recap, { journalMissing: false }).body).not.toContain('journal');
+  });
+});
+
+describe('repas tardif calculé d’après Suivi macro (lot 5b)', () => {
+  // Nuit du 10 au 11 (porte la date du 11), coucher à 23 h le 10.
+  const night11 = { date: '2026-03-11', sleep: { start: new Date(2026, 2, 10, 23).getTime() } };
+  const meal = (h: number, m = 0, day = 10) => ({ start: new Date(2026, 2, day, h, m).getTime() });
+
+  it('dernier repas moins de 3 h avant le coucher : repas tardif ce jour-là', () => {
+    expect(lateMealByDay([meal(12), meal(20, 30)], [night11]).get('2026-03-10')).toBe(true);
+  });
+  it('dernier repas 3 h ou plus avant le coucher : pas de repas tardif', () => {
+    expect(lateMealByDay([meal(12), meal(20)], [night11]).get('2026-03-10')).toBe(false);
+  });
+  it('sans repas enregistré ce jour-là : rien (à cocher à la main)', () => {
+    expect(lateMealByDay([meal(21, 0, 9)], [night11]).has('2026-03-10')).toBe(false);
+  });
+  it('un repas après le coucher ne compte pas', () => {
+    expect(lateMealByDay([meal(19), meal(23, 30)], [night11]).get('2026-03-10')).toBe(false);
+  });
+
+  it('la saisie du journal prime : le calcul ne complète que les jours non notés', () => {
+    const log: BehaviorLog = new Map([['2026-03-10', new Map([['late-meal', false], ['alcohol', true]])]]);
+    const merged = withComputedLateMeal(log, new Map([['2026-03-10', true], ['2026-03-09', true]]));
+    expect(behaviorStatus(merged, '2026-03-10', 'late-meal')).toBe('no'); // saisie gardée
+    expect(behaviorStatus(merged, '2026-03-09', 'late-meal')).toBe('yes'); // calculé
+    expect(behaviorStatus(merged, '2026-03-09', 'alcohol')).toBe('unknown'); // les autres restent inconnus
+    expect(log.get('2026-03-09')).toBeUndefined(); // le journal d'origine n'est pas modifié
   });
 });

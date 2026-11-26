@@ -40,6 +40,8 @@ export default function JournalScreen() {
   const [date, setDate] = useState(today);
   const [behaviors, setBehaviors] = useState<Behavior[]>([]);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  /** Lot 5b : « repas tardif » rempli d'après Suivi macro (mention sous les pastilles). */
+  const [lateMealPrefilled, setLateMealPrefilled] = useState(false);
   const [weight, setWeight] = useState('');
   const [ratings, setRatings] = useState<Ratings>({ energy: null, soreness: null, mood: null });
   const [note, setNote] = useState('');
@@ -66,6 +68,7 @@ export default function JournalScreen() {
       setNote(j.note);
       setChecked(j.checked);
       setSaved(j.saved);
+      setLateMealPrefilled(j.lateMealPrefilled);
     });
     return () => {
       active = false;
@@ -147,6 +150,9 @@ export default function JournalScreen() {
           </AppText>
         )}
         <AppText variant="small">{JOURNAL.nothingChecked}</AppText>
+        {lateMealPrefilled && visible.some((b) => b.id === SETTINGS.journal.lateMealBehaviorId) ? (
+          <AppText variant="small">{JOURNAL.lateMealPrefilled}</AppText>
+        ) : null}
       </View>
 
       <View style={styles.field}>

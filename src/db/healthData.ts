@@ -3,6 +3,7 @@
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
 import { dayKey } from '@/domain/dates';
+import { SETTINGS } from '@/domain/settings';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
 import { mergeOverlappingSessions, sessionsOnly, type ExerciseSession, type SessionMerge } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
@@ -297,13 +298,19 @@ export async function loadSessionsOnly(sinceMs: number): Promise<ExerciseSession
   return sessionsOnly(await loadExercises(sinceMs));
 }
 
+/**
+ * Repas depuis `sinceMs`, des seules apps retenues (lot 5b : Suivi macro, `nutrition.mealOrigins`) :
+ * les repas écrits par d'autres apps (Zepp…) restent en base mais ne comptent pas.
+ */
 export async function loadMeals(sinceMs: number): Promise<Meal[]> {
   const db = await getDb();
+  const origins = SETTINGS.nutrition.mealOrigins;
   return db.getAllAsync<Meal>(
     `SELECT start_ms AS start, energy_kcal AS energyKcal, protein_g AS proteinG,
             carbs_g AS carbsG, fat_g AS fatG, origin
-     FROM hc_nutrition WHERE start_ms >= ? ORDER BY start_ms`,
+     FROM hc_nutrition WHERE start_ms >= ? AND origin IN (${origins.map(() => '?').join(', ')}) ORDER BY start_ms`,
     sinceMs,
+    ...origins,
   );
 }
 

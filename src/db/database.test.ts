@@ -56,9 +56,11 @@ jest.mock('expo-sqlite', () => {
         },
         finalizeAsync: async () => undefined,
       }),
-      runAsync: async (sql: string) => {
+      runAsync: async (sql: string, ...params: (string | number | null)[]) => {
         await lock();
-        await write('autre', [sql]);
+        // INSERT … (ex. état de synchro, lot 5b) : rangé dans sa table, clé = premier paramètre.
+        const into = /INTO (\w+)/.exec(sql);
+        await write(into ? into[1] : 'autre', into ? params : [sql]);
         unlock();
       },
       getFirstAsync: async () => ({ user_version: 999 }), // schéma déjà à jour
@@ -132,7 +134,10 @@ describe('deux synchros simultanées', () => {
 
     expect(second).toBe(first);
     expect(first.every((r) => r.state === 'ok')).toBe(true);
-    expect(mockReads).toHaveLength(8); // chaque type lu une seule fois
+    // Chaque type lu une seule fois. Lot 5b : la fréquence cardiaque n'est lue que sur les plages de
+    // sommeil et de séance de la base ; la base simulée n'en renvoie aucune, donc pas de lecture.
+    expect(mockReads).toHaveLength(7);
+    expect(mockReads).not.toContain('HeartRate');
     expect(mockStore.tables.get('hc_hrv')?.size).toBe(2);
   });
 
@@ -145,7 +150,7 @@ describe('deux synchros simultanées', () => {
     ]);
 
     for (const report of [...fromApp, ...fromBackground]) expect(report.state).toBe('ok');
-    expect(mockReads).toHaveLength(16); // deux vraies synchros
+    expect(mockReads).toHaveLength(14); // deux vraies synchros (sans fréquence cardiaque, voir plus haut)
     expect(mockStore.maxWriting).toBe(1);
     expect(mockStore.tables.get('hc_sleep')?.size).toBe(1);
     expect(mockStore.tables.get('hc_hrv')?.size).toBe(2);

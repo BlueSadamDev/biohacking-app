@@ -6,7 +6,7 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText as Text } from '@/components/AppText';
 import { BackHeader, Screen } from '@/components/Screen';
@@ -14,16 +14,21 @@ import { colors, fonts } from '@/components/theme';
 
 import { formatDuration } from '@/components/format';
 import { useHealthData } from '@/components/useHealthData';
-import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
+import { countRows, loadExercises, loadNights } from '@/db/healthData';
 import { loadSessionChecks } from '@/db/loadData';
+import { activeRunStartedMs, beginSyncRun, endSyncRun, loadSyncRuns, syncRunSaveError } from '@/db/syncRuns';
 import { exerciseTypeLabel } from '@/domain/exerciseTypes';
 import type { SessionCheck } from '@/domain/load';
 import { LOAD_CHECK } from '@/domain/texts/sport';
 import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
-import { computeNights } from '@/domain/nightly';
-import { SOURCES } from '@/domain/texts/reglages';
+import { SETTINGS } from '@/domain/settings';
+import { runTotals, type SyncRun } from '@/domain/syncRuns';
+import { HISTORY, SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
 import {
   askReadPermissions,
+  backfillHistory,
+  type HistoryProgress,
+  type HistoryResult,
   getGrantedReadTypes,
   getStatus,
   openSettings,
@@ -49,13 +54,17 @@ type SyncState =
 
 /** Synchronise puis calcule les nuits des 90 derniers jours (comptages uniquement). */
 async function runSync(): Promise<SyncState> {
+  const { recorder, owner } = beginSyncRun('button');
   try {
     const reports = await syncHealthConnect();
+    // Nuits des 90 derniers jours, tirées du calcul partagé (lot 5b : plus de calcul à part ici).
     const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const nights = summarizeNights(computeNights(await loadNightInputs(since)));
+    const nights = summarizeNights((await loadNights()).filter((n) => n.sleep.end >= since));
     return { kind: 'done', at: new Date(), reports, rows: await countRows(), nights };
   } catch (e) {
     return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
+  } finally {
+    if (owner) await endSyncRun(recorder);
   }
 }
 
@@ -122,6 +131,16 @@ export default function InventoryScreen() {
     fetchScreenState().then(setState);
   }, []);
 
+  // Dernières synchros mesurées (lot 5b) : relues après chaque synchro (bouton ou accueil).
+  const { nights, syncing, reload } = useHealthData();
+  const [runs, setRuns] = useState<SyncRun[] | null>(null);
+  useEffect(() => {
+    if (syncing) return;
+    loadSyncRuns()
+      .then(setRuns)
+      .catch(() => setRuns(null));
+  }, [sync, syncing]);
+
   // Séances par type (base locale, 90 jours) : relu après chaque synchro.
   const [types, setTypes] = useState<SessionTypeCount[] | null>(null);
   useEffect(() => {
@@ -131,7 +150,6 @@ export default function InventoryScreen() {
   }, [sync]);
 
   // Séances des 28 derniers jours et ce que le calcul de charge en fait (relu après chaque synchro).
-  const { nights } = useHealthData();
   const [checks, setChecks] = useState<SessionCheck[] | null | undefined>(undefined);
   useEffect(() => {
     loadSessionChecks(nights, new Date())
@@ -172,6 +190,8 @@ export default function InventoryScreen() {
       {state.kind === 'ready' && (
         <View style={styles.block}>
           <SyncSection state={sync} onSync={startSync} />
+          <SyncRunsSection runs={runs} />
+          <HistorySection onDone={reload} />
           <SessionTypesSection types={types} />
           <LoadCheckSection checks={checks} />
           <Text style={styles.section}>Inventaire</Text>
@@ -274,6 +294,119 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
           {count('short') > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(count('short'))}</Text>}
         </>
       )}
+    </View>
+  );
+}
+
+type HistoryState =
+  | { kind: 'idle' }
+  | { kind: 'running'; progress: HistoryProgress }
+  | { kind: 'done'; result: HistoryResult }
+  | { kind: 'error'; message: string };
+
+/** Rattrapage de l'historique (365 jours) : progression, puis plus ancien enregistrement par source. */
+function HistorySection({ onDone }: { onDone: () => Promise<void> }) {
+  const [state, setState] = useState<HistoryState>({ kind: 'idle' });
+  const start = useCallback(async () => {
+    setState({ kind: 'running', progress: { done: 0, total: 0 } });
+    try {
+      const result = await backfillHistory((progress) => setState({ kind: 'running', progress }));
+      setState({ kind: 'done', result });
+      await onDone();
+    } catch (e) {
+      setState({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
+  }, [onDone]);
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{HISTORY.title}</Text>
+      <Text style={styles.muted}>{HISTORY.help}</Text>
+      <View style={styles.spacer} />
+      <Button title={HISTORY.button} onPress={start} disabled={state.kind === 'running'} />
+      {state.kind === 'running' && (
+        <View style={styles.block}>
+          <ActivityIndicator color={colors.text} />
+          <Text style={styles.meta}>{HISTORY.progress(state.progress.done, state.progress.total)}</Text>
+        </View>
+      )}
+      {state.kind === 'error' && <Text style={styles.warning}>{HISTORY.error(state.message)}</Text>}
+      {state.kind === 'done' && (
+        <View style={styles.block}>
+          {state.result.movedBack === 0 && <Text style={styles.block}>{HISTORY.nothingOlder}</Text>}
+          {state.result.failedReads > 0 && <Text style={styles.warning}>{HISTORY.failed(state.result.failedReads)}</Text>}
+          <Text style={styles.originName}>{HISTORY.oldestTitle}</Text>
+          {state.result.oldest.map((o) => (
+            <Text key={`${o.label}-${o.origin}`} style={styles.muted}>
+              {HISTORY.oldest(o.label, originLabel(o.origin), new Date(o.oldest).toLocaleDateString('fr-FR'))}
+            </Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(SYNC_TYPES.map(({ type, label }) => [type, label])),
+  'HeartRate:night': SYNC_RUNS.heartRateNight,
+};
+
+/** Dernières synchros : durées et comptages (jamais de valeurs), détail par type à l'appui. */
+function SyncRunsSection({ runs }: { runs: SyncRun[] | null }) {
+  const [open, setOpen] = useState<number | null>(null);
+  if (runs === null) return null;
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{SYNC_RUNS.title}</Text>
+      <Text style={styles.muted}>{SYNC_RUNS.help(SETTINGS.sync.runsKept)}</Text>
+      {activeRunStartedMs() !== null && (
+        <Text style={styles.block}>{SYNC_RUNS.running(formatDate(new Date(activeRunStartedMs()!)))}</Text>
+      )}
+      {syncRunSaveError() !== null && (
+        <Text style={styles.warning}>{SYNC_RUNS.saveError(syncRunSaveError()!)}</Text>
+      )}
+      {runs.length === 0 && <Text style={styles.block}>{SYNC_RUNS.none}</Text>}
+      {runs.map((run) => {
+        const totals = runTotals(run);
+        const expanded = open === run.startedMs;
+        return (
+          <Pressable
+            key={run.startedMs}
+            onPress={() => setOpen(expanded ? null : run.startedMs)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            style={styles.origin}
+          >
+            <Text style={styles.originName}>
+              {formatDate(new Date(run.startedMs))} ·{' '}
+              {SYNC_RUNS.line(
+                [run.origin, ...run.joined].map((o) => SYNC_RUNS.origin[o]).join(' + '),
+                run.totalMs,
+                run.homeReadyMs,
+              )}
+            </Text>
+            <Text style={styles.muted}>{SYNC_RUNS.totals(totals.calls, totals.read, totals.written, totals.inserted)}</Text>
+            {expanded && (
+              <View style={styles.block}>
+                <Text style={styles.muted}>{SYNC_RUNS.access(run.accessCalls)}</Text>
+                {run.types.map((t) => {
+                  const label = TYPE_LABELS[t.type] ?? t.type;
+                  return (
+                    <Text key={t.type} style={styles.muted}>
+                      {t.state === 'ok'
+                        ? SYNC_RUNS.type(label, t.durationMs, t.calls, t.read, t.written, t.inserted)
+                        : t.state === 'denied'
+                          ? SYNC_RUNS.denied(label)
+                          : SYNC_RUNS.error(label)}
+                    </Text>
+                  );
+                })}
+                <Text style={styles.muted}>{SYNC_RUNS.nights(run.nightsRuns, run.nightsReadMs, run.nightsComputeMs)}</Text>
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

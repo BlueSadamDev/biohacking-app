@@ -217,6 +217,32 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE behavior ADD COLUMN phrase TEXT;
   `,
+  // 9 – Lot 5b (étape 1) : mesure des synchros. Comptages et durées seulement, jamais de valeurs ;
+  // seules les dernières synchros sont gardées (SETTINGS.sync.runsKept).
+  `
+  CREATE TABLE sync_run (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_ms INTEGER NOT NULL,
+    origin TEXT NOT NULL,
+    total_ms INTEGER NOT NULL,
+    home_ready_ms INTEGER,
+    access_calls INTEGER NOT NULL,
+    nights_runs INTEGER NOT NULL,
+    nights_read_ms INTEGER NOT NULL,
+    nights_compute_ms INTEGER NOT NULL,
+    types_json TEXT NOT NULL
+  );
+  `,
+  // 10 – Lot 5b (étape 1) : essais de rattrapage de la FC par séance (au plus 3), et jeton de suivi
+  // des modifications Health Connect par type (NULL = lecture par période).
+  `
+  CREATE TABLE hr_backfill_attempt (
+    session_id TEXT PRIMARY KEY NOT NULL,
+    attempts INTEGER NOT NULL,
+    last_ms INTEGER NOT NULL
+  );
+  ALTER TABLE sync_state ADD COLUMN changes_token TEXT;
+  `,
 ];
 
 /** Évolutions du schéma, exportées pour les tests de migration (base SQLite en mémoire). */

@@ -205,6 +205,8 @@ export function buildLoadSummary(input: LoadInputs, settings: Settings = SETTING
 /**
  * Séances à relire dans Health Connect (rattrapage de la FC) : séances comptées, terminées depuis
  * `sinceMs`, sans aucune mesure de FC dans la base ; les plus récentes d'abord, au plus `max`.
+ * Lot 5b : une séance déjà relue `maxAttempts` fois sans succès n'est plus relue (`attempts` : essais
+ * déjà faits par séance).
  */
 export function heartRateBackfillTargets(
   sessions: ExerciseSession[],
@@ -212,9 +214,12 @@ export function heartRateBackfillTargets(
   sinceMs: number,
   max: number,
   settings: Settings = SETTINGS,
+  attempts: ReadonlyMap<string, number> = new Map(),
+  maxAttempts: number = settings.sync.heartRateBackfillMaxAttempts,
 ): ExerciseSession[] {
   return countedSessions(sessions, settings)
     .filter((s) => s.end >= sinceMs && (samplesBySession.get(s.id) ?? 0) === 0)
+    .filter((s) => (attempts.get(s.id) ?? 0) < maxAttempts)
     .sort((a, b) => b.start - a.start)
     .slice(0, max);
 }

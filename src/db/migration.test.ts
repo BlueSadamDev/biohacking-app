@@ -69,3 +69,20 @@ maybe('migration 8 (lot 5a.1)', () => {
     ]);
   });
 });
+
+maybe('migration 9 (lot 5b, mesure des synchros)', () => {
+  it('crée la table des synchros, vide ; la requête de nettoyage garde les 10 plus récentes', () => {
+    const db = new DatabaseSync!(':memory:');
+    for (const sql of SCHEMA_MIGRATIONS.slice(0, 9)) db.exec(sql);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM sync_run').all()).toEqual([{ n: 0 }]);
+    const insert = db.prepare(
+      `INSERT INTO sync_run (started_ms, origin, total_ms, home_ready_ms, access_calls, nights_runs,
+        nights_read_ms, nights_compute_ms, types_json) VALUES (?, 'button', 0, NULL, 0, 0, 0, 0, '[]')`,
+    );
+    for (let i = 1; i <= 12; i++) insert.run(i * 1000);
+    // Même requête que src/db/syncRuns.ts.
+    db.prepare('DELETE FROM sync_run WHERE id NOT IN (SELECT id FROM sync_run ORDER BY started_ms DESC, id DESC LIMIT ?)').run(10);
+    const rows = db.prepare('SELECT started_ms FROM sync_run ORDER BY started_ms').all() as { started_ms: number }[];
+    expect(rows.map((r) => r.started_ms)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => n * 1000));
+  });
+});

@@ -96,3 +96,59 @@ describe('FC au repos de la nuit', () => {
     expect(night.restingHrSource).toBeNull();
   });
 });
+
+describe('mesures de la nuit trouvées par dichotomie (lot 5b)', () => {
+  /** Ancienne méthode : parcours de toutes les mesures pour chaque nuit, dans l'ordre d'arrivée. */
+  function naive(input: Parameters<typeof computeNights>[0]) {
+    const inNight = (s: { start: number; end: number }, list: { time: number; value: number }[]) =>
+      list.filter((x) => x.time >= s.start && x.time <= s.end && x.value > 0).map((x) => x.value);
+    return [...mainSleepByNight(input.sleeps)].map(([date, s]) => {
+      const hrv = inNight(s, input.hrv);
+      const lowest = (v: number[]) => {
+        const l = [...v].sort((a, b) => a - b).slice(0, SETTINGS.night.restingHrLowestCount);
+        return l.length ? l.reduce((a, b) => a + b, 0) / l.length : null;
+      };
+      return {
+        date,
+        lnRmssd: hrv.length ? hrv.reduce((a, b) => a + Math.log(b), 0) / hrv.length : null,
+        count: hrv.length,
+        restingHr: lowest(inNight(s, input.restingHr)) ?? lowest(inNight(s, input.heartRate)),
+      };
+    });
+  }
+
+  it('donne les mêmes nuits que l’ancienne méthode sur 30 nuits fictives, mesures dans le désordre', () => {
+    // Générateur pseudo-aléatoire à graine fixe (données inventées, reproductibles).
+    let seed = 42;
+    const rand = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
+    const sleeps = [];
+    const hrv = [];
+    const restingHr = [];
+    const heartRate = [];
+    for (let d = 1; d <= 30; d++) {
+      const start = at(2026, 3, d, 23);
+      const end = at(2026, 3, d + 1, 7);
+      sleeps.push(sleep(`n${d}`, start, end));
+      // Mesures toute la journée (pas seulement la nuit), dont des bornes exactes et des valeurs nulles.
+      for (let t = at(2026, 3, d, 8); t <= end; t += 10 * 60_000) {
+        hrv.push({ time: t, value: d % 7 === 0 ? 0 : 20 + rand() * 40, origin: ORIGIN });
+        heartRate.push({ time: t, value: 45 + rand() * 30, origin: ORIGIN });
+      }
+      hrv.push({ time: start, value: 33, origin: ORIGIN }, { time: end, value: 35, origin: ORIGIN });
+      if (d % 5 !== 0) restingHr.push({ time: at(2026, 3, d + 1, 4), value: 50 + rand() * 8, origin: ORIGIN });
+    }
+    const shuffle = <T,>(list: T[]) => [...list].sort(() => rand() - 0.5);
+    const input = { sleeps, hrv: shuffle(hrv), restingHr: shuffle(restingHr), heartRate: shuffle(heartRate) };
+
+    const fast = computeNights(input);
+    const slow = naive(input);
+    expect(fast).toHaveLength(30);
+    fast.forEach((night, i) => {
+      expect(night.date).toBe(slow[i].date);
+      expect(night.hrvSampleCount).toBe(slow[i].count);
+      if (slow[i].lnRmssd === null) expect(night.lnRmssd).toBeNull();
+      else expect(night.lnRmssd).toBeCloseTo(slow[i].lnRmssd!, 10);
+      expect(night.restingHr).toBeCloseTo(slow[i].restingHr!, 10);
+    });
+  });
+});

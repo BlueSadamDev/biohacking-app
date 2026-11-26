@@ -14,14 +14,22 @@ import { loadNights } from '@/db/healthData';
 import { loadLoadInputs } from '@/db/loadData';
 import { loadYesterdayNutrition } from '@/db/nutritionData';
 import { loadPeriods } from '@/db/periods';
+import { beginSyncRun, endSyncRun, settleWithin } from '@/db/syncRuns';
 import type { Period } from '@/domain/periods';
 import { SETTINGS } from '@/domain/settings';
+import type { SyncOrigin } from '@/domain/syncRuns';
 import type { NutritionDayView } from '@/domain/nutrition';
 import { dayKey } from '@/domain/dates';
 import { buildLoadSummary, type LoadSummary } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
 import { buildRecap, type MorningRecap } from '@/domain/recap';
-import { checkAccess, syncHealthConnect, type AccessState } from '@/sources/healthConnect';
+import {
+  checkAccess,
+  ESSENTIAL_SYNC_TYPES,
+  OTHER_SYNC_TYPES,
+  syncHealthConnect,
+  type AccessState,
+} from '@/sources/healthConnect';
 import { filledJournalDates } from '@/sources/manualEntry';
 
 export type HealthData = {
@@ -97,14 +105,29 @@ export async function reloadFromDb(): Promise<void> {
   }
 }
 
-/** Vérifie l'accès à Health Connect, synchronise si possible, puis recalcule. */
-export async function syncNow(): Promise<void> {
+/**
+ * Vérifie l'accès à Health Connect, synchronise si possible, puis recalcule.
+ * `origin` : ouverture de l'app (ou retour depuis Zepp) ou bouton, pour la mesure de la synchro (lot 5b).
+ */
+export async function syncNow(origin: SyncOrigin = 'button'): Promise<void> {
   if (state.syncing) return;
   setState({ syncing: true, error: null });
+  const { recorder, owner } = beginSyncRun(origin);
   try {
     const access = await checkAccess();
     setState({ access });
-    if (access === 'ok' || access === 'partial') await syncHealthConnect();
+    if (access === 'ok' || access === 'partial') {
+      if (origin === 'launch') {
+        // Lot 5b : à l'ouverture, la dernière nuit d'abord (accueil à jour au plus vite), puis le reste.
+        await syncHealthConnect(Date.now(), { types: ESSENTIAL_SYNC_TYPES, heartRateScope: 'last-night' });
+        await reloadFromDb();
+        setState({ launched: true });
+        recorder.markHomeReady();
+        await syncHealthConnect(Date.now(), { types: OTHER_SYNC_TYPES, heartRateScope: 'rest' });
+      } else {
+        await syncHealthConnect();
+      }
+    }
   } catch (e) {
     setState({ error: message(e) });
   } finally {
@@ -114,14 +137,22 @@ export async function syncNow(): Promise<void> {
     await runPeriodReminder().catch(() => undefined);
     await reloadFromDb();
     setState({ syncing: false, launched: true });
-    // Le texte de la notification du matin suit les dernières données.
-    await scheduleMorningNotifications().catch(() => undefined);
+    recorder.markHomeReady();
+    // Le texte de la notification du matin suit les dernières données. Le relevé l'attend au plus
+    // quelques secondes : il est toujours enregistré, même si cette étape ne répond pas.
+    await settleWithin(scheduleMorningNotifications(), SETTINGS.sync.runFinishWaitSeconds);
+    if (owner) await endSyncRun(recorder);
   }
 }
 
 let started = false;
 
-export function useHealthData(): HealthData & { sync: () => Promise<void>; reload: () => Promise<void> } {
+export function useHealthData(): HealthData & {
+  sync: () => Promise<void>;
+  /** Synchro au retour depuis Zepp (comptée comme une ouverture dans la mesure de la synchro). */
+  syncOnReturn: () => Promise<void>;
+  reload: () => Promise<void>;
+} {
   const snapshot = useSyncExternalStore(
     (l) => {
       listeners.add(l);
@@ -134,10 +165,11 @@ export function useHealthData(): HealthData & { sync: () => Promise<void>; reloa
     // Au premier affichage : on montre tout de suite la base, puis on synchronise.
     if (started) return;
     started = true;
-    reloadFromDb().then(syncNow);
+    reloadFromDb().then(() => syncNow('launch'));
   }, []);
 
-  const sync = useCallback(() => syncNow(), []);
+  const sync = useCallback(() => syncNow('button'), []);
+  const syncOnReturn = useCallback(() => syncNow('launch'), []);
   const reload = useCallback(() => reloadFromDb(), []);
-  return { ...snapshot, sync, reload };
+  return { ...snapshot, sync, syncOnReturn, reload };
 }

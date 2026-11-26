@@ -48,7 +48,7 @@ function ringOf(recap: MorningRecap | null): ComponentProps<typeof RecoveryRing>
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { loading, syncing, access, recap, nights, periods, load, alerts, nutrition, journalFilled, error, sync, reload } =
+  const { loading, syncing, access, recap, nights, periods, load, alerts, nutrition, journalFilled, error, sync, syncOnReturn, reload } =
     useHealthData();
   const [sheetOpen, setSheetOpen] = useState(false);
   const today = dayKey(new Date());
@@ -119,7 +119,7 @@ export default function HomeScreen() {
       {error && <RichText variant="bodySmall" text={HOME.loadError} style={{ color: colors.low }} />}
 
       {/* Nuit d'aujourd'hui absente de Health Connect : proposer d'ouvrir Zepp (si installée). */}
-      {!loading && (access === 'ok' || access === 'partial') && !recap?.night && <OpenZeppCard onReturn={sync} />}
+      {!loading && (access === 'ok' || access === 'partial') && !recap?.night && <OpenZeppCard onReturn={syncOnReturn} />}
 
       {loading ? (
         <ActivityIndicator color={colors.text} style={styles.loading} />

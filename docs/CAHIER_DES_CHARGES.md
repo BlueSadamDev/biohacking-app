@@ -95,7 +95,8 @@ Cinq onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages), des écrans seco
 - Saisie du poids et du ressenti, dans le journal du matin (F8) depuis le lot 5a.
 - Séances Suunto : hors périmètre (lisibles plus tard si une appli passerelle les écrit dans Health Connect).
 - Export complet en CSV (sauvegarde) et effacement des données.
-- Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données.
+- Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données. Depuis le lot 5b : durées et comptages des 10 dernières synchros, et rattrapage de l'historique (365 jours) à la demande.
+- Synchro (lot 5b) : suivi des modifications de Health Connect (ajouts, modifications et suppressions) ; sans suivi possible, relecture par période où les enregistrements disparus de Health Connect sont supprimés (jamais les saisies manuelles) ; fréquence cardiaque lue seulement pendant le sommeil et les séances ; à l'ouverture, la dernière nuit d'abord.
 
 ### F6 – Coach
 
@@ -232,14 +233,42 @@ Le MVP correspond au lot 1 : un récap du matin fiable, basé sur des données f
 6. **Lot 4.1 – Fiabilité** : stabiliser l'app pendant la calibration des normes, sans nouvelle fonctionnalité de calcul. Base de données qui attend quelques secondes au lieu d'échouer (« database is locked » quand la synchro du lancement et la tâche de fond tournent en même temps) et écritures qui ne se chevauchent jamais ; bouton « Ouvrir Zepp » sur l'onglet Aujourd'hui quand la nuit n'est pas encore arrivée dans Health Connect (il ouvre seulement l'app Zepp, sans appel réseau ; Aube relance sa synchro au retour ; absent si Zepp n'est pas installée) ; chiffres utilisés repliables sur la carte « Bilan de la semaine », comme dans les réponses du coach.
 7. **Lot 5a – Collecter** : étiquettes de période (F7 : malade, blessure, voyage, vacances, autre) : les jours étiquetés sont exclus des normes, de la calibration, des liens observés et des suggestions, les alertes sont en pause, rappel au bout de 14 jours ; journal du matin (F8 : comportements de la veille, qui remplace la saisie du matin et devient une source des liens observés). Aucun nouveau calcul de recommandation.
 8. **Lot 5a.1 – Écriture et relief** : textes affichés et mise en forme seulement (charte, glossaire et relief décrits dans DESIGN.md, section « Textes ») ; aucun changement de calcul, de seuil ni de donnée enregistrée. Seule exception : un champ facultatif « en phrase » pour les comportements (migration additive), utilisé par les liens observés. *Condition de passage : relecture de l'app écran par écran sur le téléphone, avec captures avant / après de l'accueil, d'une alerte, du journal et d'un lien observé.*
-9. **Pause d'usage de 3 à 4 semaines** : aucun développement. Objectifs : calibration des normes terminée, et vérification des conditions de passage des lots 2 et 3.
-10. **Lot 5b – Exploiter** : expériences personnelles (tests « avec / sans » tirés au sort) et cible d'effort du jour.
-11. **Lot 6 – Nutrition et nuit** : répartition des protéines dans la journée ; préparation de la nuit (dette de sommeil, heure de coucher conseillée).
-12. **Lot 7 – Cycles et bilans** : plan de semaine fondé sur des règles, semaine allégée proposée au bon moment, rapport mensuel en PDF.
+9. **Pause d'usage de 3 à 4 semaines** (depuis le 16 novembre 2026) :
+   seuls sont permis la collecte, la mise en forme et les corrections de
+   qualité recalculées sur tout l'historique ; aucun nouveau seuil ni
+   nouvel affichage de résultat. Objectifs : calibration des normes
+   terminée, vérification des conditions de passage des lots 2 et 3,
+   captures avant / après du lot 5a.1.
+10. **Lot 5b – Moteur d'analyses** (pendant la pause, en 4 étapes) :
+    mesure et accélération de la synchro ; qualité des données (règle
+    séances / activités, séances qui se chevauchent, nuits coupées,
+    mesures aberrantes, séances sans fréquence cardiaque, ratio de charge
+    en moyennes exponentielles, comportements calculés, avis sur les
+    alertes) ; historique des alertes et du coach, relance du bilan ;
+    moteur statistique en mode silencieux (valeurs de départ de
+    docs/PREUVES.md).
+11. **Lot 5c – Insights** (fin de la pause) : affichage des analyses qui
+    ont assez de données (charge et fatigue, calories de maintien,
+    validation du score, alcool et caféine à conditions égales),
+    historique des découvertes, certitude en mots, ajustement des seuils
+    d'alerte d'après les avis.
+12. **Lot 5d – Collecte complémentaire** : temps d'écran du soir, note
+    d'effort de chaque séance (notification environ 30 minutes après la
+    fin), annulation des notifications par identifiant, charge combinant
+    fréquence cardiaque et note d'effort.
+13. **Lot 5e – Expériences** : tests « avec / sans » tirés au sort (test
+    de permutation), cible d'effort du jour.
+14. **Lot 6 – Nutrition, nuit, corps et lumière** : répartition des
+    protéines, préparation de la nuit (dette de sommeil, heure de coucher
+    conseillée), temps d'écran du soir dans les liens, composition
+    corporelle (poids et masse grasse en tendance, protocole de pesée,
+    tour de taille mensuel), durée du jour et lever du soleil.
+15. **Lot 7 – Cycles et bilans** : plan de semaine, semaine allégée,
+    rapport mensuel en PDF, prévision de la VFC du lendemain.
 
 **Plus tard** (non planifié, à cadrer avant tout développement) : score de récupération qui s'ajuste à mon ressenti, heure d'entraînement idéale.
 
-**Écartés** : widget d'écran d'accueil, âge biologique, réveil intelligent, météo et pollution (demandent Internet, or l'APK de production n'a pas cette permission).
+**Écartés** : voir la liste « Points écartés » de la section 8.
 
 Chaque lot est livré sous forme d'APK utilisable seul. On ne passe au suivant que si la condition de passage est remplie. Le lot 5a est détaillé (F7, F8, section 5 ; aucune nouvelle permission). Les lots 5b à 7 seront détaillés (fonctionnalités, règles de calcul, permissions) dans ce cahier avant leur développement.
 
@@ -291,8 +320,20 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - Design : style sombre inspiré de Whoop, maquettes du lot 1 validées.
 - Coach IA (lot 4) : 100 % local, sur le Galaxy S21 (pas de Gemini Nano) avec un petit modèle ouvert (environ 1 à 1,5 milliard de paramètres, quantifié), installé par import manuel du fichier. L'APK de production reste sans permission Internet. Le coach ne calcule rien, ne pose aucun diagnostic et dit quand il ne sait pas. Usages : bilan de la semaine, « Pourquoi ? », questions libres encadrées ; plan de semaine reporté.
 - Coach IA, choix du modèle et partage des rôles (lot 4, 15 novembre 2026) : LFM2.5 1.2B avec llama.rn (voir [RAPPORT_LOT_4_MODELE.md](RAPPORT_LOT_4_MODELE.md)), et Luth-LFM2 1.2B (version française) accepté aussi ; un seul installé à la fois, interchangeables. Un modèle de cette taille déforme les verdicts même avec des consignes strictes : l'app écrit donc le constat chiffré et le modèle seulement l'explication et l'action, sans chiffre. Le bilan de la semaine est généré à l'ouverture de l'onglet Coach (et non de l'app), pour ne charger le modèle que là.
-- Séances courtes (15 novembre 2026) : le Helio Strap enregistre toutes les activités détectées (marche rapide de quelques minutes…). Seules les séances d'au moins 20 minutes comptent dans les calculs (séances de la semaine, charge, zones, liens observés, suggestions) ; la musculation compte toujours. Seuil réglable dans `settings.ts`.
+- Séances courtes (15 novembre 2026, remplacée le 18 novembre par la décision « Séances et activités », appliquée à l'étape 2 du lot 5b) : le Helio Strap enregistre toutes les activités détectées (marche rapide de quelques minutes…). Seules les séances d'au moins 20 minutes comptent dans les calculs (séances de la semaine, charge, zones, liens observés, suggestions) ; la musculation compte toujours. Seuil réglable dans `settings.ts`.
 - Charge et fréquence cardiaque des séances (16 novembre 2026) : la charge affichait +300 % parce que la fréquence cardiaque de la plupart des séances n'avait pas été gardée à la synchro (séance arrivée après les mesures). Corrections : (1) rattrapage à chaque synchro : une séance comptée des 28 derniers jours sans aucune mesure est relue dans Health Connect sur sa durée ; (2) charge « non fiable » quand plus d'une séance comptée sur 4 (28 derniers jours) n'a pas assez de fréquence cardiaque : ni pourcentage, ni pastille, ni alerte de charge ; (3) carte « Charge : séances des 28 derniers jours » dans « Contrôle des données » (points ou raison du rejet de chaque séance). Seuil réglable dans `settings.ts`.
+- Séances et activités (18 novembre 2026, remplace la règle des 20 minutes) : une activité = tout ce que le bracelet enregistre ; toutes les activités comptent dans les zones et la charge. Une séance = une activité d'au moins 45 minutes, ou une séance de musculation quelle que soit sa durée ; seules les séances comptent dans le nombre de séances de la semaine, les jours d'entraînement des liens observés et les suggestions. Charge non fiable quand plus d'un quart des minutes d'activité des 28 derniers jours manque de fréquence cardiaque.
+- Référentiel des preuves (24 novembre 2026) : docs/PREUVES.md fixe la liste fermée des liens testés, leurs valeurs de départ et les garde-fous de plausibilité. Un lien absent du référentiel n'est jamais testé.
+
+**Points écartés**
+
+- Widget d'écran d'accueil, âge biologique, réveil intelligent.
+- Météo et pollution (demandent Internet, or l'APK de production n'a pas cette permission).
+- Effort et charge calculés par Zepp (absents de Health Connect).
+- Indicateurs de la balance autres que poids et masse grasse.
+- Agenda comme indicateur de stress.
+- Évaluation du mouvement et des muscles par Zepp (à confirmer par l'inventaire).
+- Réseau de neurones ou entraînement du coach (trop peu de données).
 
 **Prochaines étapes**
 
@@ -303,4 +344,5 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 5. ~~Lot 4 : coach IA local.~~ Fait (PR #14).
 6. ~~Lot 4.1 : fiabilité.~~ Fait (PR #16). Les trois « idées pour plus tard » notées à la fin du lot 4 y sont intégrées (section 7).
 7. ~~Lot 5a : collecter (F7, F8 ; règles en section 5).~~ Fait (PR #17).
-8. Lot 5a.1 : écriture et relief (textes et mise en forme, section 7), puis pause d'usage de 3 à 4 semaines (section 7).
+8. ~~Lot 5a.1 : écriture et relief (textes et mise en forme, section 7).~~ Fait (PR #19). Pause d'usage en cours depuis le 16 novembre 2026 (section 7).
+9. Lot 5b : moteur d'analyses, en 4 étapes (section 7), en cours.

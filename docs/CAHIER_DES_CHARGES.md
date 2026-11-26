@@ -95,7 +95,8 @@ Cinq onglets (Aujourd'hui, Tendances, Sport, Coach, Réglages), des écrans seco
 - Saisie du poids et du ressenti, dans le journal du matin (F8) depuis le lot 5a.
 - Séances Suunto : hors périmètre (lisibles plus tard si une appli passerelle les écrit dans Health Connect).
 - Export complet en CSV (sauvegarde) et effacement des données.
-- Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données.
+- Écran de diagnostic : dernière synchro par source, types de données reçus, trous dans les données. Depuis le lot 5b : durées et comptages des 10 dernières synchros, et rattrapage de l'historique (365 jours) à la demande.
+- Synchro (lot 5b) : suivi des modifications de Health Connect (ajouts, modifications et suppressions) ; sans suivi possible, relecture par période où les enregistrements disparus de Health Connect sont supprimés (jamais les saisies manuelles) ; fréquence cardiaque lue seulement pendant le sommeil et les séances ; à l'ouverture, la dernière nuit d'abord.
 
 ### F6 – Coach
 

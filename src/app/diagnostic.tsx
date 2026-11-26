@@ -23,9 +23,12 @@ import { LOAD_CHECK } from '@/domain/texts/sport';
 import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
 import { SETTINGS } from '@/domain/settings';
 import { runTotals, type SyncRun } from '@/domain/syncRuns';
-import { SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
+import { HISTORY, SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
 import {
   askReadPermissions,
+  backfillHistory,
+  type HistoryProgress,
+  type HistoryResult,
   getGrantedReadTypes,
   getStatus,
   openSettings,
@@ -129,7 +132,7 @@ export default function InventoryScreen() {
   }, []);
 
   // Dernières synchros mesurées (lot 5b) : relues après chaque synchro (bouton ou accueil).
-  const { nights, syncing } = useHealthData();
+  const { nights, syncing, reload } = useHealthData();
   const [runs, setRuns] = useState<SyncRun[] | null>(null);
   useEffect(() => {
     if (syncing) return;
@@ -188,6 +191,7 @@ export default function InventoryScreen() {
         <View style={styles.block}>
           <SyncSection state={sync} onSync={startSync} />
           <SyncRunsSection runs={runs} />
+          <HistorySection onDone={reload} />
           <SessionTypesSection types={types} />
           <LoadCheckSection checks={checks} />
           <Text style={styles.section}>Inventaire</Text>
@@ -289,6 +293,56 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
           ))}
           {count('short') > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(count('short'))}</Text>}
         </>
+      )}
+    </View>
+  );
+}
+
+type HistoryState =
+  | { kind: 'idle' }
+  | { kind: 'running'; progress: HistoryProgress }
+  | { kind: 'done'; result: HistoryResult }
+  | { kind: 'error'; message: string };
+
+/** Rattrapage de l'historique (365 jours) : progression, puis plus ancien enregistrement par source. */
+function HistorySection({ onDone }: { onDone: () => Promise<void> }) {
+  const [state, setState] = useState<HistoryState>({ kind: 'idle' });
+  const start = useCallback(async () => {
+    setState({ kind: 'running', progress: { done: 0, total: 0 } });
+    try {
+      const result = await backfillHistory((progress) => setState({ kind: 'running', progress }));
+      setState({ kind: 'done', result });
+      await onDone();
+    } catch (e) {
+      setState({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
+  }, [onDone]);
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{HISTORY.title}</Text>
+      <Text style={styles.muted}>{HISTORY.help}</Text>
+      <View style={styles.spacer} />
+      <Button title={HISTORY.button} onPress={start} disabled={state.kind === 'running'} />
+      {state.kind === 'running' && (
+        <View style={styles.block}>
+          <ActivityIndicator color={colors.text} />
+          <Text style={styles.meta}>{HISTORY.progress(state.progress.done, state.progress.total)}</Text>
+        </View>
+      )}
+      {state.kind === 'error' && <Text style={styles.warning}>{HISTORY.error(state.message)}</Text>}
+      {state.kind === 'done' && state.result.state === 'no-history-permission' && (
+        <Text style={styles.block}>{HISTORY.noPermission}</Text>
+      )}
+      {state.kind === 'done' && state.result.state === 'done' && (
+        <View style={styles.block}>
+          {state.result.failedReads > 0 && <Text style={styles.warning}>{HISTORY.failed(state.result.failedReads)}</Text>}
+          <Text style={styles.originName}>{HISTORY.oldestTitle}</Text>
+          {state.result.oldest.map((o) => (
+            <Text key={`${o.label}-${o.origin}`} style={styles.muted}>
+              {HISTORY.oldest(o.label, originLabel(o.origin), new Date(o.oldest).toLocaleDateString('fr-FR'))}
+            </Text>
+          ))}
+        </View>
       )}
     </View>
   );

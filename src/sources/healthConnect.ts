@@ -31,6 +31,8 @@ import {
   loadExercises,
   loadLocalRows,
   loadSleeps,
+  oldestByOrigin,
+  oldestLocalTime,
   recordBackfillAttempt,
   saveSyncState,
   setLastSync,
@@ -39,7 +41,7 @@ import {
 } from '@/db/healthData';
 import { countTableRows, currentRecorder } from '@/db/syncRuns';
 import { heartRateBackfillTargets } from '@/domain/load';
-import { insideRanges, mergeRanges, rowsToDelete, type TimeRange } from '@/domain/syncPlan';
+import { historyChunks, insideRanges, mergeRanges, rowsToDelete, type TimeRange } from '@/domain/syncPlan';
 import { SETTINGS } from '@/domain/settings';
 
 /**
@@ -662,6 +664,97 @@ async function runSync(now: number, options: SyncOptions): Promise<SyncTypeRepor
     }
   }
   return reports;
+}
+
+// ---------------------------------------------------------------------------
+// Rattrapage de l'historique (lot 5b) : bouton de Contrôle des données, app ouverte seulement.
+// ---------------------------------------------------------------------------
+
+export type HistoryProgress = { done: number; total: number };
+
+/** Plus ancien enregistrement local, par type et par app d'origine (dates, jamais de valeurs). */
+export type OldestRecord = { label: string; origin: string; oldest: number };
+
+export type HistoryResult =
+  | { state: 'done'; oldest: OldestRecord[]; failedReads: number }
+  | { state: 'no-history-permission' };
+
+/**
+ * Lit dans Health Connect les données plus anciennes que le plus ancien enregistrement local de chaque
+ * type, jusqu'à `historyDays` jours, par tranches (progression à chaque lecture). La fréquence cardiaque
+ * est lue ensuite, seulement sur les plages de sommeil et de séance retrouvées. Rien n'est supprimé.
+ */
+export async function backfillHistory(
+  onProgress: (p: HistoryProgress) => void,
+  now: number = Date.now(),
+): Promise<HistoryResult> {
+  // Jamais en même temps qu'une synchro de l'app.
+  if (runningSync) await runningSync.catch(() => undefined);
+  const granted = await getGrantedReadTypes();
+  if (!granted.has('ReadHealthDataHistory')) return { state: 'no-history-permission' };
+
+  const s = SETTINGS.sync;
+  const limit = now - s.historyDays * DAY_MS;
+  const chunkMs = s.historyChunkDays * DAY_MS;
+  const types = SYNC_TYPES.map(({ type }) => type).filter(
+    (t): t is Exclude<SyncType, 'HeartRate'> => t !== 'HeartRate' && granted.has(t),
+  );
+  const plan: { type: Exclude<SyncType, 'HeartRate'>; range: TimeRange }[] = [];
+  for (const type of types) {
+    const spec = SPECS[type];
+    const oldest = (await oldestLocalTime(spec.table, spec.startColumn, spec.where)) ?? now - s.firstSyncDays * DAY_MS;
+    for (const range of historyChunks(oldest, limit, chunkMs)) plan.push({ type, range });
+  }
+
+  let done = 0;
+  let failedReads = 0;
+  let total = plan.length;
+  onProgress({ done, total });
+  for (const { type, range } of plan) {
+    const spec = SPECS[type];
+    try {
+      const records = (await readAll(type, range.start, range.end)) as unknown as AnyRecord[];
+      await upsertRows(spec.table, spec.columns, records.map(spec.toRow));
+    } catch {
+      failedReads += 1;
+    }
+    onProgress({ done: ++done, total });
+  }
+
+  // Fréquence cardiaque : plages de sommeil et de séance plus anciennes que la plus ancienne mesure locale.
+  if (granted.has('HeartRate')) {
+    const oldestHr = (await oldestLocalTime('hc_heart_rate', 'time_ms')) ?? now;
+    const plages = [...(await loadSleeps(limit)), ...(await loadExercises(limit))].filter((p) => p.start < oldestHr);
+    const exact = mergeRanges(plages, 0);
+    const ranges = mergeRanges(plages, s.heartRateMergeGapMinutes * 60_000);
+    total += ranges.length;
+    for (const range of ranges) {
+      try {
+        const records = await readAll('HeartRate', range.start, range.end);
+        const rows = records.flatMap((r) => {
+          const id = idOf(r, `hr-${r.startTime}`);
+          const origin = originOf(r);
+          return r.samples
+            .map((x) => ({ time: ms(x.time), bpm: x.beatsPerMinute }))
+            .filter((x) => insideRanges(x.time, exact))
+            .map((x) => [id, x.time, x.bpm, origin]);
+        });
+        await upsertRows('hc_heart_rate', ['record_id', 'time_ms', 'bpm', 'origin'], rows);
+      } catch {
+        failedReads += 1;
+      }
+      onProgress({ done: ++done, total });
+    }
+  }
+
+  const oldest: OldestRecord[] = [];
+  for (const { type, label } of SYNC_TYPES) {
+    const table = type === 'HeartRate' ? 'hc_heart_rate' : SPECS[type].table;
+    const column = type === 'HeartRate' ? 'time_ms' : SPECS[type].startColumn;
+    const where = type === 'HeartRate' ? undefined : SPECS[type].where;
+    for (const row of await oldestByOrigin(table, column, where)) oldest.push({ label, origin: row.origin, oldest: row.oldest });
+  }
+  return { state: 'done', oldest, failedReads };
 }
 
 /**

@@ -748,6 +748,9 @@ export const SETTINGS = {
     heartRateMergeGapMinutes: 30,
     /** Ouverture de l'app : « dernière nuit » = sommeils terminés depuis moins de N heures. */
     lastNightHours: 18,
+    /** Rattrapage de l'historique (Contrôle des données) : jusqu'à N jours en arrière, par tranches. */
+    historyDays: 365,
+    historyChunkDays: 30,
   },
 
   /**

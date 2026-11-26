@@ -1,7 +1,7 @@
 // Suivi des modifications et réconciliation (lot 5b) : quand lire par jeton, quand relire par période,
 // et ce qui est supprimé. Base et Health Connect simulés, données fictives.
 
-import { syncHealthConnect } from './healthConnect';
+import { backfillHistory, syncHealthConnect } from './healthConnect';
 
 const mockDb = {
   tokens: new Map<string, string | null>(),
@@ -9,7 +9,9 @@ const mockDb = {
   deletes: [] as { table: string; ids: string[] }[],
   local: [] as { id: string; start: number; end: number }[],
   saved: new Map<string, string | null>(),
+  oldest: null as number | null,
 };
+const mockGranted = { types: ['HeartRateVariabilityRmssd'] };
 const mockHc = {
   changes: [] as {
     upsertionChanges: { record: unknown }[];
@@ -20,6 +22,7 @@ const mockHc = {
   }[],
   records: [] as unknown[],
   calls: [] as string[],
+  ranges: [] as [number, number][],
 };
 
 jest.mock('@/db/healthData', () => ({
@@ -39,10 +42,12 @@ jest.mock('@/db/healthData', () => ({
   countExerciseHeartRate: async () => new Map(),
   loadBackfillAttempts: async () => new Map(),
   recordBackfillAttempt: async () => undefined,
+  oldestLocalTime: async () => mockDb.oldest,
+  oldestByOrigin: async (table: string) => (table === 'hc_hrv' ? [{ origin: 'zepp', oldest: 42 }] : []),
 }));
 jest.mock('@/db/syncRuns', () => ({ currentRecorder: () => null, countTableRows: async () => 0 }));
 jest.mock('react-native-health-connect', () => ({
-  getGrantedPermissions: async () => [{ accessType: 'read', recordType: 'HeartRateVariabilityRmssd' }],
+  getGrantedPermissions: async () => mockGranted.types.map((recordType) => ({ accessType: 'read', recordType })),
   getChanges: async (request: { changesToken?: string }) => {
     mockHc.calls.push(request.changesToken ? `changes:${request.changesToken}` : 'token');
     if (!request.changesToken) {
@@ -50,7 +55,8 @@ jest.mock('react-native-health-connect', () => ({
     }
     return mockHc.changes.shift();
   },
-  readRecords: async () => {
+  readRecords: async (_type: string, options: { timeRangeFilter: { startTime: string; endTime: string } }) => {
+    mockHc.ranges.push([Date.parse(options.timeRangeFilter.startTime), Date.parse(options.timeRangeFilter.endTime)]);
     mockHc.calls.push('période');
     return { records: mockHc.records };
   },
@@ -74,6 +80,9 @@ beforeEach(() => {
   mockHc.changes = [];
   mockHc.records = [];
   mockHc.calls = [];
+  mockHc.ranges = [];
+  mockDb.oldest = null;
+  mockGranted.types = ['HeartRateVariabilityRmssd'];
 });
 
 it('sans jeton : jeton demandé avant la lecture par période, puis réconciliation ; le jeton est gardé', async () => {
@@ -113,4 +122,36 @@ it('jeton expiré : relecture par période et nouveau jeton', async () => {
   await sync();
   expect(mockHc.calls).toEqual(['changes:vieux', 'token', 'période']);
   expect(mockDb.saved.get('HeartRateVariabilityRmssd')).toBe('neuf');
+});
+
+describe('rattrapage de l’historique', () => {
+  const DAY = 24 * 3600_000;
+  /** Avance l'horloge d'une heure : les autorisations, gardées 30 s, sont relues. */
+  let clock = Date.now();
+  beforeEach(() => {
+    clock += 3600_000;
+    jest.spyOn(Date, 'now').mockReturnValue(clock);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('sans l’autorisation « Lire l’historique », ne lit rien et le dit', async () => {
+    const result = await backfillHistory(() => undefined, NOW);
+    expect(result).toEqual({ state: 'no-history-permission' });
+    expect(mockHc.calls).toEqual([]);
+  });
+
+  it('lit par tranches de 30 jours, du plus ancien enregistrement local jusqu’à 365 jours, avec la progression', async () => {
+    mockGranted.types = ['HeartRateVariabilityRmssd', 'ReadHealthDataHistory'];
+    const now = NOW;
+    mockDb.oldest = now - 300 * DAY;
+    const progress: string[] = [];
+    const result = await backfillHistory((p) => progress.push(`${p.done}/${p.total}`), now);
+    expect(mockHc.ranges.map(([a, b]) => [(now - a) / DAY, (now - b) / DAY])).toEqual([
+      [330, 300],
+      [360, 330],
+      [365, 360],
+    ]);
+    expect(progress).toEqual(['0/3', '1/3', '2/3', '3/3']);
+    expect(result).toEqual({ state: 'done', failedReads: 0, oldest: [{ label: 'HRV (rMSSD)', origin: 'zepp', oldest: 42 }] });
+  });
 });

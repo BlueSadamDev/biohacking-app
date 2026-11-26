@@ -28,6 +28,19 @@ function seconds(ms: number): string {
   return `${String(Math.round(ms / 100) / 10).replace('.', ',')} s`;
 }
 
+/** Carte « Rattraper l'historique » de Contrôle des données (lot 5b) : dates et comptages seulement. */
+export const HISTORY = {
+  title: 'Rattraper l’historique (365 jours)',
+  help: 'Lit dans Health Connect les données plus anciennes que celles déjà dans Aube, jusqu’à un an en arrière. Garde l’app ouverte pendant la lecture : elle peut prendre plusieurs minutes.',
+  button: 'Rattraper l’historique (365 jours)',
+  progress: (done: number, total: number) => `Lecture ${done} sur ${total}…`,
+  noPermission: 'Health Connect ne permet pas encore à Aube de lire l’historique. Autorise « Lire l’historique » dans les réglages de Health Connect.',
+  failed: (n: number) => `${countOf(n, 'lecture')} ${n < 2 ? 'n’a' : 'n’ont'} pas abouti : relance le rattrapage plus tard.`,
+  oldestTitle: 'Plus ancien enregistrement, par source',
+  oldest: (label: string, origin: string, date: string) => `${label} · ${origin} : depuis le ${date}`,
+  error: (detail: string) => `Le rattrapage a échoué : ${detail}`,
+} as const;
+
 /** Carte « Dernières synchros » de Contrôle des données (lot 5b) : comptages et durées seulement. */
 export const SYNC_RUNS = {
   title: 'Dernières synchros',

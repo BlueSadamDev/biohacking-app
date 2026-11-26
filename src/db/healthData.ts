@@ -2,6 +2,7 @@
 // Convertit les lignes de la base vers les types de `src/domain/`.
 
 import type { StepsRecord, WeightEntry } from '@/domain/daily';
+import { dayKey } from '@/domain/dates';
 import { computeNights, type NightValue, type Sample, type SleepSession } from '@/domain/nightly';
 import { countedSessions, type ExerciseSession } from '@/domain/load';
 import type { Meal } from '@/domain/nutrition';
@@ -27,6 +28,7 @@ export async function upsertRows(table: string, columns: string[], rows: Value[]
       await statement.finalizeAsync();
     }
   });
+  if (NIGHT_TABLES.has(table)) invalidateNights();
 }
 
 export async function getLastSync(recordType: string): Promise<number | null> {
@@ -73,13 +75,27 @@ async function loadSamples(sql: string, sinceMs: number): Promise<Sample[]> {
   return db.getAllAsync<Sample>(sql, sinceMs);
 }
 
+/**
+ * Mesures d'une table prises pendant un sommeil terminé après `sinceMs` (lot 5b). Seules ces mesures
+ * servent au calcul des nuits : la HRV de la journée et la FC des séances ne sont plus lues ici.
+ * Chaque mesure n'est lue qu'une fois, même si deux sommeils se chevauchent.
+ */
+export function samplesDuringSleep(table: string, valueColumn: string): string {
+  return `SELECT time_ms AS time, ${valueColumn} AS value, origin FROM ${table}
+    WHERE rowid IN (
+      SELECT m.rowid FROM hc_sleep s JOIN ${table} m ON m.time_ms BETWEEN s.start_ms AND s.end_ms
+      WHERE s.end_ms >= ?
+    )
+    ORDER BY time_ms`;
+}
+
 /** Tout ce qu'il faut pour calculer les valeurs par nuit depuis `sinceMs`. */
 export async function loadNightInputs(sinceMs: number) {
   const [sleeps, hrv, restingHr, heartRate] = await Promise.all([
     loadSleeps(sinceMs),
-    loadSamples('SELECT time_ms AS time, rmssd_ms AS value, origin FROM hc_hrv WHERE time_ms >= ?', sinceMs),
-    loadSamples('SELECT time_ms AS time, bpm AS value, origin FROM hc_resting_hr WHERE time_ms >= ?', sinceMs),
-    loadSamples('SELECT time_ms AS time, bpm AS value, origin FROM hc_heart_rate WHERE time_ms >= ?', sinceMs),
+    loadSamples(samplesDuringSleep('hc_hrv', 'rmssd_ms'), sinceMs),
+    loadSamples(samplesDuringSleep('hc_resting_hr', 'bpm'), sinceMs),
+    loadSamples(samplesDuringSleep('hc_heart_rate', 'bpm'), sinceMs),
   ]);
   return { sleeps, hrv, restingHr, heartRate };
 }
@@ -174,14 +190,40 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * Valeurs par nuit des `days` derniers jours.
  * 160 jours par défaut : 90 jours de graphique + 60 jours de norme + marge.
  */
-export async function loadNights(days = 160): Promise<NightValue[]> {
+export function loadNights(days = 160): Promise<NightValue[]> {
+  // Lot 5b : un seul calcul tant que la base n'a pas changé, partagé par l'accueil, les alertes, la
+  // notification du matin et les autres écrans (auparavant : un calcul par usage, 6 par synchro).
+  const key = `${days}|${dayKey(new Date())}|${nightsVersion}`;
+  if (nightsCache?.key !== key) {
+    const version = nightsVersion;
+    const promise = computeNightsFromDb(days);
+    nightsCache = { key, promise };
+    promise.catch(() => {
+      if (nightsCache?.promise === promise && nightsVersion === version) nightsCache = null;
+    });
+  }
+  return nightsCache.promise;
+}
+
+async function computeNightsFromDb(days: number): Promise<NightValue[]> {
   const t0 = Date.now();
   const inputs = await loadNightInputs(t0 - days * DAY_MS);
   const t1 = Date.now();
   const nights = computeNights(inputs);
-  // Mesure de la synchro (lot 5b) : chaque calcul des nuits pendant une synchro est compté.
+  // Mesure de la synchro (lot 5b) : chaque calcul réel des nuits pendant une synchro est compté.
   currentRecorder()?.addNights(t1 - t0, Date.now() - t1);
   return nights;
+}
+
+/** Tables dont dépendent les nuits : toute écriture dedans rend le calcul en mémoire périmé. */
+const NIGHT_TABLES = new Set(['hc_sleep', 'hc_hrv', 'hc_resting_hr', 'hc_heart_rate']);
+let nightsVersion = 0;
+let nightsCache: { key: string; promise: Promise<NightValue[]> } | null = null;
+
+/** À appeler après toute écriture ou suppression dans les tables des nuits (synchro, effacement). */
+export function invalidateNights(): void {
+  nightsVersion += 1;
+  nightsCache = null;
 }
 
 export type SourcesStatus = {

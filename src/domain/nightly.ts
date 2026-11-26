@@ -80,8 +80,33 @@ export function mainSleepByNight(
   return result;
 }
 
-function inside(sleep: SleepSession, samples: Sample[]): Sample[] {
-  return samples.filter((s) => s.time >= sleep.start && s.time <= sleep.end && s.value > 0);
+/** Mesures triées par heure (copie ; tri stable : l'ordre d'arrivée est gardé à heure égale). */
+export function sortByTime(samples: readonly Sample[]): Sample[] {
+  return [...samples].sort((a, b) => a.time - b.time);
+}
+
+/** Premier indice dont l'heure est ≥ `time` (recherche par dichotomie dans des mesures triées). */
+function firstAtOrAfter(sorted: readonly Sample[], time: number): number {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid].time < time) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/**
+ * Mesures valides prises pendant un sommeil (bornes comprises), dans des mesures triées par heure.
+ * Dichotomie : on ne parcourt que les mesures de la nuit, pas toutes les mesures pour chaque nuit.
+ */
+function inside(sleep: SleepSession, sorted: readonly Sample[]): Sample[] {
+  const result: Sample[] = [];
+  for (let i = firstAtOrAfter(sorted, sleep.start); i < sorted.length && sorted[i].time <= sleep.end; i++) {
+    if (sorted[i].value > 0) result.push(sorted[i]);
+  }
+  return result;
 }
 
 function meanOfLowest(values: number[], count: number): number | null {
@@ -101,20 +126,23 @@ export function computeNights(
   settings: Settings = SETTINGS,
 ): NightValue[] {
   const nights: NightValue[] = [];
+  const hrvSorted = sortByTime(input.hrv);
+  const restingSorted = sortByTime(input.restingHr);
+  const heartRateSorted = sortByTime(input.heartRate);
   for (const [date, sleep] of mainSleepByNight(input.sleeps, settings)) {
-    const hrv = inside(sleep, input.hrv);
+    const hrv = inside(sleep, hrvSorted);
     const lnRmssd = hrv.length
       ? hrv.reduce((sum, s) => sum + Math.log(s.value), 0) / hrv.length
       : null;
 
     let restingHr = meanOfLowest(
-      inside(sleep, input.restingHr).map((s) => s.value),
+      inside(sleep, restingSorted).map((s) => s.value),
       settings.night.restingHrLowestCount,
     );
     let restingHrSource: NightValue['restingHrSource'] = restingHr === null ? null : 'resting';
     if (restingHr === null && settings.night.restingHrFallbackToHeartRate) {
       restingHr = meanOfLowest(
-        inside(sleep, input.heartRate).map((s) => s.value),
+        inside(sleep, heartRateSorted).map((s) => s.value),
         settings.night.restingHrLowestCount,
       );
       restingHrSource = restingHr === null ? null : 'heart_rate';

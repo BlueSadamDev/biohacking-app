@@ -14,14 +14,13 @@ import { colors, fonts } from '@/components/theme';
 
 import { formatDuration } from '@/components/format';
 import { useHealthData } from '@/components/useHealthData';
-import { countRows, loadExercises, loadNightInputs } from '@/db/healthData';
+import { countRows, loadExercises, loadNights } from '@/db/healthData';
 import { loadSessionChecks } from '@/db/loadData';
 import { activeRunStartedMs, beginSyncRun, endSyncRun, loadSyncRuns, syncRunSaveError } from '@/db/syncRuns';
 import { exerciseTypeLabel } from '@/domain/exerciseTypes';
 import type { SessionCheck } from '@/domain/load';
 import { LOAD_CHECK } from '@/domain/texts/sport';
 import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
-import { computeNights } from '@/domain/nightly';
 import { SETTINGS } from '@/domain/settings';
 import { runTotals, type SyncRun } from '@/domain/syncRuns';
 import { SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
@@ -55,12 +54,9 @@ async function runSync(): Promise<SyncState> {
   const { recorder, owner } = beginSyncRun('button');
   try {
     const reports = await syncHealthConnect();
+    // Nuits des 90 derniers jours, tirées du calcul partagé (lot 5b : plus de calcul à part ici).
     const since = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const t0 = Date.now();
-    const inputs = await loadNightInputs(since);
-    const t1 = Date.now();
-    const nights = summarizeNights(computeNights(inputs));
-    recorder.addNights(t1 - t0, Date.now() - t1);
+    const nights = summarizeNights((await loadNights()).filter((n) => n.sleep.end >= since));
     return { kind: 'done', at: new Date(), reports, rows: await countRows(), nights };
   } catch (e) {
     return { kind: 'error', message: e instanceof Error ? e.message : String(e) };

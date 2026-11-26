@@ -9,6 +9,7 @@ import { dayKey } from '@/domain/dates';
 import { plainText } from '@/domain/texts/markup';
 
 import { getDb, writeTransaction } from './database';
+import { invalidateNights } from './healthData';
 
 /** Tables exportées, avec le nom du fichier CSV. */
 const EXPORT_TABLES: { table: string; file: string }[] = [
@@ -96,4 +97,5 @@ export async function eraseAllData(): Promise<void> {
   await writeTransaction(async (tx) => {
     for (const table of ERASE_TABLES) await tx.execAsync(`DELETE FROM ${table}`);
   });
+  invalidateNights();
 }

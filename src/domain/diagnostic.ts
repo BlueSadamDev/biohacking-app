@@ -55,3 +55,28 @@ export function summarizeNights(nights: NightValue[]): NightsSummary {
     lastDate: nights[nights.length - 1]?.date ?? null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Qualité des données (lot 5b, étape 2) : cartes de Contrôle des données. Dates et comptages seulement.
+// ---------------------------------------------------------------------------
+
+/** Nuits coupées réunies (2 parties ou plus), de la plus récente à la plus ancienne. */
+export function joinedNights(nights: readonly NightValue[]): { date: string; parts: number }[] {
+  return nights
+    .filter((n) => n.parts > 1)
+    .map((n) => ({ date: n.date, parts: n.parts }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Nuits avec des mesures écartées (impossibles ou aberrantes), de la plus récente à la plus ancienne. */
+export function nightsWithDiscarded(nights: readonly NightValue[]): { date: string; hrv: number; restingHr: number }[] {
+  return nights
+    .filter((n) => n.discardedHrv + n.discardedRestingHr > 0)
+    .map((n) => ({ date: n.date, hrv: n.discardedHrv, restingHr: n.discardedRestingHr }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Total d'une liste de comptages (en-tête des cartes). */
+export function totalOf<T>(items: readonly T[], pick: (item: T) => number): number {
+  return items.reduce((sum, item) => sum + pick(item), 0);
+}

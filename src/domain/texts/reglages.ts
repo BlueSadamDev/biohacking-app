@@ -69,3 +69,37 @@ export const SYNC_RUNS = {
   denied: (label: string) => `${label} : permission refusée`,
   error: (label: string) => `${label} : lecture impossible`,
 } as const;
+
+/** Écart en pour cent d'un ratio de charge, signé : 1,45 → « +45 % ». */
+function signedPercent(ratio: number): string {
+  const pct = Math.round((ratio - 1) * 100);
+  return `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct)} %`;
+}
+
+/** Cartes « qualité des données » de Contrôle des données (lot 5b) : dates et comptages seulement. */
+export const QUALITY = {
+  mergedTitle: 'Séances fusionnées (90 jours)',
+  mergedHelp: 'Activités qui se chevauchaient, réunies en une seule avant tout calcul (charge, zones, séances).',
+  mergedNone: 'Aucune activité fusionnée.',
+  merged: (date: string, count: number) => `${date} : ${countOf(count, 'activité réunie', 'activités réunies')}`,
+  joinedTitle: 'Nuits réunies (90 jours)',
+  joinedHelp: 'Sommeils d’une même nuit séparés de moins de 60 min, comptés comme une seule nuit (l’éveil entre deux parties ne compte pas).',
+  joinedNone: 'Aucune nuit coupée.',
+  joined: (date: string, parts: number) => `Nuit du ${date} : ${countOf(parts, 'partie')}`,
+  discardedTitle: 'Mesures écartées (90 jours)',
+  discardedHelp: 'Valeurs impossibles, ou très éloignées des autres mesures de la nuit, retirées avant les moyennes.',
+  discardedNone: 'Aucune mesure écartée.',
+  discardedTotal: (n: number) => `${countOf(n, 'mesure écartée', 'mesures écartées')} en tout.`,
+  discarded: (date: string, hrv: number, restingHr: number) =>
+    `Nuit du ${date} : HRV ${countOf(hrv, 'mesure')}, FC au repos ${countOf(restingHr, 'mesure')}`,
+  estimatedTitle: 'Charges estimées (28 jours)',
+  estimatedHelp: 'Activités sans assez de fréquence cardiaque : charge estimée d’après au moins 3 activités du même type des 28 derniers jours.',
+  estimatedNone: 'Aucune charge estimée.',
+  estimated: (date: string, type: string, duration: string) => `${date} · ${type} · ${duration}`,
+  ratioTitle: 'Charge de la semaine : ancien et nouveau calcul',
+  ratioHelp: (until: string) =>
+    `Affiché jusqu’au ${until} pour comparer. Seul le nouveau calcul (moyennes exponentielles) sert à l’accueil et aux alertes.`,
+  ratioMissing: 'Pas de comparaison possible aujourd’hui (profil cardiaque incomplet ou aucune charge).',
+  ratioOld: (ratio: number | null) => `Ancien (moyennes simples) : ${ratio === null ? 'non calculable' : signedPercent(ratio)}`,
+  ratioNew: (ratio: number | null) => `Nouveau (moyennes exponentielles) : ${ratio === null ? 'non calculable' : signedPercent(ratio)}`,
+} as const;

@@ -1,7 +1,7 @@
 // Données nécessaires au calcul de la charge : séances, FC pendant les séances,
 // profil cardiaque (Réglages). Partagé par l'accueil et le moteur d'alertes.
 
-import { sessionChecks, type LoadInputs, type SessionCheck } from '@/domain/load';
+import { dailyLoads, loadRatio, sessionChecks, sessionLoads, simpleLoadRatio, type LoadInputs, type SessionCheck } from '@/domain/load';
 import type { NightValue } from '@/domain/nightly';
 import { effectiveHrMax, trimpCoefficient } from '@/domain/profile';
 import { SETTINGS } from '@/domain/settings';
@@ -45,5 +45,23 @@ export async function loadLoadInputs(nights: NightValue[], today: string, now: D
     coefficient: trimpCoefficient(user.sex),
     historyStart: nights.length ? nights.reduce((min, n) => (n.date < min ? n.date : min), nights[0].date) : null,
     today,
+  };
+}
+
+/**
+ * Ancien et nouveau ratio de charge du jour (Contrôle des données, lot 5b), pour comparer pendant
+ * quelques semaines. null si le profil cardiaque est incomplet.
+ */
+export async function loadRatioComparison(
+  nights: NightValue[],
+  today: string,
+  now: Date,
+): Promise<{ simple: number | null; ewma: number | null } | null> {
+  const input = await loadLoadInputs(nights, today, now);
+  if (input.hrMax === null || input.coefficient === null) return null;
+  const daily = dailyLoads(sessionLoads(input.sessions, input.samples, nights, input.hrMax, input.coefficient));
+  return {
+    simple: simpleLoadRatio(daily, today).ratio,
+    ewma: loadRatio(daily, today, SETTINGS, input.historyStart).ratio,
   };
 }

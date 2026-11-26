@@ -1,5 +1,5 @@
 import { at, NIGHT, ORIGIN, samples, sleep } from './__fixtures__/nights';
-import { asleepMinutes, computeNights, mainSleepByNight, nightDateOf } from './nightly';
+import { asleepMinutes, computeNights, mainSleepByNight, nightDateOf, percentile, withoutOutliers } from './nightly';
 import { SETTINGS } from './settings';
 
 const empty = { hrv: [], restingHr: [], heartRate: [] };
@@ -71,23 +71,24 @@ describe('HRV de la nuit', () => {
 describe('FC au repos de la nuit', () => {
   const times = [1, 2, 3, 4, 5, 6].map((h) => at(2026, 1, 10, h));
 
-  it('moyenne des 5 valeurs les plus basses pendant le sommeil', () => {
+  it('10e centile des mesures pendant le sommeil (lot 5b)', () => {
     const restingHr = samples(times, [60, 50, 52, 54, 56, 58]);
     const [night] = computeNights({ ...empty, sleeps: [NIGHT], restingHr });
-    expect(SETTINGS.night.restingHrLowestCount).toBe(5);
-    expect(night.restingHr).toBe((50 + 52 + 54 + 56 + 58) / 5);
+    expect(SETTINGS.night.restingHrPercentile).toBe(0.1);
+    expect(night.restingHr).toBeCloseTo(51, 10); // entre 50 et 52, à 10 % de l'étendue triée
     expect(night.restingHrSource).toBe('resting');
   });
-  it('avec moins de 5 valeurs, fait la moyenne de celles qui existent', () => {
-    const restingHr = samples(times.slice(0, 2), [50, 54]);
+  it('avec une seule mesure, la FC au repos est cette mesure', () => {
+    const restingHr = samples(times.slice(0, 1), [53]);
     const [night] = computeNights({ ...empty, sleeps: [NIGHT], restingHr });
-    expect(night.restingHr).toBe(52);
+    expect(night.restingHr).toBe(53);
   });
-  it('se replie sur la FC continue s’il n’y a pas de mesure « FC au repos »', () => {
+  it('se replie sur la FC continue s’il n’y a pas de mesure « FC au repos », mesure aberrante écartée', () => {
     const heartRate = samples(times, [70, 48, 49, 50, 51, 52]);
     const [night] = computeNights({ ...empty, sleeps: [NIGHT], heartRate });
-    expect(night.restingHr).toBe(50);
+    expect(night.restingHr).toBeCloseTo(48.4, 10); // 70 est écarté (aberrant)
     expect(night.restingHrSource).toBe('heart_rate');
+    expect(night.discardedRestingHr).toBe(1);
   });
   it('non calculable sans aucune mesure pendant le sommeil', () => {
     const restingHr = [{ time: at(2026, 1, 10, 15), value: 55, origin: ORIGIN }];
@@ -101,13 +102,11 @@ describe('mesures de la nuit trouvées par dichotomie (lot 5b)', () => {
   /** Ancienne méthode : parcours de toutes les mesures pour chaque nuit, dans l'ordre d'arrivée. */
   function naive(input: Parameters<typeof computeNights>[0]) {
     const inNight = (s: { start: number; end: number }, list: { time: number; value: number }[]) =>
-      list.filter((x) => x.time >= s.start && x.time <= s.end && x.value > 0).map((x) => x.value);
+      list.filter((x) => x.time >= s.start && x.time <= s.end).map((x) => x.value);
     return [...mainSleepByNight(input.sleeps)].map(([date, s]) => {
-      const hrv = inNight(s, input.hrv);
-      const lowest = (v: number[]) => {
-        const l = [...v].sort((a, b) => a - b).slice(0, SETTINGS.night.restingHrLowestCount);
-        return l.length ? l.reduce((a, b) => a + b, 0) / l.length : null;
-      };
+      const n = SETTINGS.night;
+      const hrv = withoutOutliers(inNight(s, input.hrv), n.rmssdMin, n.rmssdMax).kept;
+      const lowest = (v: number[]) => percentile(withoutOutliers(v, n.heartRateMin, n.heartRateMax).kept, n.restingHrPercentile);
       return {
         date,
         lnRmssd: hrv.length ? hrv.reduce((a, b) => a + Math.log(b), 0) / hrv.length : null,
@@ -150,5 +149,64 @@ describe('mesures de la nuit trouvées par dichotomie (lot 5b)', () => {
       else expect(night.lnRmssd).toBeCloseTo(slow[i].lnRmssd!, 10);
       expect(night.restingHr).toBeCloseTo(slow[i].restingHr!, 10);
     });
+  });
+});
+
+describe('nuits coupées (lot 5b)', () => {
+  const H = (d: number, h: number, m = 0) => at(2026, 1, d, h, m);
+
+  it('deux parties à moins de 60 min forment une nuit : durée = somme des parties, mesures des deux parties', () => {
+    const first = sleep('p1', H(9, 23), H(10, 3)); // 4 h
+    const second = sleep('p2', H(10, 3, 40), H(10, 7)); // 3 h 20, réveil de 40 min entre les deux
+    const hrv = samples([H(10, 1), H(10, 3, 20), H(10, 5)], [40, 200, 90]); // 3 h 20 : pendant l'éveil
+    const [night] = computeNights({ ...empty, sleeps: [first, second], hrv });
+    expect(night.parts).toBe(2);
+    expect(night.sleepSessions).toBe(2);
+    expect(night.asleepMinutes).toBe(4 * 60 + 200);
+    expect(night.hrvSampleCount).toBe(2);
+    expect(night.sleep.id).toBe('p1');
+    expect(night.sleep.start).toBe(H(9, 23));
+    expect(night.sleep.end).toBe(H(10, 7));
+  });
+
+  it('séparées d’une heure ou plus : deux sommeils, on garde le plus long', () => {
+    const first = sleep('court', H(9, 22), H(9, 23)); // 1 h
+    const second = sleep('long', H(10, 0, 30), H(10, 7));
+    const [night] = computeNights({ ...empty, sleeps: [first, second] });
+    expect(night.sleep.id).toBe('long');
+    expect(night.parts).toBe(1);
+    expect(night.asleepMinutes).toBe(390);
+  });
+
+  it('une nuit réécrite en double n’est comptée qu’une fois', () => {
+    const a = sleep('ancienne', H(9, 23), H(10, 7));
+    const b = sleep('réécrite', H(9, 23, 5), H(10, 7));
+    const hrv = samples([H(10, 2)], [50]);
+    const [night] = computeNights({ ...empty, sleeps: [a, b], hrv });
+    expect(night.parts).toBe(1);
+    expect(night.sleepSessions).toBe(2);
+    expect(night.asleepMinutes).toBe(8 * 60);
+    expect(night.hrvSampleCount).toBe(1);
+  });
+});
+
+describe('mesures aberrantes (lot 5b)', () => {
+  it('écarte d’abord les valeurs impossibles', () => {
+    expect(withoutOutliers([3, 40, 350], 5, 300)).toEqual({ kept: [40], discarded: 2 });
+  });
+  it('écarte ensuite les mesures à plus de 3 écarts absolus médians, à partir de 5 mesures', () => {
+    expect(withoutOutliers([50, 52, 48, 51, 49, 120], 5, 300)).toEqual({ kept: [50, 52, 48, 51, 49], discarded: 1 });
+  });
+  it('avec moins de 5 mesures, pas de filtre des écarts (trop peu pour juger)', () => {
+    expect(withoutOutliers([50, 120], 5, 300)).toEqual({ kept: [50, 120], discarded: 0 });
+  });
+  it('mesures toutes identiques : rien d’écarté', () => {
+    expect(withoutOutliers([50, 50, 50, 50, 50], 5, 300).discarded).toBe(0);
+  });
+  it('HRV de la nuit sans la mesure impossible', () => {
+    const hrv = samples([at(2026, 1, 10, 1), at(2026, 1, 10, 2)], [40, 400]);
+    const [night] = computeNights({ ...empty, sleeps: [NIGHT], hrv });
+    expect(night.hrvMs).toBeCloseTo(40, 10);
+    expect(night.discardedHrv).toBe(1);
   });
 });

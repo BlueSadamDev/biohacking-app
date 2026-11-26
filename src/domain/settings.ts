@@ -54,8 +54,18 @@ export const SETTINGS = {
      * du jour même. Entre `windowEndHour` et `windowStartHour` : sieste, ignorée.
      */
     windowEndHour: 14,
-    /** FC au repos de la nuit : moyenne des N valeurs les plus basses. */
-    restingHrLowestCount: 5,
+    /** FC au repos de la nuit : centile des mesures retenues (lot 5b : 10e centile, au lieu des 5 plus basses). */
+    restingHrPercentile: 0.1,
+    /** Nuits coupées (lot 5b) : séances de sommeil d'une même nuit séparées de moins de N minutes réunies. */
+    mergeGapMinutes: 60,
+    /** Mesures impossibles (lot 5b), écartées avant toute moyenne de la nuit. */
+    heartRateMin: 30,
+    heartRateMax: 220,
+    rmssdMin: 5,
+    rmssdMax: 300,
+    /** Mesures aberrantes : à plus de N écarts absolus médians de la médiane, à partir de M mesures. */
+    outlierMads: 3,
+    outlierMinSamples: 5,
     /**
      * S'il n'y a aucun enregistrement « FC au repos » pendant le sommeil,
      * utiliser à la place les mesures de FC continue prises pendant le sommeil.

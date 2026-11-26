@@ -39,6 +39,10 @@ export function night(date: string, values: NightOptions = {}): NightValue {
     hrvSampleCount: hrvMs === null ? 0 : 10,
     restingHr,
     restingHrSource: restingHr === null ? null : 'resting',
+    parts: 1,
+    sleepSessions: 1,
+    discardedHrv: 0,
+    discardedRestingHr: 0,
   };
 }
 

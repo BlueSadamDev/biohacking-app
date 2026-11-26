@@ -134,14 +134,14 @@ describe('rattrapage de l’historique', () => {
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it('sans l’autorisation « Lire l’historique », ne lit rien et le dit', async () => {
+  it('lit même si l’autorisation « anciennes données » n’est pas signalée (la bibliothèque ne la signale jamais)', async () => {
+    mockDb.oldest = NOW - 300 * DAY;
     const result = await backfillHistory(() => undefined, NOW);
-    expect(result).toEqual({ state: 'no-history-permission' });
-    expect(mockHc.calls).toEqual([]);
+    expect(mockHc.calls.filter((c) => c === 'période')).toHaveLength(3);
+    expect(result.movedBack).toBe(0); // base simulée : le plus ancien enregistrement n'a pas reculé
   });
 
   it('lit par tranches de 30 jours, du plus ancien enregistrement local jusqu’à 365 jours, avec la progression', async () => {
-    mockGranted.types = ['HeartRateVariabilityRmssd', 'ReadHealthDataHistory'];
     const now = NOW;
     mockDb.oldest = now - 300 * DAY;
     const progress: string[] = [];
@@ -152,6 +152,11 @@ describe('rattrapage de l’historique', () => {
       [365, 360],
     ]);
     expect(progress).toEqual(['0/3', '1/3', '2/3', '3/3']);
-    expect(result).toEqual({ state: 'done', failedReads: 0, oldest: [{ label: 'HRV (rMSSD)', origin: 'zepp', oldest: 42 }] });
+    expect(result).toEqual({
+      state: 'done',
+      failedReads: 0,
+      movedBack: 0,
+      oldest: [{ label: 'HRV (rMSSD)', origin: 'zepp', oldest: 42 }],
+    });
   });
 });

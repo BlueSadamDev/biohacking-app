@@ -330,11 +330,9 @@ function HistorySection({ onDone }: { onDone: () => Promise<void> }) {
         </View>
       )}
       {state.kind === 'error' && <Text style={styles.warning}>{HISTORY.error(state.message)}</Text>}
-      {state.kind === 'done' && state.result.state === 'no-history-permission' && (
-        <Text style={styles.block}>{HISTORY.noPermission}</Text>
-      )}
-      {state.kind === 'done' && state.result.state === 'done' && (
+      {state.kind === 'done' && (
         <View style={styles.block}>
+          {state.result.movedBack === 0 && <Text style={styles.block}>{HISTORY.nothingOlder}</Text>}
           {state.result.failedReads > 0 && <Text style={styles.warning}>{HISTORY.failed(state.result.failedReads)}</Text>}
           <Text style={styles.originName}>{HISTORY.oldestTitle}</Text>
           {state.result.oldest.map((o) => (

@@ -34,7 +34,7 @@ export const HISTORY = {
   help: 'Lit dans Health Connect les données plus anciennes que celles déjà dans Aube, jusqu’à un an en arrière. Garde l’app ouverte pendant la lecture : elle peut prendre plusieurs minutes.',
   button: 'Rattraper l’historique (365 jours)',
   progress: (done: number, total: number) => `Lecture ${done} sur ${total}…`,
-  noPermission: 'Health Connect ne permet pas encore à Aube de lire l’historique. Autorise « Lire l’historique » dans les réglages de Health Connect.',
+  nothingOlder: 'Aucune donnée plus ancienne trouvée. S’il en existe dans Health Connect, vérifie que « Accéder aux anciennes données » est activé pour Aube (Health Connect > Aube > Accès supplémentaires).',
   failed: (n: number) => `${countOf(n, 'lecture')} ${n < 2 ? 'n’a' : 'n’ont'} pas abouti : relance le rattrapage plus tard.`,
   oldestTitle: 'Plus ancien enregistrement, par source',
   oldest: (label: string, origin: string, date: string) => `${label} · ${origin} : depuis le ${date}`,

@@ -123,7 +123,7 @@ export async function syncNow(origin: SyncOrigin = 'button'): Promise<void> {
         await reloadFromDb();
         setState({ launched: true });
         recorder.markHomeReady();
-        await syncHealthConnect(Date.now(), { types: OTHER_SYNC_TYPES });
+        await syncHealthConnect(Date.now(), { types: OTHER_SYNC_TYPES, heartRateScope: 'rest' });
       } else {
         await syncHealthConnect();
       }

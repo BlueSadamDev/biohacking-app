@@ -539,8 +539,11 @@ async function syncRecordType(type: Exclude<SyncType, 'HeartRate'>, since: numbe
   return syncByPeriod(type, since, until);
 }
 
-/** Fréquence cardiaque : quelles plages lire. */
-export type HeartRateScope = 'all' | 'last-night';
+/**
+ * Fréquence cardiaque : quelles plages lire. `last-night` : le dernier sommeil seulement (ouverture,
+ * phase 1) ; `rest` : tout sauf ce dernier sommeil, déjà lu (ouverture, phase 2) ; `all` : tout.
+ */
+export type HeartRateScope = 'all' | 'last-night' | 'rest';
 
 /**
  * Fréquence cardiaque (lot 5b) : lue seulement pendant les sommeils et les séances terminés après
@@ -550,10 +553,11 @@ export type HeartRateScope = 'all' | 'last-night';
  */
 async function syncHeartRate(since: number, until: number, scope: HeartRateScope, interactive: boolean): Promise<number> {
   const sleeps = await loadSleeps(since);
+  const lastNight = (x: TimeRange) => x.end >= until - SETTINGS.sync.lastNightHours * 3600_000;
   const plages: TimeRange[] =
     scope === 'last-night'
-      ? sleeps.filter((x) => x.end >= until - SETTINGS.sync.lastNightHours * 3600_000)
-      : [...sleeps, ...(await loadExercises(since))];
+      ? sleeps.filter(lastNight)
+      : [...(scope === 'rest' ? sleeps.filter((x) => !lastNight(x)) : sleeps), ...(await loadExercises(since))];
   const exact = mergeRanges(plages, 0);
   let read = 0;
   for (const range of mergeRanges(plages, SETTINGS.sync.heartRateMergeGapMinutes * 60_000)) {
@@ -573,7 +577,7 @@ async function syncHeartRate(since: number, until: number, scope: HeartRateScope
     await deleteHeartRateRecords(gone, range.start, range.end);
   }
   // Rattrapage des séances sans mesure : seulement avec l'app ouverte (jamais en tâche de fond).
-  if (interactive && scope === 'all') read += await backfillExerciseHeartRate(until);
+  if (interactive && scope !== 'last-night') read += await backfillExerciseHeartRate(until);
   return read;
 }
 
@@ -643,7 +647,7 @@ async function runSync(now: number, options: SyncOptions): Promise<SyncTypeRepor
       if (type === 'HeartRate') {
         count = await syncHeartRate(since, now, scope, options.interactive ?? true);
         // La dernière nuit seule ne vaut pas synchro complète de la FC.
-        if (scope === 'all') await setLastSync(type, now);
+        if (scope !== 'last-night') await setLastSync(type, now);
       } else {
         const result = await syncRecordType(type, since, now);
         count = result.count;
@@ -675,9 +679,12 @@ export type HistoryProgress = { done: number; total: number };
 /** Plus ancien enregistrement local, par type et par app d'origine (dates, jamais de valeurs). */
 export type OldestRecord = { label: string; origin: string; oldest: number };
 
-export type HistoryResult =
-  | { state: 'done'; oldest: OldestRecord[]; failedReads: number }
-  | { state: 'no-history-permission' };
+/**
+ * `movedBack` : nombre de types dont le plus ancien enregistrement local a reculé. Zéro alors qu'il reste
+ * des données plus anciennes dans Health Connect : autorisation « Accéder aux anciennes données » absente
+ * (la bibliothèque ne signale pas cette autorisation : on ne peut que constater le résultat).
+ */
+export type HistoryResult = { state: 'done'; oldest: OldestRecord[]; failedReads: number; movedBack: number };
 
 /**
  * Lit dans Health Connect les données plus anciennes que le plus ancien enregistrement local de chaque
@@ -691,7 +698,6 @@ export async function backfillHistory(
   // Jamais en même temps qu'une synchro de l'app.
   if (runningSync) await runningSync.catch(() => undefined);
   const granted = await getGrantedReadTypes();
-  if (!granted.has('ReadHealthDataHistory')) return { state: 'no-history-permission' };
 
   const s = SETTINGS.sync;
   const limit = now - s.historyDays * DAY_MS;
@@ -700,9 +706,12 @@ export async function backfillHistory(
     (t): t is Exclude<SyncType, 'HeartRate'> => t !== 'HeartRate' && granted.has(t),
   );
   const plan: { type: Exclude<SyncType, 'HeartRate'>; range: TimeRange }[] = [];
+  const before = new Map<string, number | null>();
   for (const type of types) {
     const spec = SPECS[type];
-    const oldest = (await oldestLocalTime(spec.table, spec.startColumn, spec.where)) ?? now - s.firstSyncDays * DAY_MS;
+    const local = await oldestLocalTime(spec.table, spec.startColumn, spec.where);
+    before.set(type, local);
+    const oldest = local ?? now - s.firstSyncDays * DAY_MS;
     for (const range of historyChunks(oldest, limit, chunkMs)) plan.push({ type, range });
   }
 
@@ -747,6 +756,14 @@ export async function backfillHistory(
     }
   }
 
+  let movedBack = 0;
+  for (const type of types) {
+    const spec = SPECS[type];
+    const after = await oldestLocalTime(spec.table, spec.startColumn, spec.where);
+    const prior = before.get(type) ?? null;
+    if (after !== null && (prior === null || after < prior)) movedBack += 1;
+  }
+
   const oldest: OldestRecord[] = [];
   for (const { type, label } of SYNC_TYPES) {
     const table = type === 'HeartRate' ? 'hc_heart_rate' : SPECS[type].table;
@@ -754,7 +771,7 @@ export async function backfillHistory(
     const where = type === 'HeartRate' ? undefined : SPECS[type].where;
     for (const row of await oldestByOrigin(table, column, where)) oldest.push({ label, origin: row.origin, oldest: row.oldest });
   }
-  return { state: 'done', oldest, failedReads };
+  return { state: 'done', oldest, failedReads, movedBack };
 }
 
 /**

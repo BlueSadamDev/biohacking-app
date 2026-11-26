@@ -2,10 +2,11 @@
 // (table `behavior_entry`). Les règles (oui / non / inconnu, noms permis) sont dans src/domain/journal.ts.
 
 import { addDays } from '@/domain/dates';
-import type { Behavior, BehaviorLog } from '@/domain/journal';
+import { lateMealByDay, withComputedLateMeal, type Behavior, type BehaviorLog } from '@/domain/journal';
 import { SETTINGS } from '@/domain/settings';
 
 import { getDb, writeSql, writeTransaction } from './database';
+import { loadMeals, loadNights } from './healthData';
 
 type Row = { id: string; name: string; visible: number; position: number; phrase: string | null };
 
@@ -64,8 +65,27 @@ export async function setBehaviorVisible(id: string, visible: boolean): Promise<
   await writeSql('UPDATE behavior SET visible = ? WHERE id = ?', visible ? 1 : 0, id);
 }
 
-/** Comportements notés depuis le jour `since` (inclus). Absent = inconnu. */
+/** Repas tardif calculé d'après Suivi macro depuis le jour `since` (lot 5b). */
+export async function loadComputedLateMeal(since: string): Promise<Map<string, boolean>> {
+  const [y, m, d] = since.split('-').map(Number);
+  const [nights, meals] = await Promise.all([loadNights(), loadMeals(new Date(y, m - 1, d).getTime())]);
+  return lateMealByDay(meals, nights.filter((n) => n.date > since));
+}
+
+/**
+ * Comportements notés depuis le jour `since` (inclus), complétés par le repas tardif calculé d'après
+ * Suivi macro les jours où il n'a pas été noté à la main (lot 5b). Absent = inconnu.
+ */
 export async function loadBehaviorLog(since: string): Promise<BehaviorLog> {
+  const [manual, computed] = await Promise.all([
+    loadManualBehaviorLog(since),
+    loadComputedLateMeal(since).catch(() => new Map<string, boolean>()),
+  ]);
+  return withComputedLateMeal(manual, computed);
+}
+
+/** Comportements notés à la main dans le journal depuis le jour `since` (inclus). */
+async function loadManualBehaviorLog(since: string): Promise<BehaviorLog> {
   const db = await getDb();
   const rows = await db.getAllAsync<{ day: string; behavior_id: string; done: number }>(
     'SELECT day, behavior_id, done FROM behavior_entry WHERE day >= ?',

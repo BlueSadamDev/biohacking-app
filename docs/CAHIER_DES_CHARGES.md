@@ -46,14 +46,15 @@ La règle : pas de moyenne, une source prioritaire par métrique et une source d
 | --- | --- | --- | --- |
 | FC pendant les séances | Helio Strap | — | Le capteur optique au poignet décroche en musculation et en escalade (flexion du poignet, prise en main). Le strap est plus stable. Sert aussi aux zones cardiaques (section 5) |
 | GPS, distance, dénivelé, allure | Aucune source (Suunto hors périmètre) | — | Non suivis. La course est suivie par la FC du Helio Strap |
-| Séances | Helio Strap (immédiat) | — | Si une source passerelle s'ajoute un jour (séances Suunto), une séance qui chevauche une séance Helio à plus de 50 % la complète (type précis, GPS) au lieu de créer un doublon. Une séance ne compte dans les calculs que si elle dure au moins 20 minutes (musculation toujours comptée) : les courtes activités détectées automatiquement par le bracelet sont ignorées, mais restent enregistrées |
-| Sommeil | Helio Strap (porté en permanence) | — | Une seule source à vie, pour garder des tendances comparables |
-| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment. Une valeur par nuit : moyenne des mesures prises pendant le sommeil principal, calculée sur le logarithme de la rMSSD (atténue les pics isolés) |
-| FC au repos | Helio Strap | — | Une valeur par nuit : moyenne des 5 valeurs les plus basses mesurées pendant le sommeil principal (moins sensible qu'un minimum unique à une mesure erronée) |
+| Séances | Helio Strap (immédiat) | — | Si une source passerelle s'ajoute un jour (séances Suunto), une séance qui chevauche une séance Helio à plus de 50 % la complète (type précis, GPS) au lieu de créer un doublon. Lot 5b : une **activité** est tout ce que le bracelet enregistre (zones et charge) ; une **séance** est une activité d'au moins 45 minutes, ou de la musculation quelle que soit sa durée (séances de la semaine, jours d'entraînement des liens, suggestions). Des activités qui se chevauchent sont fusionnées en une seule avant tout calcul (type de la plus longue ; musculation si l'une l'est) |
+| Sommeil | Helio Strap (porté en permanence) | — | Une seule source à vie, pour garder des tendances comparables. Lot 5b : les séances de sommeil d'une même nuit séparées de moins de 60 minutes forment une seule nuit (durée dormie = somme des parties ; HRV et FC au repos sur toutes les parties) |
+| HRV nocturne | Helio Strap (Zepp transmet la HRV : confirmé au lot 0) | — | Ne jamais mélanger : chaque constructeur calcule la HRV différemment. Une valeur par nuit : moyenne des mesures prises pendant le sommeil principal, calculée sur le logarithme de la rMSSD (atténue les pics isolés). Lot 5b : avant la moyenne, les valeurs impossibles (rMSSD < 5 ou > 300 ms) puis, à partir de 5 mesures, celles à plus de 3 écarts absolus médians de la médiane de la nuit sont écartées |
+| FC au repos | Helio Strap | — | Une valeur par nuit : 10e centile des mesures retenues pendant le sommeil principal (lot 5b, au lieu de la moyenne des 5 plus basses), après avoir écarté les valeurs impossibles (< 30 ou > 220 bpm) et aberrantes (même règle que la HRV) |
 | Poids | Saisie manuelle dans l'app | Zepp (Health Connect) | Jamais de moyenne des deux : la saisie fait foi ; la valeur Zepp ne sert que les jours sans saisie |
 | Pas, calories dépensées | Helio Strap | — | Une seule source, pas de cumul (double comptage) |
+| Repas | Suivi macro | — | Lot 5b : seuls les repas de Suivi macro comptent ; Zepp écrit aussi des repas dans Health Connect, gardés en base mais ignorés (double comptage) |
 
-Pour la HRV et la FC au repos, sans sommeil principal enregistré la nuit concernée, la valeur est affichée « non calculable ». Les paramètres (dont le nombre de valeurs basses retenues) sont dans `src/domain/settings.ts`.
+Pour la HRV et la FC au repos, sans sommeil principal enregistré la nuit concernée, la valeur est affichée « non calculable ». Les paramètres (centile, seuils des mesures impossibles et aberrantes, écart des nuits coupées) sont dans `src/domain/settings.ts`. Toutes ces règles sont recalculées sur tout l'historique à partir des données brutes ; « Contrôle des données » montre les séances fusionnées, les nuits réunies et les mesures écartées (dates et comptages).
 
 **Contrôle de cohérence** (seulement si une source passerelle s'ajoute un jour) : à l'arrivée d'une séance Suunto, si sa FC moyenne diffère de plus de 10 % de celle du Helio Strap, la séance est signalée « donnée douteuse » et exclue des calculs de tendance.
 
@@ -150,7 +151,7 @@ Tous les indicateurs se comparent à ma propre norme : une valeur n'est « mauva
 | HRV nocturne | Moyenne glissante 7 j de ln(rMSSD), comparée à la plage normale sur 60 j (moyenne ± 1 écart-type) | Moyenne 7 j sous la plage normale, ou 3 nuits d'affilée sous la plage |
 | FC au repos | Valeur nocturne, comparée à la moyenne sur 30 j | Plus de 5 bpm au-dessus de la moyenne pendant 2 jours (fatigue ou maladie qui débute) |
 | Sommeil | Durée, régularité de l'heure de coucher, efficacité | Moins de 6 h pendant 3 nuits sur 4, ou heure de coucher qui varie de plus d'1 h 30 sur la semaine |
-| Charge d'entraînement | TRIMP par séance (durée × intensité cardiaque), charge aiguë (7 j) / chronique (28 j). Non fiable (ni valeur ni alerte) si plus d'une séance comptée sur 4 des 28 derniers jours manque de fréquence cardiaque | Ratio supérieur à 1,5 (pic de charge) ou inférieur à 0,8 pendant 2 semaines (désentraînement) |
+| Charge d'entraînement | TRIMP par activité (durée × intensité cardiaque), toutes activités comprises. Activité sans assez de fréquence cardiaque : charge estimée (médiane par minute des activités mesurées du même type des 28 derniers jours × durée, au moins 3 références), marquée « estimée ». Charge aiguë et chronique en moyennes exponentielles sur 7 et 28 jours (lot 5b). Non fiable (ni valeur ni alerte) si plus d'un quart des minutes d'activité des 28 derniers jours manque de fréquence cardiaque (une charge estimée compte comme mesurée) | Ratio supérieur à 1,5 (pic de charge) ou inférieur à 0,8 pendant 2 semaines (désentraînement). Seuils inchangés au lot 5b ; à semaine égale, les moyennes exponentielles donnent un ratio plus modéré qu'avant |
 | Score de récupération | Combinaison pondérée HRV, FC au repos, sommeil et charge de la veille, sur 0 à 100 | Moins de 40 : recommandation de séance légère |
 | Poids | Moyenne glissante 7 j | Tendance hors de la fourchette cible fixée (prise ou perte trop rapide) sur 3 semaines |
 | Protéines | g/kg/jour depuis les repas Suivi macro (Health Connect) | Sous la cible plus de 3 jours sur 7 |
@@ -178,6 +179,10 @@ Ces règles servent au suivi personnel et ne remplacent pas un avis médical. L'
 - La charge d'entraînement n'est pas filtrée : les séances réelles comptent toujours.
 - Alertes en pause : pendant une période, aucune alerte n'est envoyée ni enregistrée ; elles reprennent le lendemain de la date de fin.
 - Le score de récupération reste calculé, sans couleur d'état ni recommandation chiffrée (phrase propre au type, voir F7).
+
+**Repas tardif calculé** (lot 5b) : « Repas tardif » est vrai quand le dernier repas Suivi macro du jour tombe moins de 3 heures avant le début du sommeil principal de la nuit qui suit (l'heure transmise par Suivi macro est l'heure du repas). Dans le journal, il apparaît déjà rempli tant que le journal n'est pas enregistré, avec la mention « d'après Suivi macro » ; sans repas enregistré ce jour-là, il reste à cocher à la main. Ce qui est enregistré dans le journal prime toujours ; les analyses utilisent la saisie quand elle existe, sinon le calcul.
+
+**Avis sur les alertes** (lot 5b) : chaque alerte peut recevoir un avis « Utile », « Pas utile » ou « Fausse alerte », modifiable, enregistré, exporté et effacé avec les données. Aucun ajustement automatique de seuil avant le lot 5c.
 
 **Comportements (F8) dans les liens observés** :
 
@@ -305,7 +310,7 @@ Le risque HRV est levé : Zepp transmet la HRV. La Suunto, absente de Health Con
 - [x] Cibles personnelles : poids visé, protéines en g/kg, nombre de séances par semaine : saisies dans l'app (Réglages > Mes cibles), volontairement absentes du dépôt public
 - [x] Exercices de musculation clés à suivre : squat, développé couché, soulevé de terre (voir décisions)
 - [x] Nutrition : Suivi macro écrit les repas dans Health Connect (vérifié), plus besoin d'export JSON
-- [ ] **Contrôle qualité des données Zepp** (à cadrer, noté le 16 novembre 2026) : vérifier ce que Zepp écrit réellement dans Health Connect, sur mes enregistrements (export CSV de l'app). Exemples à analyser : deux séances de même durée le même jour (vraies séances ou doublon / erreur de mesure de Zepp ?), nombreuses activités courtes détectées automatiquement (environ 100 en 28 jours), séances arrivées sans fréquence cardiaque. L'analyse se fait sur l'ordinateur, hors du dépôt ; le rapport ne garde que des comptages et des dates, jamais de valeurs. Selon le résultat : règles de nettoyage (section 3) et contrôles affichés dans « Contrôle des données ».
+- [x] **Contrôle qualité des données Zepp** (traité au lot 5b, étape 2 : séances fusionnées, nuits réunies, mesures écartées, charges estimées, repas de Suivi macro seulement ; noté le 16 novembre 2026) : vérifier ce que Zepp écrit réellement dans Health Connect, sur mes enregistrements (export CSV de l'app). Exemples à analyser : deux séances de même durée le même jour (vraies séances ou doublon / erreur de mesure de Zepp ?), nombreuses activités courtes détectées automatiquement (environ 100 en 28 jours), séances arrivées sans fréquence cardiaque. L'analyse se fait sur l'ordinateur, hors du dépôt ; le rapport ne garde que des comptages et des dates, jamais de valeurs. Selon le résultat : règles de nettoyage (section 3) et contrôles affichés dans « Contrôle des données ».
 
 **Décisions prises**
 

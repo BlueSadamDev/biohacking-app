@@ -10,6 +10,7 @@ export const JOURNAL = {
   manageList: 'Gérer la liste',
   noBehavior: 'Aucun comportement affiché : ajoute-en depuis « Gérer la liste ».',
   nothingChecked: 'Si tu n’as rien fait de tout ça, laisse tout décoché.',
+  lateMealPrefilled: '« Repas tardif » est rempli d’après Suivi macro : corrige-le si besoin.',
   weightLabel: 'Poids (kg)',
   weightA11y: 'Poids en kg',
   weightPlaceholder: 'ex. 78,4',

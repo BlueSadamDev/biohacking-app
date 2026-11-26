@@ -16,7 +16,7 @@ import { evaluateAlerts, LEVEL_LABEL, selectAlerts, type SelectedAlert } from '@
 import { calibrationStatus } from '@/domain/calibration';
 import { weightByDay } from '@/domain/daily';
 import { addDays, dayKey, daysBetween } from '@/domain/dates';
-import { dailyLoads, isUnreliable, sessionLoads, unmeasuredSessions } from '@/domain/load';
+import { dailyLoads, isUnreliable, sessionLoads, unmeasuredMinutes } from '@/domain/load';
 import { nutritionByDay } from '@/domain/nutrition';
 import { isTaggedDay, withoutTaggedNights } from '@/domain/periods';
 import { loadPeriods } from '@/db/periods';
@@ -66,8 +66,8 @@ async function run(now: Date): Promise<SelectedAlert[]> {
     loadInputs.hrMax !== null && loadInputs.coefficient !== null
       ? sessionLoads(loadInputs.sessions, loadInputs.samples, nights, loadInputs.hrMax, loadInputs.coefficient)
       : null;
-  // Charge non fiable (trop de séances sans fréquence cardiaque) : pas d'alerte de charge.
-  const dailyLoad = loads && !isUnreliable(unmeasuredSessions(loads, today)) ? dailyLoads(loads) : null;
+  // Charge non fiable (trop de minutes d'activité sans fréquence cardiaque) : pas d'alerte de charge.
+  const dailyLoad = loads && !isUnreliable(unmeasuredMinutes(loads, today)) ? dailyLoads(loads) : null;
   const loadHistoryDays = loadInputs.historyStart ? daysBetween(loadInputs.historyStart, today) + 1 : 0;
 
   const weeks = 7 * (a.weightWeeks + 1) + 1;

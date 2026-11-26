@@ -10,6 +10,7 @@ import { AppText } from '@/components/AppText';
 import { AlertsButton, TodayAlertCard } from '@/components/AlertViews';
 import { PrimaryButton, SecondaryButton } from '@/components/Buttons';
 import { PeriodBanner, PeriodButton, PeriodSheet } from '@/components/PeriodViews';
+import { setAlertFeedback } from '@/db/alerts';
 import { newPeriodId, savePeriod } from '@/db/periods';
 import { dayKey } from '@/domain/dates';
 import { validatePeriod, type Period, type PeriodType } from '@/domain/periods';
@@ -152,7 +153,15 @@ export default function HomeScreen() {
 
           {/* Alerte du jour : seulement s'il y en a une, jamais pendant la calibration ni pendant une période. */}
           {!period && alerts?.today && recap?.calibration.done && (
-            <TodayAlertCard alert={alerts.today} onPress={() => router.push('/alertes')} />
+            <TodayAlertCard
+              alert={alerts.today}
+              onPress={() => router.push('/alertes')}
+              onFeedback={(f) => {
+                setAlertFeedback(alerts.today!.id, f)
+                  .then(reload)
+                  .catch(() => undefined);
+              }}
+            />
           )}
 
           <View style={styles.tiles}>

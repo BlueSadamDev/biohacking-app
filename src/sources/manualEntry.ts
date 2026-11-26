@@ -5,10 +5,12 @@
 // Les comportements cochés sont enregistrés pour la veille (table `behavior_entry`) ; les règles
 // « oui / non / inconnu » sont dans src/domain/journal.ts.
 
+import { loadComputedLateMeal } from '@/db/behaviors';
 import { getDb, writeSql, writeTransaction } from '@/db/database';
 import { upsertRows } from '@/db/healthData';
-import { dayKey } from '@/domain/dates';
+import { addDays, dayKey } from '@/domain/dates';
 import { behaviorDayOf, journalRows, type Behavior } from '@/domain/journal';
+import { SETTINGS } from '@/domain/settings';
 
 export type MorningEntry = {
   date: string;
@@ -25,6 +27,11 @@ export type Journal = MorningEntry & {
   checked: Set<string>;
   /** Journal déjà enregistré pour ce matin (lot 5a) ; false pour une saisie d'avant le journal. */
   saved: boolean;
+  /**
+   * Lot 5b : « repas tardif » pré-rempli d'après Suivi macro (journal pas encore enregistré, repas
+   * enregistrés ce jour-là). false : rien de pré-rempli, à cocher à la main.
+   */
+  lateMealPrefilled: boolean;
 };
 
 const MANUAL_ORIGIN = 'saisie manuelle';
@@ -41,6 +48,12 @@ export async function loadJournal(date: string = dayKey(new Date())): Promise<Jo
     'SELECT behavior_id FROM behavior_entry WHERE day = ? AND done = 1',
     behaviorDayOf(date),
   );
+  const saved = row?.journal_ms != null;
+  const checked = new Set(done.map((d) => d.behavior_id));
+  // Lot 5b : tant que le journal n'est pas enregistré, le repas tardif est pré-rempli d'après Suivi macro.
+  const day = behaviorDayOf(date);
+  const computed = saved ? undefined : (await loadComputedLateMeal(addDays(day, -1)).catch(() => new Map<string, boolean>())).get(day);
+  if (computed) checked.add(SETTINGS.journal.lateMealBehaviorId);
   return {
     date,
     weightKg: weight?.kg ?? null,
@@ -48,8 +61,9 @@ export async function loadJournal(date: string = dayKey(new Date())): Promise<Jo
     soreness: row?.soreness ?? null,
     mood: row?.mood ?? null,
     note: row?.note ?? '',
-    checked: new Set(done.map((d) => d.behavior_id)),
-    saved: row?.journal_ms != null,
+    checked,
+    saved,
+    lateMealPrefilled: computed !== undefined,
   };
 }
 

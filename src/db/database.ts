@@ -243,6 +243,12 @@ const MIGRATIONS: string[] = [
   );
   ALTER TABLE sync_state ADD COLUMN changes_token TEXT;
   `,
+  // 11 – Lot 5b (étape 2) : avis sur les alertes (« useful », « not-useful », « false-alarm » ; NULL = pas
+  // d'avis). Ajout seulement : les alertes existantes sont gardées telles quelles.
+  `
+  ALTER TABLE alert ADD COLUMN feedback TEXT;
+  ALTER TABLE alert ADD COLUMN feedback_ms INTEGER;
+  `,
 ];
 
 /** Évolutions du schéma, exportées pour les tests de migration (base SQLite en mémoire). */

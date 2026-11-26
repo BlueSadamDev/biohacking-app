@@ -130,5 +130,6 @@ describe('carte de charge en mots', () => {
       '1 séance ces 7 derniers jours · charge de 80 par jour, contre 70 d’habitude.\n1 séance sans fréquence cardiaque suffisante, non comptée.',
     );
     expect(loadDetail(3, 80, 70, 2)).toContain('2 séances sans fréquence cardiaque suffisante, non comptées.');
+    expect(loadDetail(3, 80, 70, 0, 2)).toContain('Dont 2 activités sans fréquence cardiaque, à la charge estimée.');
   });
 });

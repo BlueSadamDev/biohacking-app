@@ -60,7 +60,7 @@ describe('bilan de la semaine', () => {
   it('suit les verdicts quand la semaine va bien', () => {
     const good = buildCoachContext(
       coachInputs({
-        load: { state: 'ok', acute: 50, chronic: 50, ratio: 1, status: 'balanced', sessions7d: 4, sessionsWithoutHr: 0 },
+        load: { state: 'ok', acute: 50, chronic: 50, ratio: 1, status: 'balanced', sessions7d: 4, sessionsWithoutHr: 0, estimated7d: 0 },
         week: { weekStart: '2026-11-02', sessions: 4, sessionsTarget: 4, zone2Minutes: 130, zone2Target: 120, zone2Reached: true },
         nutrition: { ...coachInputs().nutrition!, proteinDaysBelow: 1 },
       }),

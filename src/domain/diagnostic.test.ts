@@ -1,6 +1,6 @@
 import { session } from './__fixtures__/exercises';
-import { at, NIGHT, samples, sleep } from './__fixtures__/nights';
-import { sessionTypeCounts, summarizeNights } from './diagnostic';
+import { at, night, NIGHT, samples, sleep } from './__fixtures__/nights';
+import { joinedNights, nightsWithDiscarded, sessionTypeCounts, summarizeNights, totalOf } from './diagnostic';
 import { computeNights } from './nightly';
 
 it('compte les séances par type et repère celles qui déclenchent la saisie de musculation', () => {
@@ -32,5 +32,30 @@ it('compte les nuits, avec HRV, avec FC au repos et la source utilisée', () => 
     withStages: 1,
     firstDate: '2026-01-10',
     lastDate: '2026-01-11',
+  });
+});
+
+describe('qualité des données (lot 5b)', () => {
+  const n = (date: string, parts: number, discardedHrv: number, discardedRestingHr: number) => ({
+    ...night(date),
+    parts,
+    discardedHrv,
+    discardedRestingHr,
+  });
+  const nights = [n('2026-03-01', 1, 0, 0), n('2026-03-02', 2, 3, 0), n('2026-03-03', 3, 0, 1)];
+
+  it('nuits réunies : seulement celles en plusieurs parties, la plus récente d’abord', () => {
+    expect(joinedNights(nights)).toEqual([
+      { date: '2026-03-03', parts: 3 },
+      { date: '2026-03-02', parts: 2 },
+    ]);
+  });
+  it('mesures écartées : comptages par nuit, et total', () => {
+    const list = nightsWithDiscarded(nights);
+    expect(list).toEqual([
+      { date: '2026-03-03', hrv: 0, restingHr: 1 },
+      { date: '2026-03-02', hrv: 3, restingHr: 0 },
+    ]);
+    expect(totalOf(list, (x) => x.hrv + x.restingHr)).toBe(4);
   });
 });

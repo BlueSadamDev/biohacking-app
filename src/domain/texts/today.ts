@@ -113,9 +113,9 @@ export const LOAD = {
   calibrating: (days: number, required: number) => `Calibration : ${days} / ${required} jours`,
   calibratingNote: (required: number) => `Ta charge s’affichera après ${required} jours de données.`,
   noLoad: 'Aucune séance avec fréquence cardiaque ces 28 derniers jours : pas encore de charge à comparer.',
-  unreliable: (unmeasured: number, total: number) =>
-    `*${unmeasured} ${pluralWord(unmeasured, 'séance')} sur ${total}* des 28 derniers jours ${pluralWord(unmeasured, 'n’a', 'n’ont')} pas de fréquence cardiaque : ta charge serait faussée.`,
-  unreliableButton: 'Voir les séances',
+  unreliable: (unmeasuredMinutes: number, totalMinutes: number) =>
+    `*${unmeasuredMinutes} min sur ${totalMinutes}* d’activité des 28 derniers jours n’ont pas de fréquence cardiaque : ta charge serait faussée.`,
+  unreliableButton: 'Voir les activités',
   gaugeMin: '−100 %',
   gaugeMax: '+100 %',
 } as const;
@@ -150,9 +150,12 @@ export function loadSentence(status: 'balanced' | 'rising' | 'under' | 'high', r
   }
 }
 
-/** Détail en petit gris : séances et charge moyenne par jour. */
-export function loadDetail(sessions7d: number, acute: number, chronic: number, withoutHr: number): string {
+/** Détail en petit gris : séances, charge moyenne par jour, charges estimées (lot 5b). */
+export function loadDetail(sessions7d: number, acute: number, chronic: number, withoutHr: number, estimated = 0): string {
   let text = `${countOf(sessions7d, 'séance')} ces 7 derniers jours · charge de ${Math.round(acute)} par jour, contre ${Math.round(chronic)} d’habitude.`;
+  if (estimated > 0) {
+    text += `\nDont ${countOf(estimated, 'activité')} sans fréquence cardiaque, à la charge estimée.`;
+  }
   if (withoutHr > 0) {
     text += `\n${countOf(withoutHr, 'séance')} sans fréquence cardiaque suffisante, non ${pluralWord(withoutHr, 'comptée')}.`;
   }

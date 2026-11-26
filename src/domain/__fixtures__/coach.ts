@@ -21,7 +21,7 @@ export function coachInputs(overrides: Partial<CoachInputs> = {}): CoachInputs {
     today: COACH_TODAY,
     nights: COACH_NIGHTS,
     recap: buildRecap(COACH_NIGHTS, COACH_TODAY),
-    load: { state: 'ok', acute: 71, chronic: 50, ratio: 1.42, status: 'rising', sessions7d: 5, sessionsWithoutHr: 0 },
+    load: { state: 'ok', acute: 71, chronic: 50, ratio: 1.42, status: 'rising', sessions7d: 5, sessionsWithoutHr: 0, estimated7d: 0 },
     nutrition: {
       date: '2026-11-07',
       day: { date: '2026-11-07', energyKcal: 2350, proteinG: 118, carbsG: 260, fatG: 80, meals: 4, origins: ['exemple.suivi.macro'] },

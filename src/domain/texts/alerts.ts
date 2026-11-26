@@ -102,4 +102,7 @@ export const ALERT_TEXT = {
 /** Libellés des cartes d'alerte. */
 export const ALERT_UI = {
   persistent: 'Cette alerte revient souvent : si ça dure, parles-en à un professionnel de santé.',
+  /** Avis sur l'alerte (lot 5b) : pastilles sous l'action. */
+  feedback: { useful: 'Utile', 'not-useful': 'Pas utile', 'false-alarm': 'Fausse alerte' },
+  feedbackGroup: 'Ton avis sur cette alerte',
 } as const;

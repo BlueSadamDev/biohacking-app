@@ -58,9 +58,13 @@ describe('règle mobilité', () => {
     expect(gaps.map((g) => g.gap)).toEqual(['mobility']);
   });
 
-  it('des étirements il y a 2 semaines suffisent', () => {
-    const stretch = { session: typed(session('etirements', at(14), 20), 71) };
+  it('une séance d’étirements il y a 2 semaines suffit', () => {
+    const stretch = { session: typed(session('etirements', at(14), 45), 71) };
     expect(findGaps(inputs([zone2Session('a', 1, 130), stretch]))).toEqual([]);
+  });
+  it('des étirements de moins de 45 min sont une activité, pas une séance : ils ne comblent pas le manque (lot 5b)', () => {
+    const stretch = { session: typed(session('etirements', at(14), 20), 71) };
+    expect(findGaps(inputs([zone2Session('a', 1, 130), stretch])).map((g) => g.gap)).toEqual(['mobility']);
   });
 });
 

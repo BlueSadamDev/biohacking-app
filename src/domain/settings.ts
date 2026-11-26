@@ -54,8 +54,18 @@ export const SETTINGS = {
      * du jour même. Entre `windowEndHour` et `windowStartHour` : sieste, ignorée.
      */
     windowEndHour: 14,
-    /** FC au repos de la nuit : moyenne des N valeurs les plus basses. */
-    restingHrLowestCount: 5,
+    /** FC au repos de la nuit : centile des mesures retenues (lot 5b : 10e centile, au lieu des 5 plus basses). */
+    restingHrPercentile: 0.1,
+    /** Nuits coupées (lot 5b) : séances de sommeil d'une même nuit séparées de moins de N minutes réunies. */
+    mergeGapMinutes: 60,
+    /** Mesures impossibles (lot 5b), écartées avant toute moyenne de la nuit. */
+    heartRateMin: 30,
+    heartRateMax: 220,
+    rmssdMin: 5,
+    rmssdMax: 300,
+    /** Mesures aberrantes : à plus de N écarts absolus médians de la médiane, à partir de M mesures. */
+    outlierMads: 3,
+    outlierMinSamples: 5,
     /**
      * S'il n'y a aucun enregistrement « FC au repos » pendant le sommeil,
      * utiliser à la place les mesures de FC continue prises pendant le sommeil.
@@ -153,12 +163,20 @@ export const SETTINGS = {
   /** Charge d'entraînement (cahier des charges, section 5) : TRIMP de Banister et ratio aigu / chronique. */
   load: {
     /**
-     * Durée minimale d'une séance pour qu'elle compte (minutes) : les courtes activités détectées
-     * automatiquement par le bracelet (marche rapide de 5 min…) sont ignorées dans tous les calculs
-     * (séances de la semaine, charge, zones, liens observés, suggestions). La musculation compte
-     * toujours (types de `strength.sessionTypes`). Les séances restent enregistrées (écran Diagnostic).
+     * Activités et séances (décision du 18 novembre 2026, lot 5b) : toutes les activités comptent dans les
+     * zones et la charge ; une séance est une activité d'au moins N minutes, ou de la musculation (types de
+     * `strength.sessionTypes`) quelle que soit sa durée. Seules les séances comptent dans le nombre de
+     * séances de la semaine, les jours d'entraînement des liens observés et les suggestions.
      */
-    minSessionMinutes: 20,
+    sessionMinMinutes: 45,
+    /** Activité sans FC (lot 5b) : charge estimée d'après au moins N activités mesurées du même type… */
+    estimateMinReferences: 3,
+    /** … des N derniers jours. */
+    estimateWindowDays: 28,
+    /** Ratio en moyennes exponentielles (lot 5b) : jours de mise en route en plus des 28 jours. */
+    ewmaWarmupDays: 56,
+    /** Contrôle des données : ancien et nouveau ratio affichés côte à côte jusqu'à cette date (comprise). */
+    ratioComparisonUntil: '2026-12-15',
     /** TRIMP = minutes × FCr × a × e^(k × FCr), FCr = (FC − FC repos) / (FC max − FC repos). */
     trimpA: 0.64,
     /** Une mesure de FC compte au plus pour N secondes (trous de mesure). */
@@ -170,8 +188,8 @@ export const SETTINGS = {
     acuteDays: 7,
     chronicDays: 28,
     /**
-     * Charge non fiable (ni valeur, ni pastille, ni alerte de charge) quand plus de cette part des
-     * séances comptées des 28 derniers jours n'a pas assez de fréquence cardiaque.
+     * Charge non fiable (ni valeur, ni pastille, ni alerte de charge) quand plus de cette part des minutes
+     * d'activité des 28 derniers jours n'a pas assez de fréquence cardiaque (lot 5b ; charge estimée = mesurée).
      */
     maxUnmeasuredShare: 0.25,
     /** Jours d'historique nécessaires avant d'afficher le ratio. */
@@ -319,6 +337,11 @@ export const SETTINGS = {
    * Les calories sont un plafond : respectées à la cible ou en dessous (pas de marge).
    */
   nutrition: {
+    /**
+     * Apps d'origine des repas comptés (lot 5b) : Suivi macro seulement. D'autres apps (Zepp…) écrivent
+     * aussi des repas dans Health Connect : ils sont gardés en base mais ne comptent pas (double comptage).
+     */
+    mealOrigins: ['com.lebilab.suivimacros'] as readonly string[],
     reachedFraction: 0.9,
     /** Fenêtre du compteur « Sous la cible · n jours sur 7 ». */
     weekDays: 7,
@@ -790,6 +813,12 @@ export const SETTINGS = {
       { id: 'sauna', name: 'Sauna' },
       { id: 'meditation', name: 'Méditation' },
     ] as readonly { id: string; name: string }[],
+    /**
+     * Repas tardif calculé (lot 5b) : coché quand le dernier repas Suivi macro du jour tombe moins de N heures
+     * avant le début du sommeil principal de la nuit qui suit. Une saisie du journal prime toujours.
+     */
+    lateMealBehaviorId: 'late-meal',
+    lateMealHours: 3,
     /** Longueur maximale du nom d'un comportement. */
     maxNameLength: 40,
     /** Longueur maximale de la forme « en phrase » d'un comportement (lot 5a.1). */

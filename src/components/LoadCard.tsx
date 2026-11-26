@@ -63,7 +63,7 @@ export function LoadCard({ load }: { load: LoadSummary | null }) {
       </AppText>
     );
   } else if (load.state === 'unreliable') {
-    // Trop de séances sans fréquence cardiaque : ni pourcentage ni pastille (valeur faussée).
+    // Trop de minutes d'activité sans fréquence cardiaque : ni pourcentage ni pastille (valeur faussée).
     body = (
       <>
         <RichText variant="constat" text={LOAD.unreliable(load.unmeasured, load.total)} />
@@ -82,7 +82,7 @@ export function LoadCard({ load }: { load: LoadSummary | null }) {
           maxLabel={LOAD.gaugeMax}
           accessibilityLabel={loadGaugeLabel(load.ratio)}
         />
-        <AppText variant="small">{loadDetail(load.sessions7d, load.acute, load.chronic, load.sessionsWithoutHr)}</AppText>
+        <AppText variant="small">{loadDetail(load.sessions7d, load.acute, load.chronic, load.sessionsWithoutHr, load.estimated7d)}</AppText>
       </>
     );
   }

@@ -28,8 +28,8 @@ import {
   getLastSync,
   heartRateRecordIds,
   loadBackfillAttempts,
-  loadExercises,
   loadLocalRows,
+  loadRawExercises,
   loadSleeps,
   oldestByOrigin,
   oldestLocalTime,
@@ -335,7 +335,7 @@ async function backfillExerciseHeartRate(now: number): Promise<number> {
   const s = SETTINGS.sync;
   const since = now - s.heartRateBackfillDays * DAY_MS;
   const [sessions, counts, attempts] = await Promise.all([
-    loadExercises(since),
+    loadRawExercises(since),
     countExerciseHeartRate(since),
     loadBackfillAttempts(),
   ]);
@@ -557,7 +557,7 @@ async function syncHeartRate(since: number, until: number, scope: HeartRateScope
   const plages: TimeRange[] =
     scope === 'last-night'
       ? sleeps.filter(lastNight)
-      : [...(scope === 'rest' ? sleeps.filter((x) => !lastNight(x)) : sleeps), ...(await loadExercises(since))];
+      : [...(scope === 'rest' ? sleeps.filter((x) => !lastNight(x)) : sleeps), ...(await loadRawExercises(since))];
   const exact = mergeRanges(plages, 0);
   let read = 0;
   for (const range of mergeRanges(plages, SETTINGS.sync.heartRateMergeGapMinutes * 60_000)) {
@@ -733,7 +733,7 @@ export async function backfillHistory(
   // Fréquence cardiaque : plages de sommeil et de séance plus anciennes que la plus ancienne mesure locale.
   if (granted.has('HeartRate')) {
     const oldestHr = (await oldestLocalTime('hc_heart_rate', 'time_ms')) ?? now;
-    const plages = [...(await loadSleeps(limit)), ...(await loadExercises(limit))].filter((p) => p.start < oldestHr);
+    const plages = [...(await loadSleeps(limit)), ...(await loadRawExercises(limit))].filter((p) => p.start < oldestHr);
     const exact = mergeRanges(plages, 0);
     const ranges = mergeRanges(plages, s.heartRateMergeGapMinutes * 60_000);
     total += ranges.length;

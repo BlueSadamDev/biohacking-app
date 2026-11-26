@@ -20,18 +20,20 @@ export const SPORT = {
 
 /** Carte « Charge : séances des 28 derniers jours » de l'écran « Contrôle des données ». */
 export const LOAD_CHECK = {
-  title: 'Charge : séances des 28 derniers jours',
-  help: 'Une séance compte si elle dure au moins 20 min (musculation : toujours) et si la fréquence cardiaque couvre au moins la moitié de sa durée (une mesure compte au plus 2 min).',
+  title: 'Charge : activités des 28 derniers jours',
+  help: 'Toutes les activités comptent dans la charge ; une séance dure au moins 45 min (musculation : toujours). La fréquence cardiaque doit couvrir au moins la moitié de la durée (une mesure compte au plus 2 min) ; sinon, la charge est estimée d’après au moins 3 activités du même type.',
   profileMissing: 'Indique ton sexe et ta fréquence cardiaque max (ou ton année de naissance) dans Réglages pour voir les points.',
   none: 'Aucune séance ces 28 derniers jours.',
-  summary: (counted: number, short: number, noHr: number, noRest: number) => {
-    const parts = [`${countOf(counted, 'séance comptée', 'séances comptées')}`];
-    if (short) parts.push(`${countOf(short, 'séance')} de moins de 20 min`);
-    if (noHr) parts.push(`${countOf(noHr, 'séance')} avec fréquence cardiaque insuffisante`);
-    if (noRest) parts.push(`${countOf(noRest, 'séance')} sans fréquence cardiaque au repos de référence`);
+  summary: (measured: number, estimated: number, noHr: number, noRest: number) => {
+    const parts = [`${countOf(measured, 'activité mesurée', 'activités mesurées')}`];
+    if (estimated) parts.push(`${countOf(estimated, 'activité estimée', 'activités estimées')}`);
+    if (noHr) parts.push(`${countOf(noHr, 'activité')} sans assez de fréquence cardiaque ni d’estimation`);
+    if (noRest) parts.push(`${countOf(noRest, 'activité')} sans fréquence cardiaque au repos de référence`);
     return `${parts.join(', ')}.`;
   },
-  shortHidden: (n: number) => `${countOf(n, 'séance')} de moins de 20 min ${pluralWord(n, 'n’est pas listée', 'ne sont pas listées')}.`,
+  shortHidden: (n: number) =>
+    `${countOf(n, 'activité')} de moins de 45 min ${pluralWord(n, 'n’est pas listée', 'ne sont pas listées')} (elles comptent dans la charge).`,
+  estimatedPoints: (points: number) => `${countOf(points, 'point')} (estimés)`,
   coverage: (pct: number, samples: number) => `fréquence cardiaque sur ${pct} % de la séance (${countOf(samples, 'mesure')})`,
   points: (points: number) => `${countOf(points, 'point')}`,
   rejected: { 'no-heart-rate': 'non comptée : fréquence cardiaque insuffisante', 'no-resting-hr': 'non comptée : pas de fréquence cardiaque au repos de référence' },

@@ -14,16 +14,26 @@ import { colors, fonts } from '@/components/theme';
 
 import { formatDuration } from '@/components/format';
 import { useHealthData } from '@/components/useHealthData';
-import { countRows, loadExercises, loadNights } from '@/db/healthData';
-import { loadSessionChecks } from '@/db/loadData';
+import { countRows, loadExerciseMerges, loadExercises, loadNights } from '@/db/healthData';
+import { loadRatioComparison, loadSessionChecks } from '@/db/loadData';
 import { activeRunStartedMs, beginSyncRun, endSyncRun, loadSyncRuns, syncRunSaveError } from '@/db/syncRuns';
 import { exerciseTypeLabel } from '@/domain/exerciseTypes';
-import type { SessionCheck } from '@/domain/load';
 import { LOAD_CHECK } from '@/domain/texts/sport';
-import { sessionTypeCounts, summarizeNights, type NightsSummary, type SessionTypeCount } from '@/domain/diagnostic';
+import {
+  joinedNights,
+  nightsWithDiscarded,
+  sessionTypeCounts,
+  summarizeNights,
+  totalOf,
+  type NightsSummary,
+  type SessionTypeCount,
+} from '@/domain/diagnostic';
+import { addDays, dayKey } from '@/domain/dates';
+import type { SessionCheck, SessionMerge } from '@/domain/load';
+import type { NightValue } from '@/domain/nightly';
 import { SETTINGS } from '@/domain/settings';
 import { runTotals, type SyncRun } from '@/domain/syncRuns';
-import { HISTORY, SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
+import { HISTORY, QUALITY, SOURCES, SYNC_RUNS } from '@/domain/texts/reglages';
 import {
   askReadPermissions,
   backfillHistory,
@@ -149,6 +159,19 @@ export default function InventoryScreen() {
       .catch(() => setTypes(null));
   }, [sync]);
 
+  // Qualité des données (lot 5b) : fusions de séances (90 jours) et ancien / nouveau ratio de charge.
+  const [merges, setMerges] = useState<SessionMerge[] | null>(null);
+  const [ratios, setRatios] = useState<{ simple: number | null; ewma: number | null } | null | undefined>(undefined);
+  useEffect(() => {
+    loadExerciseMerges(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      .then(setMerges)
+      .catch(() => setMerges(null));
+    const now = new Date();
+    loadRatioComparison(nights, dayKey(now), now)
+      .then(setRatios)
+      .catch(() => setRatios(null));
+  }, [nights, sync]);
+
   // Séances des 28 derniers jours et ce que le calcul de charge en fait (relu après chaque synchro).
   const [checks, setChecks] = useState<SessionCheck[] | null | undefined>(undefined);
   useEffect(() => {
@@ -194,6 +217,7 @@ export default function InventoryScreen() {
           <HistorySection onDone={reload} />
           <SessionTypesSection types={types} />
           <LoadCheckSection checks={checks} />
+          <QualitySection nights={nights} merges={merges} checks={checks} ratios={ratios} today={dayKey(state.readAt)} />
           <Text style={styles.section}>Inventaire</Text>
           <Text style={styles.meta}>Lu le {formatDate(state.readAt)}</Text>
           <Button title="Actualiser" onPress={load} />
@@ -261,13 +285,15 @@ const TABLE_LABELS: Record<string, string> = {
 };
 
 /**
- * Charge : séances des 28 derniers jours, comptées (avec leurs points) ou non, et pourquoi.
- * Les séances de moins de 20 min sont seulement comptées dans le résumé (elles sont nombreuses).
+ * Charge : activités des 28 derniers jours, avec leurs points (mesurés ou estimés), ou pourquoi elles
+ * n'en ont pas. Seules les séances sont listées ; les activités courtes, nombreuses, sont résumées.
  */
 function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefined }) {
   if (checks === undefined) return null;
-  const listed = checks?.filter((c) => c.reason !== 'short') ?? [];
-  const count = (r: SessionCheck['reason']) => checks?.filter((c) => c.reason === r).length ?? 0;
+  const listed = checks?.filter((c) => c.isSession) ?? [];
+  const short = (checks?.length ?? 0) - listed.length;
+  const count = (r: SessionCheck['reason'], estimated = false) =>
+    checks?.filter((c) => c.reason === r && c.estimated === estimated).length ?? 0;
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{LOAD_CHECK.title}</Text>
@@ -277,7 +303,7 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
       {checks !== null && checks.length > 0 && (
         <>
           <Text style={styles.block}>
-            {LOAD_CHECK.summary(count(null), count('short'), count('no-heart-rate'), count('no-resting-hr'))}
+            {LOAD_CHECK.summary(count(null), count(null, true), count('no-heart-rate'), count('no-resting-hr'))}
           </Text>
           {listed.map((c) => (
             <View key={c.id} style={styles.origin}>
@@ -287,14 +313,104 @@ function LoadCheckSection({ checks }: { checks: SessionCheck[] | null | undefine
               </Text>
               <Text style={styles.muted}>
                 {LOAD_CHECK.coverage(Math.round(c.coverage * 100), c.samples)} ·{' '}
-                {c.reason === null ? LOAD_CHECK.points(Math.round(c.trimp ?? 0)) : LOAD_CHECK.rejected[c.reason as 'no-heart-rate' | 'no-resting-hr']}
+                {c.reason === null
+                  ? c.estimated
+                    ? LOAD_CHECK.estimatedPoints(Math.round(c.trimp ?? 0))
+                    : LOAD_CHECK.points(Math.round(c.trimp ?? 0))
+                  : LOAD_CHECK.rejected[c.reason]}
               </Text>
             </View>
           ))}
-          {count('short') > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(count('short'))}</Text>}
+          {short > 0 && <Text style={[styles.muted, styles.block]}>{LOAD_CHECK.shortHidden(short)}</Text>}
         </>
       )}
     </View>
+  );
+}
+
+const shortDate = (key: string) =>
+  new Date(`${key}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+
+/** Cartes « qualité des données » (lot 5b) : dates et comptages seulement, jamais de valeurs. */
+function QualitySection({
+  nights,
+  merges,
+  checks,
+  ratios,
+  today,
+}: {
+  /** Jour de la lecture de l'écran (pas d'horloge pendant l'affichage). */
+  today: string;
+  nights: NightValue[];
+  merges: SessionMerge[] | null;
+  checks: SessionCheck[] | null | undefined;
+  ratios: { simple: number | null; ewma: number | null } | null | undefined;
+}) {
+  const since = addDays(today, -90);
+  const recent = nights.filter((n) => n.date >= since);
+  const joined = joinedNights(recent);
+  const discarded = nightsWithDiscarded(recent);
+  const estimated = (checks ?? []).filter((c) => c.estimated);
+  const until = SETTINGS.load.ratioComparisonUntil;
+  return (
+    <>
+      {merges !== null && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{QUALITY.mergedTitle}</Text>
+          <Text style={styles.muted}>{QUALITY.mergedHelp}</Text>
+          {merges.length === 0 && <Text style={styles.block}>{QUALITY.mergedNone}</Text>}
+          {[...merges].reverse().map((m) => (
+            <Text key={m.id}>{QUALITY.merged(shortDate(m.date), m.count)}</Text>
+          ))}
+        </View>
+      )}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{QUALITY.joinedTitle}</Text>
+        <Text style={styles.muted}>{QUALITY.joinedHelp}</Text>
+        {joined.length === 0 && <Text style={styles.block}>{QUALITY.joinedNone}</Text>}
+        {joined.map((n) => (
+          <Text key={n.date}>{QUALITY.joined(shortDate(n.date), n.parts)}</Text>
+        ))}
+      </View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{QUALITY.discardedTitle}</Text>
+        <Text style={styles.muted}>{QUALITY.discardedHelp}</Text>
+        {discarded.length === 0 ? (
+          <Text style={styles.block}>{QUALITY.discardedNone}</Text>
+        ) : (
+          <Text style={styles.block}>{QUALITY.discardedTotal(totalOf(discarded, (d) => d.hrv + d.restingHr))}</Text>
+        )}
+        {discarded.map((d) => (
+          <Text key={d.date}>{QUALITY.discarded(shortDate(d.date), d.hrv, d.restingHr)}</Text>
+        ))}
+      </View>
+      {checks !== undefined && checks !== null && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{QUALITY.estimatedTitle}</Text>
+          <Text style={styles.muted}>{QUALITY.estimatedHelp}</Text>
+          {estimated.length === 0 && <Text style={styles.block}>{QUALITY.estimatedNone}</Text>}
+          {estimated.map((c) => (
+            <Text key={c.id}>
+              {QUALITY.estimated(shortDate(c.date), exerciseTypeLabel(c.exerciseType), formatDuration(Math.round(c.durationMinutes)))}
+            </Text>
+          ))}
+        </View>
+      )}
+      {ratios !== undefined && today <= until && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{QUALITY.ratioTitle}</Text>
+          <Text style={styles.muted}>{QUALITY.ratioHelp(new Date(`${until}T12:00:00`).toLocaleDateString('fr-FR'))}</Text>
+          {ratios === null ? (
+            <Text style={styles.block}>{QUALITY.ratioMissing}</Text>
+          ) : (
+            <View style={styles.block}>
+              <Text>{QUALITY.ratioOld(ratios.simple)}</Text>
+              <Text>{QUALITY.ratioNew(ratios.ewma)}</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </>
   );
 }
 

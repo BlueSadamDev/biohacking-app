@@ -365,11 +365,12 @@ Ces points remplacent les descriptions plus anciennes ci-dessus. Les règles d'�
   titre (« Équilibrée » `good`, « En hausse » et « En baisse » `mid`, « Trop haute » `low`),
   phrase en style « constat » (« Tu t'entraînes *45 % de plus* que d'habitude cette semaine »),
   jauge bornée « −100 % » / « +100 % », détail en petit (séances, charge par jour).
-- Charge non fiable (plus d'une séance sur 4 des 28 derniers jours sans fréquence cardiaque) : ni
-  pastille ni jauge ; phrase « *6 séances sur 20* des 28 derniers jours n'ont pas de fréquence
-  cardiaque : ta charge serait faussée. » et bouton secondaire « Voir les séances » (ouvre
-  « Contrôle des données », carte « Charge : séances des 28 derniers jours »). Carte Sport :
-  « Non fiable ».
+- Charge non fiable (plus d'un quart des minutes d'activité des 28 derniers jours sans fréquence
+  cardiaque, depuis le lot 5b) : ni pastille ni jauge ; phrase « *95 min sur 600* d'activité des
+  28 derniers jours n'ont pas de fréquence cardiaque : ta charge serait faussée. » et bouton
+  secondaire « Voir les activités » (ouvre « Contrôle des données », carte « Charge : activités des
+  28 derniers jours »). Carte Sport : « Non fiable ». Charges estimées (lot 5b) : une ligne de plus
+  dans le détail en petit (« Dont 2 activités sans fréquence cardiaque, à la charge estimée. »).
 - Erreur de lecture : message simple (« Tire l'écran vers le bas pour réessayer »), jamais le
   détail technique.
 
@@ -408,6 +409,24 @@ Carte de l'historique : titre (15/600), constat (15/400, chiffre en relief), pou
 En-tête en mots : « Effet marqué | net | léger », suivi de « qui t'aide » ou « qui te dessert »
 (sauf effet léger). La phrase passe en style « constat » avec l'écart en relief et son repère
 (« que les autres nuits »).
+
+## Écrans du lot 5b (étape 2 : qualité des données)
+
+### Avis sur les alertes
+- Sur la carte alerte du jour (accueil, sous la carte cliquable) et sur chaque carte de l'écran
+  Alertes (sous l'action) : trois pastilles discrètes « Utile », « Pas utile », « Fausse alerte ».
+- Pastille : hauteur 32 (zone tactile agrandie à 44+), rayon pilule, texte Inter 12/500. Choisie :
+  fond `text`, texte `bg` (reste en surbrillance) ; sinon contour `border`, texte `textSoft`.
+  Toucher le choix fait le retire. role « radiogroup » / « radio ».
+
+### Journal du matin
+- « Repas tardif » peut apparaître déjà coché d'après Suivi macro ; une ligne en petit sous les
+  pastilles le dit : « « Repas tardif » est rempli d'après Suivi macro : corrige-le si besoin. »
+
+### Contrôle des données
+- Cartes « Séances fusionnées », « Nuits réunies », « Mesures écartées » (90 jours), « Charges
+  estimées » (28 jours) et, pendant 2 semaines, « Charge de la semaine : ancien et nouveau calcul ».
+  Dates et comptages seulement, même présentation que les autres cartes de cet écran.
 
 ## États à toujours prévoir
 - **Calibration en cours** (< 28 jours) : pas de score coloré ; afficher « Calibration : n / 28 jours » et les valeurs brutes, sans jugement.
@@ -452,6 +471,7 @@ action. Français, tutoiement.
 | Poids | kg partout | kilos |
 | Tout ce que le bracelet enregistre (marche, course, séance…) | activité | — |
 | Activité d'au moins 45 minutes, ou musculation quelle que soit sa durée | séance | — |
+| Avis donné sur une alerte | avis (« Utile », « Pas utile », « Fausse alerte ») | note, retour |
 
 ### Relief
 - Trois étages par carte : le constat en style « constat » (15–16 px),

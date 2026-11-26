@@ -96,3 +96,49 @@ export function behaviorFactText(f: BehaviorFact): string {
   const of = f.known === f.days ? `sur ${f.days}` : `sur ${f.known} notés`;
   return `${f.name} : ${f.yes} jour${f.yes > 1 ? 's' : ''} ${of}`;
 }
+
+/**
+ * Repas tardif calculé (lot 5b), par jour (le jour du repas, celui où le comportement a lieu) : vrai si
+ * le dernier repas pris entre minuit et le début du sommeil principal de la nuit qui suit tombe moins de
+ * `lateMealHours` heures avant ce coucher. Pas de valeur (jour absent) sans repas ou sans nuit.
+ * `meals` : repas de Suivi macro seulement ; `nights` : date du réveil (la nuit du jour J porte J + 1).
+ */
+export function lateMealByDay(
+  meals: readonly { start: number }[],
+  nights: readonly { date: string; sleep: { start: number } }[],
+  settings: Settings = SETTINGS,
+): Map<string, boolean> {
+  const result = new Map<string, boolean>();
+  const times = meals.map((m) => m.start).sort((a, b) => a - b);
+  for (const night of nights) {
+    const day = addDays(night.date, -1);
+    const [y, m, d] = day.split('-').map(Number);
+    const midnight = new Date(y, m - 1, d).getTime();
+    const bedtime = night.sleep.start;
+    let last: number | null = null;
+    for (const t of times) {
+      if (t >= midnight && t <= bedtime) last = t;
+    }
+    if (last !== null) result.set(day, bedtime - last < settings.journal.lateMealHours * 3600_000);
+  }
+  return result;
+}
+
+/**
+ * Journal complété par le repas tardif calculé (lot 5b) : seulement les jours où ce comportement n'a pas
+ * été noté à la main. Ce qui est enregistré dans le journal prime toujours.
+ */
+export function withComputedLateMeal(
+  log: BehaviorLog,
+  computed: ReadonlyMap<string, boolean>,
+  settings: Settings = SETTINGS,
+): BehaviorLog {
+  const id = settings.journal.lateMealBehaviorId;
+  const merged: BehaviorLog = new Map([...log].map(([day, entries]) => [day, new Map(entries)]));
+  for (const [day, value] of computed) {
+    const entries = merged.get(day) ?? new Map<string, boolean>();
+    if (!entries.has(id)) entries.set(id, value);
+    merged.set(day, entries);
+  }
+  return merged;
+}

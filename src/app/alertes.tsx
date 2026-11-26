@@ -14,9 +14,9 @@ import { BackHeader, Screen } from '@/components/Screen';
 import { ChoiceChips } from '@/components/SettingsControls';
 import { colors } from '@/components/theme';
 import { reloadFromDb, useHealthData } from '@/components/useHealthData';
-import { loadAlerts, markAllAlertsRead, type StoredAlert } from '@/db/alerts';
+import { loadAlerts, markAllAlertsRead, setAlertFeedback, type StoredAlert } from '@/db/alerts';
 import { getUserSettings } from '@/db/appSettings';
-import type { AlertTheme } from '@/domain/alerts';
+import type { AlertFeedback, AlertTheme } from '@/domain/alerts';
 import { formatTime } from '@/domain/notification';
 import { SETTINGS } from '@/domain/settings';
 
@@ -55,6 +55,14 @@ export default function AlertsScreen() {
     }, []),
   );
 
+  // Avis (lot 5b) : affiché tout de suite, puis enregistré ; l'accueil est relu pour sa carte.
+  const giveFeedback = useCallback((id: string, feedback: AlertFeedback | null) => {
+    setAlerts((list) => list?.map((a) => (a.id === id ? { ...a, feedback } : a)) ?? null);
+    setAlertFeedback(id, feedback)
+      .then(reloadFromDb)
+      .catch(() => undefined);
+  }, []);
+
   const calibration = recap?.calibration;
   const shown = (alerts ?? []).filter((a) => filter === 'all' || a.theme === filter);
 
@@ -83,6 +91,7 @@ export default function AlertsScreen() {
               <AlertHistoryCard
                 key={a.id}
                 alert={a}
+                onFeedback={(f) => giveFeedback(a.id, f)}
                 // « Pourquoi ? » seulement si le modèle du coach est installé.
                 onWhy={
                   coach

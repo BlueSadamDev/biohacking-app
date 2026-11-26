@@ -2,9 +2,10 @@
 // Calculs purs : aucune lecture de base de données ni de Health Connect ici.
 //
 // 1. Chaque séance de sommeil est rattachée à une nuit (date du réveil).
-// 2. Pour chaque nuit, le sommeil principal est la séance la plus longue.
-// 3. HRV de la nuit : moyenne de ln(rMSSD) des mesures prises pendant ce sommeil.
-// 4. FC au repos de la nuit : moyenne des N valeurs les plus basses pendant ce sommeil.
+// 2. Pour chaque nuit, les séances séparées de moins de 60 min forment un seul sommeil (lot 5b).
+// 3. Mesures impossibles puis aberrantes écartées (lot 5b).
+// 4. HRV de la nuit : moyenne de ln(rMSSD) des mesures retenues pendant ce sommeil.
+// 5. FC au repos de la nuit : 10e centile des mesures retenues (lot 5b).
 
 import { addDays, dayKey } from './dates';
 import { SETTINGS, type Settings } from './settings';
@@ -39,6 +40,13 @@ export type NightValue = {
   restingHr: number | null;
   /** Mesures utilisées pour la FC au repos. */
   restingHrSource: 'resting' | 'heart_rate' | null;
+  /** Lot 5b : parties dormies de la nuit (2 ou plus : nuit coupée réunie). */
+  parts: number;
+  /** Lot 5b : séances de sommeil réunies dans cette nuit (doublons compris). */
+  sleepSessions: number;
+  /** Lot 5b : mesures écartées (valeurs impossibles ou aberrantes) pour la HRV et la FC au repos. */
+  discardedHrv: number;
+  discardedRestingHr: number;
 };
 
 /** Minutes dormies : durée totale moins les phases d'éveil (si connues). */
@@ -62,22 +70,99 @@ export function nightDateOf(sleepEnd: number, settings: Settings = SETTINGS): st
   return null;
 }
 
-/** Sommeil principal de chaque nuit : la séance la plus longue rattachée à cette nuit. */
-export function mainSleepByNight(
-  sleeps: SleepSession[],
-  settings: Settings = SETTINGS,
-): Map<string, SleepSession> {
-  const result = new Map<string, SleepSession>();
+/** Plage de temps (début et fin, en millisecondes). */
+type Range = { start: number; end: number };
+
+/** Réunit les plages qui se chevauchent (union), triées. */
+function union(ranges: readonly Range[]): Range[] {
+  const sorted = ranges.filter((r) => r.end > r.start).sort((a, b) => a.start - b.start);
+  const merged: Range[] = [];
+  for (const r of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && r.start <= last.end) last.end = Math.max(last.end, r.end);
+    else merged.push({ start: r.start, end: r.end });
+  }
+  return merged;
+}
+
+const totalLength = (ranges: readonly Range[]) => ranges.reduce((sum, r) => sum + (r.end - r.start), 0);
+
+/** Sommeil principal d'une nuit, éventuellement fait de plusieurs parties (lot 5b : nuits coupées). */
+export type NightSleep = {
+  /** Sommeil vu comme un tout : du premier coucher au dernier réveil, phases de toutes les parties. */
+  sleep: SleepSession;
+  /** Parties réellement dormies (sans les éveils entre deux parties), sans chevauchement. */
+  parts: Range[];
+  /** Séances de sommeil réunies (2 ou plus : nuit coupée, ou nuit réécrite en double par l'app). */
+  sessions: number;
+};
+
+/**
+ * Sommeil principal de chaque nuit (lot 5b) : les séances d'une même nuit séparées de moins de
+ * `mergeGapMinutes` forment une seule nuit ; si plusieurs groupes restent, on garde celui où l'on a
+ * dormi le plus longtemps. Le sommeil réuni garde l'identifiant de sa plus longue séance.
+ */
+export function nightSleeps(sleeps: SleepSession[], settings: Settings = SETTINGS): Map<string, NightSleep> {
+  const byNight = new Map<string, SleepSession[]>();
   for (const sleep of sleeps) {
     if (sleep.end <= sleep.start) continue;
     const date = nightDateOf(sleep.end, settings);
     if (!date) continue;
-    const current = result.get(date);
-    if (!current || sleep.end - sleep.start > current.end - current.start) {
-      result.set(date, sleep);
+    byNight.set(date, [...(byNight.get(date) ?? []), sleep]);
+  }
+  const gapMs = settings.night.mergeGapMinutes * 60_000;
+  const result = new Map<string, NightSleep>();
+  for (const [date, list] of byNight) {
+    const sorted = [...list].sort((a, b) => a.start - b.start);
+    const groups: SleepSession[][] = [];
+    let groupEnd = -Infinity;
+    for (const sleep of sorted) {
+      if (groups.length && sleep.start - groupEnd < gapMs) {
+        groups[groups.length - 1].push(sleep);
+        groupEnd = Math.max(groupEnd, sleep.end);
+      } else {
+        groups.push([sleep]);
+        groupEnd = sleep.end;
+      }
     }
+    let best: NightSleep | null = null;
+    for (const group of groups) {
+      const parts = union(group);
+      const longest = group.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a));
+      const candidate: NightSleep = {
+        sleep: {
+          id: longest.id,
+          start: Math.min(...group.map((x) => x.start)),
+          end: Math.max(...group.map((x) => x.end)),
+          stages: group.flatMap((x) => x.stages),
+          origin: longest.origin,
+        },
+        parts,
+        sessions: group.length,
+      };
+      if (!best || totalLength(parts) > totalLength(best.parts)) best = candidate;
+    }
+    if (best) result.set(date, best);
   }
   return result;
+}
+
+/** Sommeil principal de chaque nuit (sommeil réuni, voir `nightSleeps`). */
+export function mainSleepByNight(
+  sleeps: SleepSession[],
+  settings: Settings = SETTINGS,
+): Map<string, SleepSession> {
+  return new Map([...nightSleeps(sleeps, settings)].map(([date, n]) => [date, n.sleep]));
+}
+
+/** Minutes dormies d'une nuit en plusieurs parties : somme des parties, moins les phases d'éveil. */
+export function asleepMinutesOf(parts: readonly Range[], stages: readonly SleepStage[], settings: Settings = SETTINGS): number {
+  const awake = union(stages.filter((s) => settings.night.awakeStageCodes.includes(s.stage)));
+  let awakeInside = 0;
+  for (const a of awake) {
+    for (const p of parts) awakeInside += Math.max(0, Math.min(a.end, p.end) - Math.max(a.start, p.start));
+  }
+  return Math.max(0, totalLength(parts) - awakeInside) / 60000;
 }
 
 /** Mesures triées par heure (copie ; tri stable : l'ordre d'arrivée est gardé à heure égale). */
@@ -98,21 +183,53 @@ function firstAtOrAfter(sorted: readonly Sample[], time: number): number {
 }
 
 /**
- * Mesures valides prises pendant un sommeil (bornes comprises), dans des mesures triées par heure.
+ * Mesures prises pendant les parties d'une nuit (bornes comprises), dans des mesures triées par heure.
  * Dichotomie : on ne parcourt que les mesures de la nuit, pas toutes les mesures pour chaque nuit.
  */
-function inside(sleep: SleepSession, sorted: readonly Sample[]): Sample[] {
-  const result: Sample[] = [];
-  for (let i = firstAtOrAfter(sorted, sleep.start); i < sorted.length && sorted[i].time <= sleep.end; i++) {
-    if (sorted[i].value > 0) result.push(sorted[i]);
+function insideParts(parts: readonly Range[], sorted: readonly Sample[]): number[] {
+  const result: number[] = [];
+  for (const part of parts) {
+    for (let i = firstAtOrAfter(sorted, part.start); i < sorted.length && sorted[i].time <= part.end; i++) {
+      result.push(sorted[i].value);
+    }
   }
   return result;
 }
 
-function meanOfLowest(values: number[], count: number): number | null {
+function median(sorted: readonly number[]): number {
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Mesures aberrantes (lot 5b) : on écarte d'abord les valeurs impossibles, puis, s'il y a au moins
+ * `outlierMinSamples` mesures, celles à plus de `outlierMads` écarts absolus médians de la médiane.
+ */
+export function withoutOutliers(
+  values: readonly number[],
+  min: number,
+  max: number,
+  settings: Settings = SETTINGS,
+): { kept: number[]; discarded: number } {
+  const possible = values.filter((v) => v >= min && v <= max);
+  let kept = possible;
+  if (possible.length >= settings.night.outlierMinSamples) {
+    const sorted = [...possible].sort((a, b) => a - b);
+    const med = median(sorted);
+    const mad = median(possible.map((v) => Math.abs(v - med)).sort((a, b) => a - b));
+    if (mad > 0) kept = possible.filter((v) => Math.abs(v - med) <= settings.night.outlierMads * mad);
+  }
+  return { kept, discarded: values.length - kept.length };
+}
+
+/** Centile `p` (0 à 1) par interpolation linéaire ; null sans valeur. */
+export function percentile(values: readonly number[], p: number): number | null {
   if (values.length === 0) return null;
-  const lowest = [...values].sort((a, b) => a - b).slice(0, count);
-  return lowest.reduce((a, b) => a + b, 0) / lowest.length;
+  const sorted = [...values].sort((a, b) => a - b);
+  const pos = (sorted.length - 1) * p;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
 }
 
 /** Valeurs par nuit, triées par date. Une nuit sans sommeil principal n'apparaît pas. */
@@ -125,38 +242,39 @@ export function computeNights(
   },
   settings: Settings = SETTINGS,
 ): NightValue[] {
+  const n = settings.night;
   const nights: NightValue[] = [];
   const hrvSorted = sortByTime(input.hrv);
   const restingSorted = sortByTime(input.restingHr);
   const heartRateSorted = sortByTime(input.heartRate);
-  for (const [date, sleep] of mainSleepByNight(input.sleeps, settings)) {
-    const hrv = inside(sleep, hrvSorted);
-    const lnRmssd = hrv.length
-      ? hrv.reduce((sum, s) => sum + Math.log(s.value), 0) / hrv.length
-      : null;
+  for (const [date, night] of nightSleeps(input.sleeps, settings)) {
+    const hrv = withoutOutliers(insideParts(night.parts, hrvSorted), n.rmssdMin, n.rmssdMax, settings);
+    const lnRmssd = hrv.kept.length ? hrv.kept.reduce((sum, v) => sum + Math.log(v), 0) / hrv.kept.length : null;
 
-    let restingHr = meanOfLowest(
-      inside(sleep, restingSorted).map((s) => s.value),
-      settings.night.restingHrLowestCount,
-    );
+    const resting = withoutOutliers(insideParts(night.parts, restingSorted), n.heartRateMin, n.heartRateMax, settings);
+    let restingHr = percentile(resting.kept, n.restingHrPercentile);
     let restingHrSource: NightValue['restingHrSource'] = restingHr === null ? null : 'resting';
-    if (restingHr === null && settings.night.restingHrFallbackToHeartRate) {
-      restingHr = meanOfLowest(
-        inside(sleep, heartRateSorted).map((s) => s.value),
-        settings.night.restingHrLowestCount,
-      );
+    let discardedRestingHr = resting.discarded;
+    if (restingHr === null && n.restingHrFallbackToHeartRate) {
+      const fallback = withoutOutliers(insideParts(night.parts, heartRateSorted), n.heartRateMin, n.heartRateMax, settings);
+      restingHr = percentile(fallback.kept, n.restingHrPercentile);
       restingHrSource = restingHr === null ? null : 'heart_rate';
+      discardedRestingHr += fallback.discarded;
     }
 
     nights.push({
       date,
-      sleep,
-      asleepMinutes: asleepMinutes(sleep, settings),
+      sleep: night.sleep,
+      asleepMinutes: asleepMinutesOf(night.parts, night.sleep.stages, settings),
       lnRmssd,
       hrvMs: lnRmssd === null ? null : Math.exp(lnRmssd),
-      hrvSampleCount: hrv.length,
+      hrvSampleCount: hrv.kept.length,
       restingHr,
       restingHrSource,
+      parts: night.parts.length,
+      sleepSessions: night.sessions,
+      discardedHrv: hrv.discarded,
+      discardedRestingHr,
     });
   }
   return nights.sort((a, b) => a.date.localeCompare(b.date));
